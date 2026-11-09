@@ -1,31 +1,28 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles, ArrowLeft, Download, Printer, Plus, Trash2 } from 'lucide-react';
+import { Sparkles, ArrowLeft, Download, Printer, Plus, Trash2, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function Builder() {
   const [formData, setFormData] = useState({
-    fullName: 'Muhammad Ali',
-    email: 'muhammad.ali@example.com',
-    phone: '+92 300 1234567',
+    fullName: 'Faisal Ilyas',
+    email: 'faisal@nexifynova.co.uk',
+    phone: '+92 3122777836',
     address: 'Karachi, Pakistan',
-    jobTitle: 'Software Engineer',
+    jobTitle: 'Assistant Accounts',
     summary: 'Passionate software engineer with experience in building modern web applications.',
-    skills: ['React', 'Next.js', 'JavaScript', 'Tailwind CSS'],
-    languages: ['English', 'Urdu'],
+    skills: ['Ms-Office', 'English Language', 'JavaScript', 'Tailwind CSS'],
     education: [
       { degree: 'BS Computer Science', school: 'University of Karachi', year: '2018 - 2022' }
     ],
     experience: [
-      { role: 'Frontend Developer', company: 'Tech Solutions', duration: '2022 - Present', desc: 'Built responsive web apps.' }
+      { role: 'Accountant', company: 'Zaman Trading', duration: '2022 - Present', desc: 'Built responsive web apps.' }
     ],
-    projects: [
-      { title: 'Portfolio Website', desc: 'Built using Next.js and Tailwind CSS.' }
-    ]
   });
 
   const [template, setTemplate] = useState('modern');
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -36,7 +33,6 @@ export default function Builder() {
     newSkills[index] = value;
     setFormData({ ...formData, skills: newSkills });
   };
-
   const addSkill = () => setFormData({ ...formData, skills: [...formData.skills, ''] });
   const removeSkill = (index: number) => setFormData({ ...formData, skills: formData.skills.filter((_, i) => i !== index) });
 
@@ -56,13 +52,35 @@ export default function Builder() {
     setFormData({ ...formData, experience: newExp });
   };
 
+  const handleGenerateAI = async () => {
+    if (!formData.jobTitle) {
+      alert("Pehle Job Title likhein taake AI summary bana sake.");
+      return;
+    }
+    setIsGenerating(true);
+    try {
+      const response = await fetch('/api/generate-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobTitle: formData.jobTitle, skills: formData.skills.join(', ') }),
+      });
+      const data = await response.json();
+      if (data.summary) {
+        setFormData({ ...formData, summary: data.summary });
+      }
+    } catch (error) {
+      alert("AI summary generate nahi ho saki. Dobara koshish karein.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const handlePrint = () => {
     window.print();
   };
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col font-sans">
-      {/* Navbar */}
       <nav className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center sticky top-0 z-50 print:hidden">
         <Link href="/" className="flex items-center gap-2 text-gray-600 hover:text-blue-600 font-medium">
           <ArrowLeft size={20} /> Back to Home
@@ -78,10 +96,10 @@ export default function Builder() {
           
           {/* Template Selector */}
           <div className="mb-6 bg-blue-50 p-4 rounded-xl border border-blue-100">
-            <h3 className="text-sm font-bold text-gray-800 mb-2">Choose Template Design:</h3>
+            <h3 className="text-sm font-bold text-gray-800 mb-2">Choose Template Design (12 Options):</h3>
             <div className="flex flex-wrap gap-2">
-              {['modern', 'classic', 'minimal', 'creative'].map((t) => (
-                <button key={t} onClick={() => setTemplate(t)} className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition ${template === t ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border'}`}>
+              {['modern', 'classic', 'minimal', 'creative', 'executive', 'elegant', 'tech', 'corporate', 'simple', 'bold', 'timeline', 'compact'].map((t) => (
+                <button key={t} onClick={() => setTemplate(t)} className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition ${template === t ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-gray-700 border hover:bg-gray-50'}`}>
                   {t}
                 </button>
               ))}
@@ -104,8 +122,9 @@ export default function Builder() {
           <h1 className="text-xl font-bold text-gray-900 mb-4 border-b pb-2">Professional Summary</h1>
           <div className="mb-8">
             <textarea name="summary" value={formData.summary} onChange={handleChange} rows={3} className="w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 outline-none text-sm resize-none"></textarea>
-            <button type="button" className="mt-2 flex items-center gap-1.5 text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-blue-600 px-3 py-1.5 rounded-full">
-              <Sparkles size={14} /> Generate with AI
+            <button type="button" onClick={handleGenerateAI} disabled={isGenerating} className="mt-2 flex items-center gap-1.5 text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-blue-600 px-3 py-1.5 rounded-full disabled:opacity-50">
+              {isGenerating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+              {isGenerating ? 'Generating...' : 'Generate with AI'}
             </button>
           </div>
 
@@ -181,7 +200,6 @@ export default function Builder() {
                 </div>
               </div>
               <div className="mb-6"><h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest mb-2 border-b border-gray-200 pb-1">Summary</h2><p className="text-gray-700 text-sm leading-relaxed">{formData.summary}</p></div>
-              
               <div className="mb-6">
                 <h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest mb-2 border-b border-gray-200 pb-1">Experience</h2>
                 {formData.experience.map((exp, i) => (
@@ -192,7 +210,6 @@ export default function Builder() {
                   </div>
                 ))}
               </div>
-              
               <div className="mb-6">
                 <h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest mb-2 border-b border-gray-200 pb-1">Education</h2>
                 {formData.education.map((edu, i) => (
@@ -202,7 +219,6 @@ export default function Builder() {
                   </div>
                 ))}
               </div>
-
               <div>
                 <h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest mb-2 border-b border-gray-200 pb-1">Skills</h2>
                 <ul className="grid grid-cols-2 gap-1">
@@ -223,7 +239,6 @@ export default function Builder() {
                 <div className="flex justify-center gap-3 text-xs text-gray-500 mt-2"><span>{formData.email}</span> <span>|</span> <span>{formData.phone}</span> <span>|</span> <span>{formData.address}</span></div>
               </div>
               <div className="mb-5"><h2 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-1">Summary</h2><p className="text-gray-700 text-sm leading-relaxed">{formData.summary}</p></div>
-              
               <div className="mb-5">
                 <h2 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-2">Experience</h2>
                 {formData.experience.map((exp, i) => (
@@ -234,7 +249,6 @@ export default function Builder() {
                   </div>
                 ))}
               </div>
-              
               <div className="mb-5">
                 <h2 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-2">Education</h2>
                 {formData.education.map((edu, i) => (
@@ -244,7 +258,6 @@ export default function Builder() {
                   </div>
                 ))}
               </div>
-              
               <div>
                 <h2 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-1">Skills</h2>
                 <ul className="flex flex-wrap gap-2">
@@ -302,6 +315,149 @@ export default function Builder() {
                   {formData.experience.map((e, i) => <div key={i} className="mb-4"><h3 className="font-bold text-gray-900 text-sm">{e.role}</h3><p className="text-xs text-blue-600 font-semibold mb-1">{e.company} | {e.duration}</p><p className="text-xs text-gray-700 leading-relaxed">{e.desc}</p></div>)}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* EXECUTIVE TEMPLATE */}
+          {template === 'executive' && (
+            <div className="border-t-[10px] border-gray-900 pt-6">
+              <div className="flex justify-between items-end border-b-2 border-gray-300 pb-4 mb-6">
+                <div><h1 className="text-4xl font-black text-gray-900">{formData.fullName}</h1><p className="text-lg text-gray-600 mt-1">{formData.jobTitle}</p></div>
+                <div className="text-right text-xs text-gray-500 space-y-1"><p>{formData.email}</p><p>{formData.phone}</p><p>{formData.address}</p></div>
+              </div>
+              <div className="mb-5"><h2 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-1 border-b-2 border-gray-900 inline-block pb-1">Profile</h2><p className="text-gray-700 text-sm leading-relaxed mt-2">{formData.summary}</p></div>
+              <div className="mb-5"><h2 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-2 border-b-2 border-gray-900 inline-block pb-1">Experience</h2>{formData.experience.map((e, i) => <div key={i} className="mb-3"><div className="flex justify-between"><h3 className="font-bold text-gray-900 text-sm">{e.role}</h3><span className="text-xs text-gray-600">{e.duration}</span></div><p className="text-xs font-semibold text-gray-700">{e.company}</p><p className="text-xs text-gray-600 mt-1">{e.desc}</p></div>)}</div>
+              <div className="mb-5"><h2 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-2 border-b-2 border-gray-900 inline-block pb-1">Education</h2>{formData.education.map((e, i) => <div key={i} className="flex justify-between mb-2"><div><h3 className="font-bold text-gray-900 text-sm">{e.degree}</h3><p className="text-xs text-gray-600">{e.school}</p></div><span className="text-xs text-gray-600">{e.year}</span></div>)}</div>
+              <div><h2 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-1 border-b-2 border-gray-900 inline-block pb-1">Skills</h2><ul className="flex flex-wrap gap-x-4 gap-y-1 mt-2">{formData.skills.map((s, i) => s && <li key={i} className="text-sm text-gray-700">• {s}</li>)}</ul></div>
+            </div>
+          )}
+
+          {/* ELEGANT TEMPLATE */}
+          {template === 'elegant' && (
+            <div className="font-serif">
+              <div className="text-center mb-8 border-b border-gray-300 pb-6">
+                <h1 className="text-4xl font-normal text-gray-800 tracking-wider mb-2">{formData.fullName}</h1>
+                <p className="text-sm text-gray-500 uppercase tracking-[0.3em]">{formData.jobTitle}</p>
+                <div className="flex justify-center gap-4 text-xs text-gray-500 mt-4"><span>{formData.email}</span> <span>•</span> <span>{formData.phone}</span> <span>•</span> <span>{formData.address}</span></div>
+              </div>
+              <div className="grid grid-cols-12 gap-8">
+                <div className="col-span-8 space-y-6">
+                  <div><h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest mb-3 pb-1 border-b border-gray-200">Experience</h2>{formData.experience.map((e, i) => <div key={i} className="mb-4"><h3 className="font-bold text-gray-900 text-sm">{e.role}</h3><p className="text-xs italic text-gray-600 mb-1">{e.company} | {e.duration}</p><p className="text-xs text-gray-700 leading-relaxed">{e.desc}</p></div>)}</div>
+                  <div><h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest mb-3 pb-1 border-b border-gray-200">Education</h2>{formData.education.map((e, i) => <div key={i} className="mb-3"><h3 className="font-bold text-gray-900 text-sm">{e.degree}</h3><p className="text-xs text-gray-600">{e.school} | {e.year}</p></div>)}</div>
+                </div>
+                <div className="col-span-4 space-y-6">
+                  <div><h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest mb-3 pb-1 border-b border-gray-200">Profile</h2><p className="text-xs text-gray-700 leading-relaxed">{formData.summary}</p></div>
+                  <div><h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest mb-3 pb-1 border-b border-gray-200">Skills</h2><ul className="text-xs text-gray-700 space-y-1">{formData.skills.map((s, i) => s && <li key={i}>{s}</li>)}</ul></div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TECH TEMPLATE */}
+          {template === 'tech' && (
+            <div className="font-mono text-sm">
+              <div className="mb-6">
+                <h1 className="text-3xl font-bold text-gray-900">{formData.fullName}</h1>
+                <p className="text-blue-600">{formData.jobTitle}</p>
+                <div className="text-xs text-gray-500 mt-2">[{formData.email}] [{formData.phone}] [{formData.address}]</div>
+              </div>
+              <div className="mb-4"><span className="text-blue-600 font-bold">## Summary</span><p className="text-gray-700 mt-1">{formData.summary}</p></div>
+              <div className="mb-4"><span className="text-blue-600 font-bold">## Experience</span>{formData.experience.map((e, i) => <div key={i} className="mt-2"><p className="font-bold text-gray-900">{e.role} @ {e.company} ({e.duration})</p><p className="text-gray-600">{e.desc}</p></div>)}</div>
+              <div className="mb-4"><span className="text-blue-600 font-bold">## Education</span>{formData.education.map((e, i) => <div key={i} className="mt-2"><p className="font-bold text-gray-900">{e.degree}</p><p className="text-gray-600">{e.school} ({e.year})</p></div>)}</div>
+              <div><span className="text-blue-600 font-bold">## Skills</span><p className="text-gray-700 mt-1">{formData.skills.join(', ')}</p></div>
+            </div>
+          )}
+
+          {/* CORPORATE TEMPLATE */}
+          {template === 'corporate' && (
+            <div>
+              <div className="bg-blue-900 text-white p-6 mb-6">
+                <h1 className="text-3xl font-bold uppercase tracking-wider">{formData.fullName}</h1>
+                <p className="text-blue-200 mt-1">{formData.jobTitle}</p>
+                <div className="flex gap-4 text-xs text-blue-200 mt-3"><span>{formData.email}</span> <span>|</span> <span>{formData.phone}</span> <span>|</span> <span>{formData.address}</span></div>
+              </div>
+              <div className="px-4">
+                <div className="mb-6"><h2 className="text-sm font-bold text-blue-900 uppercase border-b border-blue-900 pb-1 mb-2">Profile</h2><p className="text-gray-700 text-sm">{formData.summary}</p></div>
+                <div className="mb-6"><h2 className="text-sm font-bold text-blue-900 uppercase border-b border-blue-900 pb-1 mb-2">Experience</h2>{formData.experience.map((e, i) => <div key={i} className="mb-3"><div className="flex justify-between"><h3 className="font-bold text-gray-900">{e.role}</h3><span className="text-xs text-gray-500">{e.duration}</span></div><p className="text-xs text-blue-700 font-medium">{e.company}</p><p className="text-xs text-gray-600">{e.desc}</p></div>)}</div>
+                <div className="mb-6"><h2 className="text-sm font-bold text-blue-900 uppercase border-b border-blue-900 pb-1 mb-2">Education</h2>{formData.education.map((e, i) => <div key={i} className="mb-2"><div className="flex justify-between"><h3 className="font-bold text-gray-900 text-sm">{e.degree}</h3><span className="text-xs text-gray-500">{e.year}</span></div><p className="text-xs text-gray-600">{e.school}</p></div>)}</div>
+                <div><h2 className="text-sm font-bold text-blue-900 uppercase border-b border-blue-900 pb-1 mb-2">Skills</h2><div className="flex flex-wrap gap-2">{formData.skills.map((s, i) => s && <span key={i} className="bg-blue-50 text-blue-800 text-xs px-2 py-1 rounded border border-blue-200">{s}</span>)}</div></div>
+              </div>
+            </div>
+          )}
+
+          {/* SIMPLE TEMPLATE */}
+          {template === 'simple' && (
+            <div className="text-gray-800">
+              <div className="mb-6">
+                <h1 className="text-3xl font-bold">{formData.fullName}</h1>
+                <p className="text-gray-600">{formData.jobTitle}</p>
+                <p className="text-xs text-gray-500 mt-1">{formData.email} | {formData.phone} | {formData.address}</p>
+              </div>
+              <hr className="mb-4 border-gray-300" />
+              <div className="mb-4"><h2 className="font-bold text-gray-900 mb-1">Summary</h2><p className="text-sm text-gray-700">{formData.summary}</p></div>
+              <hr className="mb-4 border-gray-300" />
+              <div className="mb-4"><h2 className="font-bold text-gray-900 mb-2">Experience</h2>{formData.experience.map((e, i) => <div key={i} className="mb-3"><div className="flex justify-between"><h3 className="font-semibold text-sm">{e.role}</h3><span className="text-xs text-gray-500">{e.duration}</span></div><p className="text-xs text-gray-600 italic">{e.company}</p><p className="text-sm text-gray-700 mt-1">{e.desc}</p></div>)}</div>
+              <hr className="mb-4 border-gray-300" />
+              <div className="mb-4"><h2 className="font-bold text-gray-900 mb-2">Education</h2>{formData.education.map((e, i) => <div key={i} className="mb-2"><div className="flex justify-between"><h3 className="font-semibold text-sm">{e.degree}</h3><span className="text-xs text-gray-500">{e.year}</span></div><p className="text-sm text-gray-600">{e.school}</p></div>)}</div>
+              <hr className="mb-4 border-gray-300" />
+              <div><h2 className="font-bold text-gray-900 mb-1">Skills</h2><p className="text-sm text-gray-700">{formData.skills.join(' • ')}</p></div>
+            </div>
+          )}
+
+          {/* BOLD TEMPLATE */}
+          {template === 'bold' && (
+            <div>
+              <div className="mb-6">
+                <h1 className="text-5xl font-black text-gray-900 uppercase leading-none">{formData.fullName}</h1>
+                <p className="text-xl font-bold text-gray-500 mt-1">{formData.jobTitle}</p>
+              </div>
+              <div className="bg-gray-100 p-4 mb-6 flex gap-4 text-xs font-semibold text-gray-600">{formData.email} <span>/</span> {formData.phone} <span>/</span> {formData.address}</div>
+              <div className="mb-6"><h2 className="text-xl font-black text-gray-900 uppercase mb-2">Profile</h2><p className="text-sm text-gray-700">{formData.summary}</p></div>
+              <div className="mb-6"><h2 className="text-xl font-black text-gray-900 uppercase mb-3">Experience</h2>{formData.experience.map((e, i) => <div key={i} className="mb-4"><h3 className="font-bold text-lg text-gray-900">{e.role}</h3><p className="text-xs font-bold text-gray-500 uppercase">{e.company} / {e.duration}</p><p className="text-sm text-gray-700 mt-1">{e.desc}</p></div>)}</div>
+              <div className="mb-6"><h2 className="text-xl font-black text-gray-900 uppercase mb-3">Education</h2>{formData.education.map((e, i) => <div key={i} className="mb-3"><h3 className="font-bold text-lg text-gray-900">{e.degree}</h3><p className="text-sm text-gray-600">{e.school} / {e.year}</p></div>)}</div>
+              <div><h2 className="text-xl font-black text-gray-900 uppercase mb-2">Skills</h2><ul className="grid grid-cols-2 gap-2">{formData.skills.map((s, i) => s && <li key={i} className="font-bold text-gray-800 text-sm border-l-4 border-gray-900 pl-2">{s}</li>)}</ul></div>
+            </div>
+          )}
+
+          {/* TIMELINE TEMPLATE */}
+          {template === 'timeline' && (
+            <div>
+              <div className="text-center mb-8">
+                <h1 className="text-3xl font-bold text-gray-900">{formData.fullName}</h1>
+                <p className="text-gray-500">{formData.jobTitle}</p>
+                <div className="text-xs text-gray-400 mt-2">{formData.email} • {formData.phone} • {formData.address}</div>
+              </div>
+              <div className="relative border-l-2 border-blue-200 ml-3 pl-6 mb-8">
+                <div className="absolute w-4 h-4 bg-blue-600 rounded-full -left-[9px] top-1"></div>
+                <h2 className="text-sm font-bold text-blue-600 uppercase mb-2">Summary</h2>
+                <p className="text-sm text-gray-700">{formData.summary}</p>
+              </div>
+              <div className="relative border-l-2 border-blue-200 ml-3 pl-6 mb-8">
+                <div className="absolute w-4 h-4 bg-blue-600 rounded-full -left-[9px] top-1"></div>
+                <h2 className="text-sm font-bold text-blue-600 uppercase mb-3">Experience</h2>
+                {formData.experience.map((e, i) => <div key={i} className="mb-4"><h3 className="font-bold text-gray-900">{e.role}</h3><p className="text-xs text-gray-500 mb-1">{e.company} | {e.duration}</p><p className="text-sm text-gray-700">{e.desc}</p></div>)}
+              </div>
+              <div className="relative border-l-2 border-blue-200 ml-3 pl-6 mb-8">
+                <div className="absolute w-4 h-4 bg-blue-600 rounded-full -left-[9px] top-1"></div>
+                <h2 className="text-sm font-bold text-blue-600 uppercase mb-3">Education</h2>
+                {formData.education.map((e, i) => <div key={i} className="mb-3"><h3 className="font-bold text-gray-900">{e.degree}</h3><p className="text-sm text-gray-600">{e.school} | {e.year}</p></div>)}
+              </div>
+              <div className="relative border-l-2 border-blue-200 ml-3 pl-6">
+                <div className="absolute w-4 h-4 bg-blue-600 rounded-full -left-[9px] top-1"></div>
+                <h2 className="text-sm font-bold text-blue-600 uppercase mb-2">Skills</h2>
+                <div className="flex flex-wrap gap-2">{formData.skills.map((s, i) => s && <span key={i} className="text-xs text-gray-700 bg-gray-100 px-2 py-1 rounded">{s}</span>)}</div>
+              </div>
+            </div>
+          )}
+
+          {/* COMPACT TEMPLATE */}
+          {template === 'compact' && (
+            <div className="text-sm">
+              <div className="mb-4 border-b pb-2"><h1 className="text-2xl font-bold text-gray-900">{formData.fullName}</h1><p className="text-gray-600">{formData.jobTitle} | {formData.email} | {formData.phone} | {formData.address}</p></div>
+              <div className="mb-3"><p className="text-gray-700">{formData.summary}</p></div>
+              <div className="mb-3"><h2 className="font-bold text-gray-900 uppercase text-xs mb-1">Experience</h2>{formData.experience.map((e, i) => <div key={i} className="mb-2"><span className="font-bold text-gray-800">{e.role}</span>, {e.company} <span className="text-gray-500">({e.duration})</span><p className="text-gray-600">{e.desc}</p></div>)}</div>
+              <div className="mb-3"><h2 className="font-bold text-gray-900 uppercase text-xs mb-1">Education</h2>{formData.education.map((e, i) => <div key={i} className="mb-1"><span className="font-bold text-gray-800">{e.degree}</span>, {e.school} <span className="text-gray-500">({e.year})</span></div>)}</div>
+              <div><h2 className="font-bold text-gray-900 uppercase text-xs mb-1">Skills</h2><p className="text-gray-700">{formData.skills.join(', ')}</p></div>
             </div>
           )}
 
