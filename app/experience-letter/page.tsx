@@ -18,6 +18,8 @@ export default function ExperienceLetter() {
     signatoryDesignation: 'Human Resources Department'
   });
 
+  const [template, setTemplate] = useState('modern');
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -40,6 +42,15 @@ export default function ExperienceLetter() {
         
         {/* LEFT SIDE: FORM */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-fit max-h-[85vh] overflow-y-auto print:hidden">
+          
+          <div className="mb-6 bg-blue-50 p-4 rounded-xl border border-blue-100">
+            <h3 className="text-sm font-bold text-gray-800 mb-2">Choose Design:</h3>
+            <div className="flex gap-2">
+              <button onClick={() => setTemplate('modern')} className={`px-4 py-2 rounded-lg text-sm font-medium transition ${template === 'modern' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border'}`}>Modern Header</button>
+              <button onClick={() => setTemplate('classic')} className={`px-4 py-2 rounded-lg text-sm font-medium transition ${template === 'classic' ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 border'}`}>Classic Formal</button>
+            </div>
+          </div>
+
           <h1 className="text-xl font-bold text-gray-900 mb-4 border-b pb-2">Company Details</h1>
           <div className="space-y-4 mb-8">
             <div><label className="block text-xs font-semibold text-gray-600 mb-1">Company Name</label><input type="text" name="companyName" value={formData.companyName} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 outline-none text-sm" /></div>
@@ -82,30 +93,69 @@ export default function ExperienceLetter() {
 
         {/* RIGHT SIDE: LIVE PREVIEW */}
         <div className="bg-white shadow-2xl rounded-xl p-12 border border-gray-200 print:shadow-none print:border-none print:p-0 h-fit min-h-[A4]">
-          <div className="mb-8 border-b-2 border-gray-800 pb-4">
-            <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-wider">{formData.companyName}</h1>
-            <p className="text-sm text-gray-500">{formData.companyAddress}</p>
-          </div>
+          
+          {/* MODERN EXPERIENCE LETTER */}
+          {template === 'modern' && (
+            <div>
+              <div className="bg-gray-900 text-white p-8 rounded-b-xl mb-8 -mt-12 -mx-12">
+                <h1 className="text-3xl font-bold tracking-wide">{formData.companyName}</h1>
+                <p className="text-gray-300 text-sm mt-1">{formData.companyAddress}</p>
+              </div>
+              
+              <div className="mb-6 text-sm text-gray-700">
+                <p className="font-semibold">Date: {formData.date}</p>
+              </div>
 
-          <div className="mb-8 text-sm text-gray-700">
-            <p className="font-semibold">Date: {formData.date}</p>
-          </div>
+              <div className="mb-8">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">TO WHOM IT MAY CONCERN</h2>
+                <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
+                  {formData.body}
+                </div>
+              </div>
 
-          <div className="mb-6">
-            <h2 className="text-lg font-bold text-gray-900 underline mb-6 text-center uppercase tracking-widest">To Whom It May Concern</h2>
-            <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
-              {formData.body}
+              <div className="mt-16 text-sm text-gray-700">
+                <p>Sincerely,</p>
+                <div className="mt-12 pt-2 border-t border-gray-400 w-48">
+                  <p className="font-bold">{formData.signatoryName}</p>
+                  <p className="text-xs text-gray-500">{formData.signatoryDesignation}</p>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="mt-16 text-sm text-gray-700">
-            <p>Sincerely,</p>
-            <div className="mt-8 pt-4 border-t border-gray-400 w-48">
-              <p className="font-bold">{formData.signatoryName}</p>
-              <p className="text-xs text-gray-500">{formData.signatoryDesignation}</p>
-              <p className="text-xs text-gray-500">{formData.companyName}</p>
+          {/* CLASSIC EXPERIENCE LETTER */}
+          {template === 'classic' && (
+            <div className="font-serif">
+              <div className="text-center border-b-4 border-double border-gray-800 pb-4 mb-8">
+                <h1 className="text-3xl font-bold uppercase tracking-widest text-gray-900">{formData.companyName}</h1>
+                <p className="text-sm text-gray-600 mt-1">{formData.companyAddress}</p>
+              </div>
+
+              <div className="mb-6 text-sm text-gray-800">
+                <p>{formData.date}</p>
+              </div>
+
+              <div className="text-center mb-8">
+                <h2 className="text-lg font-bold underline text-gray-900 tracking-wider">EXPERIENCE CERTIFICATE</h2>
+              </div>
+
+              <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap mb-12">
+                {formData.body}
+              </div>
+
+              <div className="flex justify-between items-end mt-16 text-sm text-gray-800">
+                <div>
+                  <p className="border-t border-gray-400 pt-1 w-40 text-center">Employee Signature</p>
+                </div>
+                <div>
+                  <p className="font-bold">{formData.signatoryName}</p>
+                  <p className="text-xs text-gray-500">{formData.signatoryDesignation}</p>
+                  <p className="border-t border-gray-400 pt-1 w-40 text-center mt-1">Authorized Signature</p>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
+
         </div>
       </main>
     </div>

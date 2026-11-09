@@ -18,6 +18,8 @@ export default function CoverLetter() {
     body: 'Dear Hiring Manager,\n\nI am writing to express my strong interest in the Assistant Accounts position at Zaman Trading. With my background in accounting and finance, I am confident in my ability to contribute effectively to your team.\n\nThroughout my career, I have developed strong skills in financial reporting, data analysis, and client communication. I am eager to bring my expertise to your organization and help drive success.\n\nThank you for considering my application. I look forward to the opportunity to discuss how I can contribute to your team.\n\nSincerely,\nFaisal Ilyas',
   });
 
+  const [template, setTemplate] = useState('modern');
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -40,6 +42,15 @@ export default function CoverLetter() {
         
         {/* LEFT SIDE: FORM */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-fit max-h-[85vh] overflow-y-auto print:hidden">
+          
+          <div className="mb-6 bg-blue-50 p-4 rounded-xl border border-blue-100">
+            <h3 className="text-sm font-bold text-gray-800 mb-2">Choose Design:</h3>
+            <div className="flex gap-2">
+              <button onClick={() => setTemplate('modern')} className={`px-4 py-2 rounded-lg text-sm font-medium transition ${template === 'modern' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border'}`}>Modern (Blue)</button>
+              <button onClick={() => setTemplate('classic')} className={`px-4 py-2 rounded-lg text-sm font-medium transition ${template === 'classic' ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 border'}`}>Classic (Black)</button>
+            </div>
+          </div>
+
           <h1 className="text-xl font-bold text-gray-900 mb-4 border-b pb-2">Your Details</h1>
           <div className="space-y-4 mb-8">
             <div><label className="block text-xs font-semibold text-gray-600 mb-1">Full Name</label><input type="text" name="fullName" value={formData.fullName} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 outline-none text-sm" /></div>
@@ -80,25 +91,55 @@ export default function CoverLetter() {
 
         {/* RIGHT SIDE: LIVE PREVIEW */}
         <div className="bg-white shadow-2xl rounded-xl p-12 border border-gray-200 print:shadow-none print:border-none print:p-0 h-fit min-h-[A4]">
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-gray-900">{formData.fullName}</h1>
-            <p className="text-sm text-gray-500">{formData.address}</p>
-            <p className="text-sm text-gray-500">{formData.phone} | {formData.email}</p>
-          </div>
+          
+          {/* MODERN COVER LETTER */}
+          {template === 'modern' && (
+            <div>
+              <div className="border-l-8 border-blue-600 pl-6 mb-8">
+                <h1 className="text-4xl font-black text-gray-900 uppercase tracking-tight">{formData.fullName}</h1>
+                <div className="flex flex-wrap gap-2 text-sm text-blue-600 font-medium mt-2">
+                  <span>{formData.email}</span> <span>•</span> <span>{formData.phone}</span> <span>•</span> <span>{formData.address}</span>
+                </div>
+              </div>
 
-          <div className="mb-8 text-sm text-gray-700">
-            <p className="font-semibold">{formData.date}</p>
-          </div>
+              <div className="flex justify-between items-end mb-8 border-b border-gray-200 pb-4">
+                <div>
+                  <p className="text-sm font-bold text-gray-900">{formData.date}</p>
+                </div>
+                <div className="text-right text-sm text-gray-600">
+                  <p className="font-bold text-gray-900">{formData.hiringManager}</p>
+                  <p>{formData.companyName}</p>
+                  <p>{formData.companyAddress}</p>
+                </div>
+              </div>
 
-          <div className="mb-6 text-sm text-gray-700">
-            <p className="font-semibold">{formData.hiringManager}</p>
-            <p>{formData.companyName}</p>
-            <p>{formData.companyAddress}</p>
-          </div>
+              <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
+                {formData.body}
+              </div>
+            </div>
+          )}
 
-          <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
-            {formData.body}
-          </div>
+          {/* CLASSIC COVER LETTER */}
+          {template === 'classic' && (
+            <div className="font-serif">
+              <div className="text-center mb-10">
+                <h1 className="text-3xl font-bold text-gray-900 mb-1">{formData.fullName}</h1>
+                <p className="text-sm text-gray-600">{formData.address} | {formData.phone} | {formData.email}</p>
+              </div>
+
+              <div className="mb-8 text-sm text-gray-800">
+                <p className="mb-4">{formData.date}</p>
+                <p className="font-bold">{formData.hiringManager}</p>
+                <p>{formData.companyName}</p>
+                <p>{formData.companyAddress}</p>
+              </div>
+
+              <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
+                {formData.body}
+              </div>
+            </div>
+          )}
+
         </div>
       </main>
     </div>
