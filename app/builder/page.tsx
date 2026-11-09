@@ -96,9 +96,9 @@ export default function Builder() {
           
           {/* Template Selector */}
           <div className="mb-6 bg-blue-50 p-4 rounded-xl border border-blue-100">
-            <h3 className="text-sm font-bold text-gray-800 mb-2">Choose Template Design (12 Options):</h3>
+            <h3 className="text-sm font-bold text-gray-800 mb-2">Choose Template Design (16 Options):</h3>
             <div className="flex flex-wrap gap-2">
-              {['modern', 'classic', 'minimal', 'creative', 'executive', 'elegant', 'tech', 'corporate', 'simple', 'bold', 'timeline', 'compact'].map((t) => (
+              {['modern', 'classic', 'minimal', 'creative', 'executive', 'elegant', 'tech', 'corporate', 'simple', 'bold', 'timeline', 'compact', 'bluecorporate', 'redexecutive', 'greenprofessional', 'darkmode'].map((t) => (
                 <button key={t} onClick={() => setTemplate(t)} className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition ${template === t ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-gray-700 border hover:bg-gray-50'}`}>
                   {t}
                 </button>
@@ -458,6 +458,79 @@ export default function Builder() {
               <div className="mb-3"><h2 className="font-bold text-gray-900 uppercase text-xs mb-1">Experience</h2>{formData.experience.map((e, i) => <div key={i} className="mb-2"><span className="font-bold text-gray-800">{e.role}</span>, {e.company} <span className="text-gray-500">({e.duration})</span><p className="text-gray-600">{e.desc}</p></div>)}</div>
               <div className="mb-3"><h2 className="font-bold text-gray-900 uppercase text-xs mb-1">Education</h2>{formData.education.map((e, i) => <div key={i} className="mb-1"><span className="font-bold text-gray-800">{e.degree}</span>, {e.school} <span className="text-gray-500">({e.year})</span></div>)}</div>
               <div><h2 className="font-bold text-gray-900 uppercase text-xs mb-1">Skills</h2><p className="text-gray-700">{formData.skills.join(', ')}</p></div>
+            </div>
+          )}
+
+          {/* BLUE CORPORATE TEMPLATE */}
+          {template === 'bluecorporate' && (
+            <div>
+              <div className="bg-blue-700 text-white p-6 rounded-t-xl mb-6">
+                <h1 className="text-4xl font-bold">{formData.fullName}</h1>
+                <p className="text-blue-200 font-medium mt-1">{formData.jobTitle}</p>
+                <div className="flex gap-4 text-xs text-blue-200 mt-3">
+                  <span>{formData.email}</span> <span>•</span> <span>{formData.phone}</span> <span>•</span> <span>{formData.address}</span>
+                </div>
+              </div>
+              <div className="px-4">
+                <div className="mb-5"><h2 className="text-sm font-bold text-blue-700 uppercase border-b-2 border-blue-700 pb-1 mb-2">Profile</h2><p className="text-gray-700 text-sm">{formData.summary}</p></div>
+                <div className="mb-5"><h2 className="text-sm font-bold text-blue-700 uppercase border-b-2 border-blue-700 pb-1 mb-2">Experience</h2>{formData.experience.map((e, i) => <div key={i} className="mb-3"><div className="flex justify-between"><h3 className="font-bold text-gray-900">{e.role}</h3><span className="text-xs text-gray-500">{e.duration}</span></div><p className="text-xs text-blue-600 font-medium">{e.company}</p><p className="text-xs text-gray-600">{e.desc}</p></div>)}</div>
+                <div className="mb-5"><h2 className="text-sm font-bold text-blue-700 uppercase border-b-2 border-blue-700 pb-1 mb-2">Education</h2>{formData.education.map((e, i) => <div key={i} className="mb-2"><div className="flex justify-between"><h3 className="font-bold text-gray-900 text-sm">{e.degree}</h3><span className="text-xs text-gray-500">{e.year}</span></div><p className="text-xs text-gray-600">{e.school}</p></div>)}</div>
+                <div><h2 className="text-sm font-bold text-blue-700 uppercase border-b-2 border-blue-700 pb-1 mb-2">Skills</h2><div className="flex flex-wrap gap-2">{formData.skills.map((s, i) => s && <span key={i} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">{s}</span>)}</div></div>
+              </div>
+            </div>
+          )}
+
+          {/* RED EXECUTIVE TEMPLATE */}
+          {template === 'redexecutive' && (
+            <div className="border-t-[10px] border-red-700 pt-6">
+              <div className="flex justify-between items-end border-b-2 border-red-700 pb-4 mb-6">
+                <div><h1 className="text-4xl font-black text-gray-900">{formData.fullName}</h1><p className="text-lg text-red-700 font-semibold mt-1">{formData.jobTitle}</p></div>
+                <div className="text-right text-xs text-gray-500 space-y-1"><p>{formData.email}</p><p>{formData.phone}</p><p>{formData.address}</p></div>
+              </div>
+              <div className="mb-5"><h2 className="text-xs font-bold text-red-700 uppercase tracking-widest mb-1 border-b-2 border-red-700 inline-block pb-1">Profile</h2><p className="text-gray-700 text-sm leading-relaxed mt-2">{formData.summary}</p></div>
+              <div className="mb-5"><h2 className="text-xs font-bold text-red-700 uppercase tracking-widest mb-2 border-b-2 border-red-700 inline-block pb-1">Experience</h2>{formData.experience.map((e, i) => <div key={i} className="mb-3"><div className="flex justify-between"><h3 className="font-bold text-gray-900 text-sm">{e.role}</h3><span className="text-xs text-gray-600">{e.duration}</span></div><p className="text-xs font-semibold text-red-700">{e.company}</p><p className="text-xs text-gray-600 mt-1">{e.desc}</p></div>)}</div>
+              <div className="mb-5"><h2 className="text-xs font-bold text-red-700 uppercase tracking-widest mb-2 border-b-2 border-red-700 inline-block pb-1">Education</h2>{formData.education.map((e, i) => <div key={i} className="flex justify-between mb-2"><div><h3 className="font-bold text-gray-900 text-sm">{e.degree}</h3><p className="text-xs text-gray-600">{e.school}</p></div><span className="text-xs text-gray-600">{e.year}</span></div>)}</div>
+              <div><h2 className="text-xs font-bold text-red-700 uppercase tracking-widest mb-1 border-b-2 border-red-700 inline-block pb-1">Skills</h2><ul className="flex flex-wrap gap-x-4 gap-y-1 mt-2">{formData.skills.map((s, i) => s && <li key={i} className="text-sm text-gray-700">• {s}</li>)}</ul></div>
+            </div>
+          )}
+
+          {/* GREEN PROFESSIONAL TEMPLATE */}
+          {template === 'greenprofessional' && (
+            <div>
+              <div className="text-center mb-6 bg-green-50 p-6 rounded-xl border border-green-200">
+                <h1 className="text-4xl font-bold text-green-900">{formData.fullName}</h1>
+                <p className="text-md text-green-700 font-semibold mt-1">{formData.jobTitle}</p>
+                <div className="flex justify-center gap-3 text-xs text-gray-600 mt-3"><span>{formData.email}</span> <span>|</span> <span>{formData.phone}</span> <span>|</span> <span>{formData.address}</span></div>
+              </div>
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <h2 className="text-sm font-bold text-green-800 uppercase border-b border-green-300 pb-1 mb-2">Experience</h2>
+                  {formData.experience.map((e, i) => <div key={i} className="mb-3"><h3 className="font-bold text-gray-900 text-sm">{e.role}</h3><p className="text-xs text-green-700 font-semibold">{e.company} | {e.duration}</p><p className="text-xs text-gray-600 mt-1">{e.desc}</p></div>)}
+                  <h2 className="text-sm font-bold text-green-800 uppercase border-b border-green-300 pb-1 mb-2 mt-4">Education</h2>
+                  {formData.education.map((e, i) => <div key={i} className="mb-2"><h3 className="font-bold text-gray-900 text-sm">{e.degree}</h3><p className="text-xs text-gray-600">{e.school} | {e.year}</p></div>)}
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-green-800 uppercase border-b border-green-300 pb-1 mb-2">Summary</h2>
+                  <p className="text-xs text-gray-700 leading-relaxed mb-4">{formData.summary}</p>
+                  <h2 className="text-sm font-bold text-green-800 uppercase border-b border-green-300 pb-1 mb-2">Skills</h2>
+                  <ul className="text-xs text-gray-700 space-y-1">{formData.skills.map((s, i) => s && <li key={i} className="flex items-center gap-2"><span className="w-1.5 h-1.5 bg-green-600 rounded-full"></span>{s}</li>)}</ul>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* DARK MODE TEMPLATE */}
+          {template === 'darkmode' && (
+            <div className="bg-gray-900 text-white p-8 rounded-xl h-full">
+              <div className="border-b border-gray-700 pb-4 mb-6">
+                <h1 className="text-4xl font-bold">{formData.fullName}</h1>
+                <p className="text-blue-400 font-medium mt-1">{formData.jobTitle}</p>
+                <div className="flex gap-4 text-xs text-gray-400 mt-3"><span>{formData.email}</span> <span>•</span> <span>{formData.phone}</span> <span>•</span> <span>{formData.address}</span></div>
+              </div>
+              <div className="mb-6"><h2 className="text-sm font-bold text-blue-400 uppercase tracking-widest mb-2">Summary</h2><p className="text-gray-300 text-sm">{formData.summary}</p></div>
+              <div className="mb-6"><h2 className="text-sm font-bold text-blue-400 uppercase tracking-widest mb-2">Experience</h2>{formData.experience.map((e, i) => <div key={i} className="mb-3"><div className="flex justify-between"><h3 className="font-bold text-white text-sm">{e.role}</h3><span className="text-xs text-gray-400">{e.duration}</span></div><p className="text-xs text-blue-300 font-medium">{e.company}</p><p className="text-xs text-gray-400">{e.desc}</p></div>)}</div>
+              <div className="mb-6"><h2 className="text-sm font-bold text-blue-400 uppercase tracking-widest mb-2">Education</h2>{formData.education.map((e, i) => <div key={i} className="mb-2"><div className="flex justify-between"><h3 className="font-bold text-white text-sm">{e.degree}</h3><span className="text-xs text-gray-400">{e.year}</span></div><p className="text-xs text-gray-400">{e.school}</p></div>)}</div>
+              <div><h2 className="text-sm font-bold text-blue-400 uppercase tracking-widest mb-2">Skills</h2><div className="flex flex-wrap gap-2">{formData.skills.map((s, i) => s && <span key={i} className="bg-gray-800 text-blue-300 text-xs px-2 py-1 rounded border border-gray-700">{s}</span>)}</div></div>
             </div>
           )}
 
