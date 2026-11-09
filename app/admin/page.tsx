@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { FileText, Mail, Briefcase } from 'lucide-react';
+import { FileText, Mail, Briefcase, ExternalLink, Phone } from 'lucide-react';
+import Link from 'next/link';
 
 export default function AdminPanel() {
   const [documents, setDocuments] = useState<any[]>([]);
@@ -29,8 +30,12 @@ export default function AdminPanel() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-8 font-sans">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">CVNova Admin Panel</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">CVNova Admin Panel</h1>
+        <Link href="/" className="text-sm font-medium text-blue-600 hover:underline">Back to Website</Link>
+      </div>
       
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
           <div className="p-3 bg-blue-100 text-blue-600 rounded-xl"><FileText size={24} /></div>
@@ -46,17 +51,19 @@ export default function AdminPanel() {
         </div>
       </div>
 
+      {/* Records Table */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-6 border-b border-gray-100"><h2 className="text-lg font-bold text-gray-900">Recent Records</h2></div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="w-full text-left text-sm whitespace-nowrap">
             <thead className="bg-gray-50 text-gray-600">
               <tr>
                 <th className="px-6 py-3 font-medium">Date</th>
                 <th className="px-6 py-3 font-medium">Name</th>
-                <th className="px-6 py-3 font-medium">Document</th>
-                <th className="px-6 py-3 font-medium">Template</th>
+                <th className="px-6 py-3 font-medium">Phone</th>
                 <th className="px-6 py-3 font-medium">Email</th>
+                <th className="px-6 py-3 font-medium">Document</th>
+                <th className="px-6 py-3 font-medium">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -64,13 +71,26 @@ export default function AdminPanel() {
                 <tr key={doc.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 text-gray-500">{new Date(doc.created_at).toLocaleDateString()}</td>
                   <td className="px-6 py-4 font-medium text-gray-900">{doc.full_name}</td>
-                  <td className="px-6 py-4 text-gray-600">{doc.document_type}</td>
-                  <td className="px-6 py-4 capitalize text-gray-600">{doc.template_name}</td>
+                  <td className="px-6 py-4 text-gray-600">
+                    <div className="flex items-center gap-1">
+                      <Phone size={14} className="text-gray-400" /> {doc.phone}
+                    </div>
+                  </td>
                   <td className="px-6 py-4 text-gray-500">{doc.email}</td>
+                  <td className="px-6 py-4 text-gray-600">{doc.document_type}</td>
+                  <td className="px-6 py-4">
+                    <Link 
+                      href={`/admin/view/${doc.id}`} 
+                      target="_blank"
+                      className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium bg-blue-50 px-3 py-1.5 rounded-lg transition"
+                    >
+                      <ExternalLink size={14} /> View
+                    </Link>
+                  </td>
                 </tr>
               ))}
               {documents.length === 0 && (
-                <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">Abhi tak koi record nahi hai.</td></tr>
+                <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">Abhi tak koi record nahi hai.</td></tr>
               )}
             </tbody>
           </table>
