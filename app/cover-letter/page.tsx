@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ArrowLeft, Printer, Download } from 'lucide-react';
 import Link from 'next/link';
+import { saveDocumentRecord } from '@/lib/supabase';
 
 export default function CoverLetter() {
   const [formData, setFormData] = useState({
@@ -24,7 +25,15 @@ export default function CoverLetter() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handlePrint = () => {
+  const handleAction = async () => {
+    await saveDocumentRecord({
+      documentType: 'Cover Letter',
+      templateName: template,
+      fullName: formData.fullName,
+      email: formData.email,
+      phone: formData.phone,
+      fullData: formData,
+    });
     window.print();
   };
 
@@ -80,10 +89,10 @@ export default function CoverLetter() {
           </div>
 
           <div className="flex gap-4 pt-4 border-t border-gray-200">
-            <button type="button" onClick={handlePrint} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-4 py-3 rounded-xl hover:bg-gray-800 font-bold text-sm transition">
+            <button type="button" onClick={handleAction} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-4 py-3 rounded-xl hover:bg-gray-800 font-bold text-sm transition">
               <Printer size={18} /> Print Letter
             </button>
-            <button type="button" className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 font-bold text-sm transition">
+            <button type="button" onClick={handleAction} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 font-bold text-sm transition">
               <Download size={18} /> Download PDF
             </button>
           </div>
@@ -92,7 +101,6 @@ export default function CoverLetter() {
         {/* RIGHT SIDE: LIVE PREVIEW */}
         <div className="bg-white shadow-2xl rounded-xl p-12 border border-gray-200 print:shadow-none print:border-none print:p-0 h-fit min-h-[A4]">
           
-          {/* MODERN COVER LETTER */}
           {template === 'modern' && (
             <div>
               <div className="border-l-8 border-blue-600 pl-6 mb-8">
@@ -119,7 +127,6 @@ export default function CoverLetter() {
             </div>
           )}
 
-          {/* CLASSIC COVER LETTER */}
           {template === 'classic' && (
             <div className="font-serif">
               <div className="text-center mb-10">

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Sparkles, ArrowLeft, Download, Printer, Plus, Trash2, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { saveDocumentRecord } from '@/lib/supabase';
 
 export default function Builder() {
   const [formData, setFormData] = useState({
@@ -75,7 +76,15 @@ export default function Builder() {
     }
   };
 
-  const handlePrint = () => {
+  const handleAction = async () => {
+    await saveDocumentRecord({
+      documentType: 'CV',
+      templateName: template,
+      fullName: formData.fullName,
+      email: formData.email,
+      phone: formData.phone,
+      fullData: formData,
+    });
     window.print();
   };
 
@@ -94,7 +103,6 @@ export default function Builder() {
         {/* LEFT SIDE: FORM */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-fit max-h-[85vh] overflow-y-auto print:hidden">
           
-          {/* Template Selector */}
           <div className="mb-6 bg-blue-50 p-4 rounded-xl border border-blue-100">
             <h3 className="text-sm font-bold text-gray-800 mb-2">Choose Template Design (16 Options):</h3>
             <div className="flex flex-wrap gap-2">
@@ -177,10 +185,10 @@ export default function Builder() {
           </div>
 
           <div className="flex gap-4 pt-4 border-t border-gray-200">
-            <button type="button" onClick={handlePrint} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-4 py-3 rounded-xl hover:bg-gray-800 font-bold text-sm transition">
+            <button type="button" onClick={handleAction} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-4 py-3 rounded-xl hover:bg-gray-800 font-bold text-sm transition">
               <Printer size={18} /> Print CV
             </button>
-            <button type="button" className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 font-bold text-sm transition">
+            <button type="button" onClick={handleAction} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 font-bold text-sm transition">
               <Download size={18} /> Download
             </button>
           </div>
@@ -189,7 +197,6 @@ export default function Builder() {
         {/* RIGHT SIDE: LIVE CV PREVIEW */}
         <div className="bg-white shadow-2xl rounded-xl p-10 border border-gray-200 print:shadow-none print:border-none print:p-0 h-fit min-h-[A4]">
           
-          {/* MODERN TEMPLATE */}
           {template === 'modern' && (
             <div>
               <div className="border-b-2 border-blue-600 pb-4 mb-6">
@@ -230,7 +237,6 @@ export default function Builder() {
             </div>
           )}
 
-          {/* CLASSIC TEMPLATE */}
           {template === 'classic' && (
             <div>
               <div className="text-center border-b-2 border-gray-900 pb-4 mb-6">
@@ -269,7 +275,6 @@ export default function Builder() {
             </div>
           )}
 
-          {/* MINIMAL TEMPLATE */}
           {template === 'minimal' && (
             <div className="font-light">
               <div className="mb-8">
@@ -290,7 +295,6 @@ export default function Builder() {
             </div>
           )}
 
-          {/* CREATIVE TEMPLATE */}
           {template === 'creative' && (
             <div className="flex flex-col h-full">
               <div className="bg-gray-900 text-white p-6 rounded-t-xl mb-6">
@@ -318,7 +322,6 @@ export default function Builder() {
             </div>
           )}
 
-          {/* EXECUTIVE TEMPLATE */}
           {template === 'executive' && (
             <div className="border-t-[10px] border-gray-900 pt-6">
               <div className="flex justify-between items-end border-b-2 border-gray-300 pb-4 mb-6">
@@ -332,7 +335,6 @@ export default function Builder() {
             </div>
           )}
 
-          {/* ELEGANT TEMPLATE */}
           {template === 'elegant' && (
             <div className="font-serif">
               <div className="text-center mb-8 border-b border-gray-300 pb-6">
@@ -353,7 +355,6 @@ export default function Builder() {
             </div>
           )}
 
-          {/* TECH TEMPLATE */}
           {template === 'tech' && (
             <div className="font-mono text-sm">
               <div className="mb-6">
@@ -368,7 +369,6 @@ export default function Builder() {
             </div>
           )}
 
-          {/* CORPORATE TEMPLATE */}
           {template === 'corporate' && (
             <div>
               <div className="bg-blue-900 text-white p-6 mb-6">
@@ -385,7 +385,6 @@ export default function Builder() {
             </div>
           )}
 
-          {/* SIMPLE TEMPLATE */}
           {template === 'simple' && (
             <div className="text-gray-800">
               <div className="mb-6">
@@ -404,7 +403,6 @@ export default function Builder() {
             </div>
           )}
 
-          {/* BOLD TEMPLATE */}
           {template === 'bold' && (
             <div>
               <div className="mb-6">
@@ -419,7 +417,6 @@ export default function Builder() {
             </div>
           )}
 
-          {/* TIMELINE TEMPLATE */}
           {template === 'timeline' && (
             <div>
               <div className="text-center mb-8">
@@ -450,7 +447,6 @@ export default function Builder() {
             </div>
           )}
 
-          {/* COMPACT TEMPLATE */}
           {template === 'compact' && (
             <div className="text-sm">
               <div className="mb-4 border-b pb-2"><h1 className="text-2xl font-bold text-gray-900">{formData.fullName}</h1><p className="text-gray-600">{formData.jobTitle} | {formData.email} | {formData.phone} | {formData.address}</p></div>
@@ -461,7 +457,6 @@ export default function Builder() {
             </div>
           )}
 
-          {/* BLUE CORPORATE TEMPLATE */}
           {template === 'bluecorporate' && (
             <div>
               <div className="bg-blue-700 text-white p-6 rounded-t-xl mb-6">
@@ -480,7 +475,6 @@ export default function Builder() {
             </div>
           )}
 
-          {/* RED EXECUTIVE TEMPLATE */}
           {template === 'redexecutive' && (
             <div className="border-t-[10px] border-red-700 pt-6">
               <div className="flex justify-between items-end border-b-2 border-red-700 pb-4 mb-6">
@@ -494,7 +488,6 @@ export default function Builder() {
             </div>
           )}
 
-          {/* GREEN PROFESSIONAL TEMPLATE */}
           {template === 'greenprofessional' && (
             <div>
               <div className="text-center mb-6 bg-green-50 p-6 rounded-xl border border-green-200">
@@ -519,7 +512,6 @@ export default function Builder() {
             </div>
           )}
 
-          {/* DARK MODE TEMPLATE */}
           {template === 'darkmode' && (
             <div className="bg-gray-900 text-white p-8 rounded-xl h-full">
               <div className="border-b border-gray-700 pb-4 mb-6">

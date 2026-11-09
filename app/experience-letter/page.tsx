@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ArrowLeft, Printer, Download } from 'lucide-react';
 import Link from 'next/link';
+import { saveDocumentRecord } from '@/lib/supabase';
 
 export default function ExperienceLetter() {
   const [formData, setFormData] = useState({
@@ -24,7 +25,15 @@ export default function ExperienceLetter() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handlePrint = () => {
+  const handleAction = async () => {
+    await saveDocumentRecord({
+      documentType: 'Experience Letter',
+      templateName: template,
+      fullName: formData.employeeName,
+      email: 'N/A',
+      phone: 'N/A',
+      fullData: formData,
+    });
     window.print();
   };
 
@@ -82,10 +91,10 @@ export default function ExperienceLetter() {
           </div>
 
           <div className="flex gap-4 pt-4 border-t border-gray-200">
-            <button type="button" onClick={handlePrint} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-4 py-3 rounded-xl hover:bg-gray-800 font-bold text-sm transition">
+            <button type="button" onClick={handleAction} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-4 py-3 rounded-xl hover:bg-gray-800 font-bold text-sm transition">
               <Printer size={18} /> Print Letter
             </button>
-            <button type="button" className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 font-bold text-sm transition">
+            <button type="button" onClick={handleAction} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 font-bold text-sm transition">
               <Download size={18} /> Download PDF
             </button>
           </div>
@@ -94,7 +103,6 @@ export default function ExperienceLetter() {
         {/* RIGHT SIDE: LIVE PREVIEW */}
         <div className="bg-white shadow-2xl rounded-xl p-12 border border-gray-200 print:shadow-none print:border-none print:p-0 h-fit min-h-[A4]">
           
-          {/* MODERN EXPERIENCE LETTER */}
           {template === 'modern' && (
             <div>
               <div className="bg-gray-900 text-white p-8 rounded-b-xl mb-8 -mt-12 -mx-12">
@@ -123,7 +131,6 @@ export default function ExperienceLetter() {
             </div>
           )}
 
-          {/* CLASSIC EXPERIENCE LETTER */}
           {template === 'classic' && (
             <div className="font-serif">
               <div className="text-center border-b-4 border-double border-gray-800 pb-4 mb-8">
