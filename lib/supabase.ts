@@ -1,11 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON! // _KEY hata diya hai
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// Ye function har button (Print/Download) ke sath use hoga
 export const saveDocumentRecord = async (data: {
   documentType: string;
   templateName: string;
