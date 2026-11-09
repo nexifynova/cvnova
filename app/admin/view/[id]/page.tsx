@@ -2,27 +2,33 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function ViewCV() {
-  const params = useParams();
-  const router = useRouter();
   const [doc, setDoc] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [id, setId] = useState<string | null>(null);
+
+  // Build ke waqt error na aaye, iske liye useEffect use kar rahe hain
+  useEffect(() => {
+    // URL se ID nikalna
+    const pathParts = window.location.pathname.split('/');
+    const docId = pathParts[pathParts.length - 1];
+    setId(docId);
+  }, []);
 
   useEffect(() => {
-    if (params.id) {
-      fetchDocument(params.id as string);
+    if (id) {
+      fetchDocument(id);
     }
-  }, [params.id]);
+  }, [id]);
 
-  const fetchDocument = async (id: string) => {
+  const fetchDocument = async (docId: string) => {
     const { data, error } = await supabase
       .from('generated_documents')
       .select('*')
-      .eq('id', id)
+      .eq('id', docId)
       .single();
 
     if (data) setDoc(data);
@@ -46,7 +52,6 @@ export default function ViewCV() {
     );
   }
 
-  // Yahan hum user ka data nikal rahe hain
   const data = doc.full_data;
 
   return (
@@ -60,7 +65,6 @@ export default function ViewCV() {
         </div>
       </div>
 
-      {/* Yahan CV Ka Design Aayega (Filhal Modern Template) */}
       <div className="max-w-4xl mx-auto bg-white shadow-2xl rounded-xl p-10 min-h-[A4]">
         <div className="border-b-2 border-blue-600 pb-4 mb-6">
           <h1 className="text-4xl font-extrabold text-gray-900 uppercase">{data.fullName}</h1>
