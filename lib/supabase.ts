@@ -53,6 +53,7 @@ export const checkUserLimit = async (userEmail: string) => {
   const limit = settings.free_cv_limit || 6;
   const used = profile.free_cv_count || 0;
 
+  // Agar user ne limit cross kar li hai
   if (used >= limit && profile.subscription_type === 'free') {
     return { allowed: false, isLoggedIn: true };
   }
@@ -60,7 +61,7 @@ export const checkUserLimit = async (userEmail: string) => {
   return { allowed: true, isLoggedIn: true };
 };
 
-// User ka count barhane ka function
+// User ka count barhane ka function (FIXED)
 export const incrementUserCount = async (userEmail: string) => {
   const { data: profile } = await supabase
     .from('user_profiles')
@@ -69,9 +70,12 @@ export const incrementUserCount = async (userEmail: string) => {
     .single();
 
   if (profile) {
-    await supabase
+    const currentCount = profile.free_cv_count || 0;
+    const { error } = await supabase
       .from('user_profiles')
-      .update({ free_cv_count: (profile.free_cv_count || 0) + 1 })
+      .update({ free_cv_count: currentCount + 1 })
       .eq('email', userEmail);
+    
+    if (error) console.error("Count Update Error:", error);
   }
 };
