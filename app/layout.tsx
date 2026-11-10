@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { supabase } from '@/lib/supabase';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,18 +12,14 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Generate dynamic metadata based on DB settings
-export async function generateMetadata(): Promise<Metadata> {
-  const { data } = await supabase.from('app_settings').select('site_favicon_url').eq('id', 1).single();
-  
-  return {
-    title: "CVNova - AI Resume Builder",
-    description: "Create professional, ATS-friendly CVs, Cover Letters, and Experience Letters in minutes.",
-    icons: {
-      icon: data?.site_favicon_url || '/favicon.ico',
-    },
-  };
-}
+// Static metadata - no database calls, no build errors
+export const metadata: Metadata = {
+  title: "CVNova - AI Resume Builder",
+  description: "Create professional, ATS-friendly CVs, Cover Letters, and Experience Letters in minutes.",
+  icons: {
+    icon: '/favicon.ico', // Default favicon - dynamic favicon won't work in production
+  },
+};
 
 export default function RootLayout({
   children,
