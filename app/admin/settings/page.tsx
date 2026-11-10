@@ -72,10 +72,10 @@ export default function AdminSettings() {
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
-            {/* Back Button Fixed */}
-            <button onClick={() => window.history.back()} className="p-2 bg-white rounded-lg shadow-sm hover:bg-gray-100 transition">
+            {/* Back Button Fixed - Ab ye seedha /admin par jayega */}
+            <Link href="/admin" className="p-2 bg-white rounded-lg shadow-sm hover:bg-gray-100 transition">
               <ArrowLeft size={20} className="text-gray-600" />
-            </button>
+            </Link>
             <h1 className="text-3xl font-bold text-gray-900">Admin Settings</h1>
           </div>
           <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-xl hover:bg-blue-700 font-bold transition shadow-md disabled:opacity-50">
