@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Sparkles, ArrowLeft, Download, Printer, Plus, Trash2, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { saveDocumentRecord } from '@/lib/supabase';
+import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount } from '@/lib/supabase';
 
 export default function Builder() {
   const [formData, setFormData] = useState({
@@ -77,14 +77,37 @@ export default function Builder() {
   };
 
   const handleAction = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    let userEmail = formData.email;
+    let isLoggedIn = false;
+
+    if (user && user.email) {
+      userEmail = user.email;
+      isLoggedIn = true;
+      
+      const limitCheck = await checkUserLimit(userEmail);
+      
+      if (!limitCheck.allowed) {
+        alert("Aapki free limit khatam ho gayi hai. Mazeed CVs banane ke liye please upgrade karein.");
+        window.location.href = '/#pricing';
+        return;
+      }
+    }
+
     await saveDocumentRecord({
       documentType: 'CV',
       templateName: template,
       fullName: formData.fullName,
-      email: formData.email,
+      email: userEmail,
       phone: formData.phone,
       fullData: formData,
     });
+
+    if (isLoggedIn) {
+      await incrementUserCount(userEmail);
+    }
+
     window.print();
   };
 
