@@ -1,13 +1,36 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { ArrowLeft, Save, Settings, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import Image from 'next/image';
-import { FileText, Sparkles, Download, CheckCircle, ArrowRight, Star, Mail, Briefcase } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-export default function Home() {
-  const [settings, setSettings] = useState<any>(null);
+export default function AdminSettings() {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [settings, setSettings] = useState<any>({
+    easy_paisa_enabled: true,
+    easy_paisa_number: '',
+    easy_paisa_name: '',
+    binance_enabled: true,
+    binance_id: '',
+    binance_name: '',
+    bank_enabled: false,
+    bank_name: '',
+    bank_account_name: '',
+    bank_branch: '',
+    bank_account_number: '',
+    bank_iban: '',
+    package_3m_price: 5,
+    package_6m_price: 8,
+    package_1y_price: 12,
+    package_5y_price: 40,
+    additional_cv_price: 1.00,
+    cvs_per_dollar: 1,
+    free_cv_limit: 6,
+    enable_ai: true,
+    enable_cover_letter: true,
+  });
 
   useEffect(() => {
     fetchSettings();
@@ -16,142 +39,137 @@ export default function Home() {
   const fetchSettings = async () => {
     const { data } = await supabase.from('app_settings').select('*').eq('id', 1).single();
     if (data) setSettings(data);
+    setLoading(false);
   };
 
-  // Jab tak settings load na hon, kuch na dikhayein
-  if (!settings) return <div className="min-h-screen bg-[#0B1120]" />;
+  const handleSave = async () => {
+    setSaving(true);
+    const { error } = await supabase.from('app_settings').update({
+      ...settings,
+      updated_at: new Date().toISOString(),
+    }).eq('id', 1);
+
+    if (error) {
+      alert("Error saving settings: " + error.message);
+    } else {
+      alert("Settings Saved Successfully!");
+    }
+    setSaving(false);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
+    setSettings({ ...settings, [name]: val });
+  };
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" size={48} /></div>;
+  }
 
   return (
-    <div className="min-h-screen bg-[#0B1120] text-white flex flex-col font-sans selection:bg-blue-500 selection:text-white">
-      
-      {/* Modern Navbar */}
-      <nav className="bg-[#0B1120]/80 backdrop-blur-md border-b border-white/10 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
-        <div className="flex items-center gap-2">
-          <div className="bg-gradient-to-tr from-blue-500 to-purple-600 p-2 rounded-xl">
-            <FileText className="text-white" size={20} />
+    <div className="min-h-screen bg-gray-50 p-8 font-sans">
+      <div className="max-w-5xl mx-auto">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            {/* Back Button Fixed */}
+            <button onClick={() => window.history.back()} className="p-2 bg-white rounded-lg shadow-sm hover:bg-gray-100 transition">
+              <ArrowLeft size={20} className="text-gray-600" />
+            </button>
+            <h1 className="text-3xl font-bold text-gray-900">Admin Settings</h1>
           </div>
-          <span className="text-2xl font-extrabold tracking-tight">CVNova</span>
+          <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-xl hover:bg-blue-700 font-bold transition shadow-md disabled:opacity-50">
+            {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>
         </div>
-        
-        <div className="hidden md:flex gap-6 text-sm font-medium text-gray-300">
-          <Link href="/builder" className="hover:text-white transition">CV Builder</Link>
-          <Link href="/cover-letter" className="hover:text-white transition">Cover Letter</Link>
-          <Link href="/experience-letter" className="hover:text-white transition">Experience Letter</Link>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Free Limits */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div className="flex items-center gap-2 mb-4 border-b pb-2"><Settings size={20} className="text-blue-600" /><h2 className="text-lg font-bold">Free Limits</h2></div>
+            <div className="space-y-4">
+              <div><label className="block text-sm font-semibold text-gray-700 mb-1">Free CVs per User</label><input type="number" name="free_cv_limit" value={settings.free_cv_limit} onChange={handleChange} className="w-full px-4 py-2 rounded-lg border" /></div>
+            </div>
+          </div>
+
+          {/* Pricing */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div className="flex items-center gap-2 mb-4 border-b pb-2"><Settings size={20} className="text-green-600" /><h2 className="text-lg font-bold">Pricing</h2></div>
+            <div className="space-y-4">
+              <div><label className="block text-sm font-semibold text-gray-700 mb-1">Additional CV Price (USD)</label><input type="number" step="0.01" name="additional_cv_price" value={settings.additional_cv_price} onChange={handleChange} className="w-full px-4 py-2 rounded-lg border" /></div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">CVs per {settings.additional_cv_price} USD</label>
+                <input type="number" name="cvs_per_dollar" value={settings.cvs_per_dollar} onChange={handleChange} className="w-full px-4 py-2 rounded-lg border" />
+                <p className="text-xs text-gray-500 mt-1">Yani {settings.additional_cv_price}$ mein kitni CVs milengi.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Packages */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 md:col-span-2">
+            <div className="flex items-center gap-2 mb-4 border-b pb-2"><Settings size={20} className="text-orange-600" /><h2 className="text-lg font-bold">Package Pricing (USD)</h2></div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div><label className="block text-xs font-semibold text-gray-600 mb-1">3 Months</label><input type="number" step="0.01" name="package_3m_price" value={settings.package_3m_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+              <div><label className="block text-xs font-semibold text-gray-600 mb-1">6 Months</label><input type="number" step="0.01" name="package_6m_price" value={settings.package_6m_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+              <div><label className="block text-xs font-semibold text-gray-600 mb-1">1 Year</label><input type="number" step="0.01" name="package_1y_price" value={settings.package_1y_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+              <div><label className="block text-xs font-semibold text-gray-600 mb-1">5 Years</label><input type="number" step="0.01" name="package_5y_price" value={settings.package_5y_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+            </div>
+          </div>
+
+          {/* Payment Methods */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 md:col-span-2">
+            <div className="flex items-center gap-2 mb-4 border-b pb-2"><Settings size={20} className="text-purple-600" /><h2 className="text-lg font-bold">Payment Methods</h2></div>
+            <div className="space-y-6">
+              {/* EasyPaisa */}
+              <div className="border rounded-xl p-4">
+                <div className="flex items-center gap-3 mb-2"><input type="checkbox" name="easy_paisa_enabled" checked={settings.easy_paisa_enabled} onChange={handleChange} className="w-5 h-5" /><label className="font-bold text-gray-800">EasyPaisa</label></div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><label className="block text-xs text-gray-500 mb-1">Account Number</label><input type="text" name="easy_paisa_number" value={settings.easy_paisa_number} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+                  <div><label className="block text-xs text-gray-500 mb-1">Account Name</label><input type="text" name="easy_paisa_name" value={settings.easy_paisa_name} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+                </div>
+              </div>
+              
+              {/* Binance */}
+              <div className="border rounded-xl p-4">
+                <div className="flex items-center gap-3 mb-2"><input type="checkbox" name="binance_enabled" checked={settings.binance_enabled} onChange={handleChange} className="w-5 h-5" /><label className="font-bold text-gray-800">Binance (Crypto)</label></div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><label className="block text-xs text-gray-500 mb-1">Pay ID</label><input type="text" name="binance_id" value={settings.binance_id} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+                  <div><label className="block text-xs text-gray-500 mb-1">Account Name</label><input type="text" name="binance_name" value={settings.binance_name} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+                </div>
+              </div>
+
+              {/* Bank */}
+              <div className="border rounded-xl p-4">
+                <div className="flex items-center gap-3 mb-2"><input type="checkbox" name="bank_enabled" checked={settings.bank_enabled} onChange={handleChange} className="w-5 h-5" /><label className="font-bold text-gray-800">Bank Transfer</label></div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div><label className="block text-xs text-gray-500 mb-1">Account Holder Name</label><input type="text" name="bank_account_name" value={settings.bank_account_name} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+                  <div><label className="block text-xs text-gray-500 mb-1">Bank Name</label><input type="text" name="bank_name" value={settings.bank_name} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+                  <div><label className="block text-xs text-gray-500 mb-1">Branch</label><input type="text" name="bank_branch" value={settings.bank_branch} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+                  <div><label className="block text-xs text-gray-500 mb-1">Account Number</label><input type="text" name="bank_account_number" value={settings.bank_account_number} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+                  <div className="sm:col-span-2"><label className="block text-xs text-gray-500 mb-1">IBAN (Optional)</label><input type="text" name="bank_iban" value={settings.bank_iban} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Feature Control */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 md:col-span-2">
+            <div className="flex items-center gap-2 mb-4 border-b pb-2"><Settings size={20} className="text-blue-600" /><h2 className="text-lg font-bold">Feature Control</h2></div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <label className="flex items-center gap-3 p-4 border rounded-xl cursor-pointer hover:bg-gray-50 transition">
+                <input type="checkbox" name="enable_ai" checked={settings.enable_ai} onChange={handleChange} className="w-5 h-5" />
+                <div><p className="font-semibold text-gray-900">Enable AI Generator</p><p className="text-xs text-gray-500">Allow users to generate summaries with AI</p></div>
+              </label>
+              <label className="flex items-center gap-3 p-4 border rounded-xl cursor-pointer hover:bg-gray-50 transition">
+                <input type="checkbox" name="enable_cover_letter" checked={settings.enable_cover_letter} onChange={handleChange} className="w-5 h-5" />
+                <div><p className="font-semibold text-gray-900">Enable Cover Letters</p><p className="text-xs text-gray-500">Allow users to create cover letters</p></div>
+              </label>
+            </div>
+          </div>
+
         </div>
-
-        <div className="flex gap-4 items-center">
-          <Link href="/login" className="text-sm font-semibold text-gray-300 hover:text-white transition">Log in</Link>
-          <Link href="/signup" className="bg-white text-[#0B1120] text-sm px-5 py-2.5 rounded-full hover:bg-gray-200 font-bold shadow-[0_0_15px_rgba(255,255,255,0.3)] transition-all transform hover:-translate-y-0.5">Get Started Free</Link>
-        </div>
-      </nav>
-
-      {/* Hero Section */}
-      <main className="flex-grow relative overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-blue-600/30 blur-[120px] rounded-full pointer-events-none"></div>
-        <div className="absolute top-40 right-0 w-[400px] h-[400px] bg-purple-600/20 blur-[100px] rounded-full pointer-events-none"></div>
-
-        <section className="max-w-7xl mx-auto px-6 py-20 lg:py-32 flex flex-col lg:flex-row items-center gap-16 relative z-10">
-          <div className="flex-1 text-center lg:text-left">
-            <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 text-blue-300 px-4 py-1.5 rounded-full text-sm font-semibold mb-8 backdrop-blur-sm">
-              <Sparkles size={16} className="text-yellow-400" />
-              <span>AI-Powered Career Tools 2.0</span>
-            </div>
-            <h1 className="text-5xl lg:text-7xl font-extrabold leading-[1.1] tracking-tight">
-              Career growth <br className="hidden lg:block"/> done <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">right.</span>
-            </h1>
-            <p className="mt-6 text-lg text-gray-400 max-w-lg mx-auto lg:mx-0 leading-relaxed">
-              Create professional, ATS-friendly CVs, Cover Letters, and Experience Letters in minutes. Let our AI write your next career move.
-            </p>
-            <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <Link href="/builder" className="flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-full hover:from-blue-500 hover:to-purple-500 text-lg font-bold shadow-[0_0_20px_rgba(59,130,246,0.5)] transition-all transform hover:-translate-y-1">
-                Build My CV Now <ArrowRight size={20} />
-              </Link>
-            </div>
-          </div>
-
-          <div className="flex-1 relative w-full max-w-lg lg:max-w-none">
-            <div className="relative rounded-3xl overflow-hidden border border-white/10 bg-white/5 backdrop-blur-xl shadow-2xl p-2 transform rotate-2 hover:rotate-0 transition-transform duration-500">
-                <Image src="/hero.png" alt="CVNova Professional Resume Builder" width={800} height={600} className="rounded-2xl w-full h-auto object-cover" priority />
-            </div>
-          </div>
-        </section>
-
-        {/* Tools Section */}
-        <section id="features" className="py-24 relative z-10">
-          <div className="max-w-7xl mx-auto px-6">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl lg:text-5xl font-bold mb-6">Everything you need <br/> to get <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">hired.</span></h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Link href="/builder" className="group bg-white/5 p-8 rounded-3xl border border-white/10 hover:bg-white/10 transition duration-300 cursor-pointer">
-                <div className="w-14 h-14 bg-blue-500/20 rounded-2xl flex items-center justify-center mb-6 border border-blue-500/30 group-hover:scale-110 transition"><FileText className="text-blue-400" size={28} /></div>
-                <h3 className="text-xl font-bold mb-3">CV Builder</h3>
-                <p className="text-gray-400 leading-relaxed">Create a professional resume with 16+ modern templates and real-time preview.</p>
-              </Link>
-              <Link href="/cover-letter" className="group bg-white/5 p-8 rounded-3xl border border-white/10 hover:bg-white/10 transition duration-300 cursor-pointer">
-                <div className="w-14 h-14 bg-green-500/20 rounded-2xl flex items-center justify-center mb-6 border border-green-500/30 group-hover:scale-110 transition"><Mail className="text-green-400" size={28} /></div>
-                <h3 className="text-xl font-bold mb-3">Cover Letter</h3>
-                <p className="text-gray-400 leading-relaxed">Stand out with a tailored cover letter that complements your CV perfectly.</p>
-              </Link>
-              <Link href="/experience-letter" className="group bg-white/5 p-8 rounded-3xl border border-white/10 hover:bg-white/10 transition duration-300 cursor-pointer">
-                <div className="w-14 h-14 bg-purple-500/20 rounded-2xl flex items-center justify-center mb-6 border border-purple-500/30 group-hover:scale-110 transition"><Briefcase className="text-purple-400" size={28} /></div>
-                <h3 className="text-xl font-bold mb-3">Experience Letter</h3>
-                <p className="text-gray-400 leading-relaxed">Generate professional experience letters for your employees or yourself.</p>
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        {/* NEW PRICING SECTION */}
-        <section id="pricing" className="py-24 relative z-10 bg-black/20">
-          <div className="max-w-7xl mx-auto px-6">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl lg:text-5xl font-bold mb-6">Simple, transparent <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">pricing.</span></h2>
-              <p className="text-gray-400 max-w-2xl mx-auto">Choose the plan that fits your needs. No hidden fees.</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* 3 Months */}
-              <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-blue-500/50 transition duration-300 relative">
-                <h3 className="text-xl font-bold mb-2">3 Months</h3>
-                <p className="text-gray-400 text-sm mb-6">Perfect for a quick job search.</p>
-                <div className="text-4xl font-extrabold mb-6">${settings.package_3m_price}</div>
-                <Link href="/signup" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">Get Started</Link>
-              </div>
-
-              {/* 6 Months - Most Popular */}
-              <div className="bg-gradient-to-b from-blue-900/40 to-purple-900/40 p-8 rounded-3xl border border-blue-500/50 transition duration-300 relative transform lg:-translate-y-4 shadow-[0_0_30px_rgba(59,130,246,0.2)]">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-bold px-4 py-1 rounded-full">MOST POPULAR</div>
-                <h3 className="text-xl font-bold mb-2">6 Months</h3>
-                <p className="text-blue-200 text-sm mb-6">Best value for serious professionals.</p>
-                <div className="text-4xl font-extrabold mb-6">${settings.package_6m_price}</div>
-                <Link href="/signup" className="w-full flex items-center justify-center bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 rounded-xl hover:from-blue-500 hover:to-purple-500 font-bold transition shadow-lg">Get Started</Link>
-              </div>
-
-              {/* 1 Year */}
-              <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-blue-500/50 transition duration-300 relative">
-                <h3 className="text-xl font-bold mb-2">1 Year</h3>
-                <p className="text-gray-400 text-sm mb-6">Long-term career growth plan.</p>
-                <div className="text-4xl font-extrabold mb-6">${settings.package_1y_price}</div>
-                <Link href="/signup" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">Get Started</Link>
-              </div>
-
-              {/* 5 Years */}
-              <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-blue-500/50 transition duration-300 relative">
-                <h3 className="text-xl font-bold mb-2">5 Years</h3>
-                <p className="text-gray-400 text-sm mb-6">Lifetime access for experts.</p>
-                <div className="text-4xl font-extrabold mb-6">${settings.package_5y_price}</div>
-                <Link href="/signup" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">Get Started</Link>
-              </div>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      {/* Footer */}
-      <footer className="border-t border-white/10 py-8 text-center text-sm text-gray-500 relative z-10">
-        <p>© 2026 CVNova. All rights reserved.</p>
-      </footer>
+      </div>
     </div>
   );
 }
