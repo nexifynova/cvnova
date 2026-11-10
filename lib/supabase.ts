@@ -34,19 +34,24 @@ export const saveDocumentRecord = async (data: {
 };
 
 export const checkUserLimit = async (userEmail: string) => {
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('user_profiles')
     .select('*')
     .eq('email', userEmail)
     .single();
 
-  const { data: settings } = await supabase
+  const { data: settings, error: settingsError } = await supabase
     .from('app_settings')
     .select('free_cv_limit')
     .eq('id', 1)
     .single();
 
-  if (!profile || !settings) return { allowed: true, isLoggedIn: false };
+  if (profileError) console.error("Profile Error:", profileError);
+  if (settingsError) console.error("Settings Error:", settingsError);
+
+  if (!profile || !settings) {
+    return { allowed: true, isLoggedIn: !!profile };
+  }
 
   const limit = settings.free_cv_limit || 6;
   const used = profile.free_cv_count || 0;
@@ -66,7 +71,7 @@ export const incrementUserCount = async (userEmail: string) => {
     .single();
 
   if (fetchError) {
-    console.error("Fetch Error:", fetchError);
+    console.error("Fetch Profile Error:", fetchError);
     return;
   }
 
@@ -77,6 +82,12 @@ export const incrementUserCount = async (userEmail: string) => {
       .update({ free_cv_count: currentCount + 1 })
       .eq('email', userEmail);
     
-    if (error) console.error("Count Update Error:", error);
+    if (error) {
+      console.error("Increment Error:", error);
+    } else {
+      console.log("Count incremented to:", currentCount + 1);
+    }
+  } else {
+    console.error("No profile found for email:", userEmail);
   }
 };
