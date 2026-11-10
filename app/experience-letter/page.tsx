@@ -1,29 +1,43 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, Printer, Download, Loader2 } from 'lucide-react';
+import { ArrowLeft, Printer, Download, Loader2, RefreshCw, Info } from 'lucide-react';
 import Link from 'next/link';
 import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount } from '@/lib/supabase';
 
-export default function ExperienceLetter() {
-  const [formData, setFormData] = useState({
-    companyName: '',
-    companyAddress: '',
-    date: '',
-    employeeName: '',
-    employeeDesignation: '',
-    joiningDate: '',
-    leavingDate: '',
-    body: '',
-    signatoryName: '',
-    signatoryDesignation: ''
-  });
+// Demo Data
+const dummyData = {
+  companyName: 'Tech Corp Solutions',
+  companyAddress: '123 Business Avenue, Karachi, Pakistan',
+  date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+  employeeName: 'John Doe',
+  employeeDesignation: 'Senior Software Engineer',
+  joiningDate: 'January 15, 2020',
+  leavingDate: 'October 31, 2026',
+  body: `This is to certify that Mr. John Doe was employed with Tech Corp Solutions as a Senior Software Engineer from January 15, 2020 to October 31, 2026.\n\nDuring his tenure, he was responsible for leading the frontend development team, architecting scalable web applications, and maintaining high code quality standards. He consistently demonstrated exceptional technical skills, dedication, and a strong work ethic.\n\nJohn was a valuable asset to our organization, known for his problem-solving abilities and collaborative spirit. He handled all his responsibilities with utmost professionalism and integrity.\n\nWe wish him great success in all his future endeavors.`,
+  signatoryName: 'Jane Smith',
+  signatoryDesignation: 'Head of Human Resources',
+};
 
+const emptyData = {
+  companyName: '', companyAddress: '', date: '',
+  employeeName: '', employeeDesignation: '', joiningDate: '', leavingDate: '',
+  body: '', signatoryName: '', signatoryDesignation: ''
+};
+
+export default function ExperienceLetter() {
+  const [formData, setFormData] = useState(dummyData);
   const [template, setTemplate] = useState('modern');
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const resetForm = () => {
+    if(confirm("Are you sure you want to clear all data and start fresh?")) {
+      setFormData(emptyData);
+    }
   };
 
   const handleAction = async () => {
@@ -38,7 +52,6 @@ export default function ExperienceLetter() {
       isLoggedIn = true;
       
       const limitCheck = await checkUserLimit(userEmail);
-      
       if (!limitCheck.allowed) {
         alert("You have reached your free limit. Please upgrade to continue.");
         window.location.href = '/#pricing';
@@ -52,14 +65,12 @@ export default function ExperienceLetter() {
       templateName: template,
       fullName: formData.employeeName,
       email: userEmail,
-      phone: 'N/A', // Experience letter mein phone nahi hota aam tor par
+      phone: 'N/A',
       fullData: formData,
     });
 
-    if (isLoggedIn) {
-      await incrementUserCount(userEmail);
-    }
-
+    if (isLoggedIn) await incrementUserCount(userEmail);
+    
     setLoading(false);
     window.print();
   };
@@ -74,11 +85,26 @@ export default function ExperienceLetter() {
         <div className="w-24"></div>
       </nav>
 
-      <main className="flex-grow max-w-[1500px] mx-auto w-full px-4 py-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <main className="flex-grow max-w-[1500px] mx-auto w-full px-4 py-8 grid grid-cols-1 lg:grid-cols-2 gap-8 print:block print:p-0 print:m-0 print:max-w-none">
         
         {/* LEFT SIDE: FORM */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-fit max-h-[85vh] overflow-y-auto print:hidden">
           
+          <div className="mb-6 bg-green-50 border border-green-200 p-4 rounded-xl flex items-start gap-3">
+            <Info className="text-green-600 shrink-0 mt-0.5" size={20} />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-green-800 mb-2">
+                We've filled a sample experience letter for you. Replace the details or clear it to start fresh.
+              </p>
+              <button 
+                onClick={resetForm}
+                className="flex items-center gap-2 bg-white text-green-700 border border-green-300 px-4 py-2 rounded-lg font-bold text-sm hover:bg-green-100 transition shadow-sm"
+              >
+                <RefreshCw size={16} /> Clear & Start Fresh
+              </button>
+            </div>
+          </div>
+
           <div className="mb-6 bg-blue-50 p-4 rounded-xl border border-blue-100">
             <h3 className="text-sm font-bold text-gray-800 mb-2">Choose Design:</h3>
             <div className="flex gap-2">
@@ -128,27 +154,27 @@ export default function ExperienceLetter() {
         </div>
 
         {/* RIGHT SIDE: LIVE PREVIEW */}
-        <div className="bg-white shadow-2xl rounded-xl p-12 border border-gray-200 print:shadow-none print:border-none print:p-0 h-fit min-h-[A4]">
+        <div className="bg-white shadow-2xl rounded-xl p-12 border border-gray-200 print:shadow-none print:border-none print:p-0 print-area h-fit min-h-[A4]">
           
           {template === 'modern' && (
             <div>
-              <div className="bg-gray-900 text-white p-8 rounded-b-xl mb-8 -mt-12 -mx-12">
+              <div className="bg-gray-900 text-white p-8 rounded-b-xl mb-8 -mt-12 -mx-12 avoid-break">
                 <h1 className="text-3xl font-bold tracking-wide">{formData.companyName}</h1>
                 <p className="text-gray-300 text-sm mt-1">{formData.companyAddress}</p>
               </div>
               
-              <div className="mb-6 text-sm text-gray-700">
+              <div className="mb-6 text-sm text-gray-700 avoid-break">
                 <p className="font-semibold">Date: {formData.date}</p>
               </div>
 
-              <div className="mb-8">
+              <div className="mb-8 avoid-break">
                 <h2 className="text-xl font-bold text-gray-900 mb-4">TO WHOM IT MAY CONCERN</h2>
                 <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
                   {formData.body}
                 </div>
               </div>
 
-              <div className="mt-16 text-sm text-gray-700">
+              <div className="mt-16 text-sm text-gray-700 avoid-break">
                 <p>Sincerely,</p>
                 <div className="mt-12 pt-2 border-t border-gray-400 w-48">
                   <p className="font-bold">{formData.signatoryName}</p>
@@ -160,16 +186,16 @@ export default function ExperienceLetter() {
 
           {template === 'classic' && (
             <div className="font-serif">
-              <div className="text-center border-b-4 border-double border-gray-800 pb-4 mb-8">
+              <div className="text-center border-b-4 border-double border-gray-800 pb-4 mb-8 avoid-break">
                 <h1 className="text-3xl font-bold uppercase tracking-widest text-gray-900">{formData.companyName}</h1>
                 <p className="text-sm text-gray-600 mt-1">{formData.companyAddress}</p>
               </div>
 
-              <div className="mb-6 text-sm text-gray-800">
+              <div className="mb-6 text-sm text-gray-800 avoid-break">
                 <p>{formData.date}</p>
               </div>
 
-              <div className="text-center mb-8">
+              <div className="text-center mb-8 avoid-break">
                 <h2 className="text-lg font-bold underline text-gray-900 tracking-wider">EXPERIENCE CERTIFICATE</h2>
               </div>
 
@@ -177,7 +203,7 @@ export default function ExperienceLetter() {
                 {formData.body}
               </div>
 
-              <div className="flex justify-between items-end mt-16 text-sm text-gray-800">
+              <div className="flex justify-between items-end mt-16 text-sm text-gray-800 avoid-break">
                 <div>
                   <p className="border-t border-gray-400 pt-1 w-40 text-center">Employee Signature</p>
                 </div>
