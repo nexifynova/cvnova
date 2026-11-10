@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Save, Settings, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Settings, Loader2, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
@@ -11,6 +11,7 @@ export default function AdminSettings() {
   const [settings, setSettings] = useState<any>({
     easy_paisa_enabled: true,
     easy_paisa_number: '',
+    easy_paisa_name: '', // Naya field
     binance_enabled: true,
     binance_id: '',
     binance_name: '',
@@ -96,7 +97,11 @@ export default function AdminSettings() {
             <div className="flex items-center gap-2 mb-4 border-b pb-2"><Settings size={20} className="text-green-600" /><h2 className="text-lg font-bold">Pricing</h2></div>
             <div className="space-y-4">
               <div><label className="block text-sm font-semibold text-gray-700 mb-1">Additional CV Price (USD)</label><input type="number" step="0.01" name="additional_cv_price" value={settings.additional_cv_price} onChange={handleChange} className="w-full px-4 py-2 rounded-lg border" /></div>
-              <div><label className="block text-sm font-semibold text-gray-700 mb-1">CVs per 1 USD</label><input type="number" name="cvs_per_dollar" value={settings.cvs_per_dollar} onChange={handleChange} className="w-full px-4 py-2 rounded-lg border" /></div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">CVs per {settings.additional_cv_price} USD</label>
+                <input type="number" name="cvs_per_dollar" value={settings.cvs_per_dollar} onChange={handleChange} className="w-full px-4 py-2 rounded-lg border" />
+                <p className="text-xs text-gray-500 mt-1">Yani {settings.additional_cv_price}$ mein kitni CVs milengi.</p>
+              </div>
             </div>
           </div>
 
@@ -118,7 +123,10 @@ export default function AdminSettings() {
               {/* EasyPaisa */}
               <div className="border rounded-xl p-4">
                 <div className="flex items-center gap-3 mb-2"><input type="checkbox" name="easy_paisa_enabled" checked={settings.easy_paisa_enabled} onChange={handleChange} className="w-5 h-5" /><label className="font-bold text-gray-800">EasyPaisa</label></div>
-                <div><label className="block text-xs text-gray-500 mb-1">Account Number</label><input type="text" name="easy_paisa_number" value={settings.easy_paisa_number} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><label className="block text-xs text-gray-500 mb-1">Account Number</label><input type="text" name="easy_paisa_number" value={settings.easy_paisa_number} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+                  <div><label className="block text-xs text-gray-500 mb-1">Account Name</label><input type="text" name="easy_paisa_name" value={settings.easy_paisa_name} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+                </div>
               </div>
               
               {/* Binance */}
