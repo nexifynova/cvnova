@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import { FileText, LogOut, Plus, ExternalLink, Loader2 } from 'lucide-react';
+import { FileText, LogOut, Plus, ExternalLink, Loader2, Mail, Briefcase } from 'lucide-react';
 import Link from 'next/link';
 
 export default function Dashboard() {
@@ -63,14 +63,24 @@ export default function Dashboard() {
       </nav>
 
       <main className="max-w-6xl mx-auto px-4 py-10">
-        <div className="flex justify-between items-center mb-8">
+        
+        {/* Header with 3 Buttons */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">My Dashboard</h1>
             <p className="text-gray-500 mt-1">Manage your generated documents</p>
           </div>
-          <Link href="/builder" className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl hover:bg-blue-700 font-bold transition shadow-md">
-            <Plus size={18} /> New CV
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/builder" className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl hover:bg-blue-700 font-bold transition shadow-md text-sm">
+              <Plus size={18} /> New CV
+            </Link>
+            <Link href="/cover-letter" className="flex items-center gap-2 bg-green-600 text-white px-5 py-2.5 rounded-xl hover:bg-green-700 font-bold transition shadow-md text-sm">
+              <Mail size={18} /> Cover Letter
+            </Link>
+            <Link href="/experience-letter" className="flex items-center gap-2 bg-purple-600 text-white px-5 py-2.5 rounded-xl hover:bg-purple-700 font-bold transition shadow-md text-sm">
+              <Briefcase size={18} /> Experience Letter
+            </Link>
+          </div>
         </div>
 
         {/* Stats */}
@@ -112,7 +122,7 @@ export default function Dashboard() {
                   </tr>
                 ))}
                 {documents.length === 0 && (
-                  <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">Abhi tak koi document nahi banaya. Naya CV banane ke liye "New CV" dabayein.</td></tr>
+                  <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">Abhi tak koi document nahi banaya. Upar se koi option select karein.</td></tr>
                 )}
               </tbody>
             </table>
