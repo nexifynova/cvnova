@@ -5,7 +5,6 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON!
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// Record save karne ka function
 export const saveDocumentRecord = async (data: {
   documentType: string;
   templateName: string;
@@ -34,7 +33,6 @@ export const saveDocumentRecord = async (data: {
   }
 };
 
-// User ka limit check karne ka function
 export const checkUserLimit = async (userEmail: string) => {
   const { data: profile } = await supabase
     .from('user_profiles')
@@ -53,7 +51,6 @@ export const checkUserLimit = async (userEmail: string) => {
   const limit = settings.free_cv_limit || 6;
   const used = profile.free_cv_count || 0;
 
-  // Agar user ne limit cross kar li hai
   if (used >= limit && profile.subscription_type === 'free') {
     return { allowed: false, isLoggedIn: true };
   }
@@ -61,13 +58,17 @@ export const checkUserLimit = async (userEmail: string) => {
   return { allowed: true, isLoggedIn: true };
 };
 
-// User ka count barhane ka function (FIXED)
 export const incrementUserCount = async (userEmail: string) => {
-  const { data: profile } = await supabase
+  const { data: profile, error: fetchError } = await supabase
     .from('user_profiles')
     .select('free_cv_count')
     .eq('email', userEmail)
     .single();
+
+  if (fetchError) {
+    console.error("Fetch Error:", fetchError);
+    return;
+  }
 
   if (profile) {
     const currentCount = profile.free_cv_count || 0;
