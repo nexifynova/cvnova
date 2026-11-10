@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   experimental: {
     agentFeedback: true,
   },
@@ -14,6 +13,17 @@ const nextConfig: NextConfig = {
         as: "*.css",
       },
     },
+  },
+  // YEH NAYA SECTION ADD KAREIN
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'ibcldneyukricgjfsrcc.supabase.co',
+        port: '',
+        pathname: '/storage/v1/object/public/**',
+      },
+    ],
   },
 };
 

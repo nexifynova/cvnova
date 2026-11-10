@@ -12,7 +12,7 @@ import Autoplay from 'embla-carousel-autoplay';
 export default function Home() {
   const [settings, setSettings] = useState<any>(null);
   
-  // Embla Carousel Setup for Hero Slider
+  // Embla Carousel Setup
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true }, [Autoplay({ delay: 4000, stopOnInteraction: false })]);
   
   const scrollPrev = useCallback(() => {
@@ -31,7 +31,6 @@ export default function Home() {
     const { data } = await supabase.from('app_settings').select('*').eq('id', 1).single();
     if (data) {
       setSettings(data);
-      // Update Autoplay delay if API exists
       if (emblaApi) {
         const autoplay = emblaApi.plugins().autoplay;
         if (autoplay) autoplay.options.delay = data.hero_slider_interval || 4000;
@@ -44,7 +43,7 @@ export default function Home() {
   // Fallback if no images uploaded
   const heroImages = settings.hero_images && settings.hero_images.length > 0 
     ? settings.hero_images 
-    : ['/hero.png']; // Default fallback
+    : [];
 
   return (
     <div className="min-h-screen bg-[#0B1120] text-white flex flex-col font-sans selection:bg-blue-500 selection:text-white">
@@ -74,37 +73,43 @@ export default function Home() {
             </div>
           </div>
 
-          {/* HERO CAROUSEL */}
+          {/* HERO CAROUSEL (FIXED) */}
           <div className="flex-1 relative w-full max-w-lg lg:max-w-none">
             <div className="relative rounded-3xl overflow-hidden border border-white/10 bg-white/5 backdrop-blur-xl shadow-2xl p-2 transform rotate-2 hover:rotate-0 transition-transform duration-500">
               
-              <div className="overflow-hidden rounded-2xl relative group" ref={emblaRef}>
-                <div className="flex">
-                  {heroImages.map((img: string, index: number) => (
-                    <div key={index} className="flex-[0_0_100%] min-w-0 relative aspect-[4/3]">
-                      <Image 
-                        src={img} 
-                        alt={`CVNova Slide ${index + 1}`} 
-                        fill 
-                        className="object-cover" 
-                        priority={index === 0} 
-                      />
-                    </div>
-                  ))}
-                </div>
+              {heroImages.length > 0 ? (
+                <div className="overflow-hidden rounded-2xl relative group" ref={emblaRef}>
+                  <div className="flex">
+                    {heroImages.map((img: string, index: number) => (
+                      <div key={index} className="flex-[0_0_100%] min-w-0 relative aspect-[4/3]">
+                        <Image 
+                          src={img} 
+                          alt={`CVNova Slide ${index + 1}`} 
+                          fill 
+                          className="object-cover" 
+                          priority={index === 0} 
+                        />
+                      </div>
+                    ))}
+                  </div>
 
-                {/* Slider Buttons (Show on hover) */}
-                {heroImages.length > 1 && (
-                  <>
-                    <button onClick={scrollPrev} className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition z-10">
-                      <ChevronLeft size={20} />
-                    </button>
-                    <button onClick={scrollNext} className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition z-10">
-                      <ChevronRight size={20} />
-                    </button>
-                  </>
-                )}
-              </div>
+                  {/* Slider Buttons */}
+                  {heroImages.length > 1 && (
+                    <>
+                      <button onClick={scrollPrev} className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition z-10">
+                        <ChevronLeft size={20} />
+                      </button>
+                      <button onClick={scrollNext} className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition z-10">
+                        <ChevronRight size={20} />
+                      </button>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="w-full aspect-[4/3] rounded-2xl bg-gradient-to-br from-blue-900/50 to-purple-900/50 flex items-center justify-center border border-white/10">
+                  <p className="text-gray-400 text-sm font-medium">Upload images from Admin Settings</p>
+                </div>
+              )}
 
             </div>
           </div>
@@ -136,7 +141,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* PRICING SECTION - Dynamic from DB */}
+        {/* PRICING SECTION */}
         <section id="pricing" className="py-24 relative z-10 bg-black/20">
           <div className="max-w-7xl mx-auto px-6">
             <div className="text-center mb-16">
