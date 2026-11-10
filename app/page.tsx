@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { FileText, Sparkles, Download, CheckCircle, ArrowRight, Star, Mail, Briefcase } from 'lucide-react';
+import { FileText, Sparkles, ArrowRight, Mail, Briefcase } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import Navbar from '@/components/Navbar';
 
 export default function Home() {
   const [settings, setSettings] = useState<any>(null);
@@ -23,26 +24,8 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#0B1120] text-white flex flex-col font-sans selection:bg-blue-500 selection:text-white">
       
-      {/* Navbar */}
-      <nav className="bg-[#0B1120]/80 backdrop-blur-md border-b border-white/10 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
-        <div className="flex items-center gap-2">
-          <div className="bg-gradient-to-tr from-blue-500 to-purple-600 p-2 rounded-xl">
-            <FileText className="text-white" size={20} />
-          </div>
-          <span className="text-2xl font-extrabold tracking-tight">CVNova</span>
-        </div>
-        
-        <div className="hidden md:flex gap-6 text-sm font-medium text-gray-300">
-          <Link href="/builder" className="hover:text-white transition">CV Builder</Link>
-          <Link href="/cover-letter" className="hover:text-white transition">Cover Letter</Link>
-          <Link href="/experience-letter" className="hover:text-white transition">Experience Letter</Link>
-        </div>
-
-        <div className="flex gap-4 items-center">
-          <Link href="/login" className="text-sm font-semibold text-gray-300 hover:text-white transition">Log in</Link>
-          <Link href="/signup" className="bg-white text-[#0B1120] text-sm px-5 py-2.5 rounded-full hover:bg-gray-200 font-bold shadow-[0_0_15px_rgba(255,255,255,0.3)] transition-all transform hover:-translate-y-0.5">Get Started Free</Link>
-        </div>
-      </nav>
+      {/* Navbar Component - Login/Logout ka kaam yeh khud handle karega */}
+      <Navbar />
 
       {/* Hero Section */}
       <main className="flex-grow relative overflow-hidden">
@@ -110,33 +93,37 @@ export default function Home() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* 3 Months */}
               <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-blue-500/50 transition duration-300 relative">
                 <h3 className="text-xl font-bold mb-2">3 Months</h3>
                 <p className="text-gray-400 text-sm mb-6">Perfect for a quick job search.</p>
                 <div className="text-4xl font-extrabold mb-6">${settings.package_3m_price}</div>
-                <Link href="/signup" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">Get Started</Link>
+                <Link href="/payment" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">Upgrade</Link>
               </div>
 
+              {/* 6 Months (Popular) */}
               <div className="bg-gradient-to-b from-blue-900/40 to-purple-900/40 p-8 rounded-3xl border border-blue-500/50 transition duration-300 relative transform lg:-translate-y-4 shadow-[0_0_30px_rgba(59,130,246,0.2)]">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-bold px-4 py-1 rounded-full">MOST POPULAR</div>
                 <h3 className="text-xl font-bold mb-2">6 Months</h3>
                 <p className="text-blue-200 text-sm mb-6">Best value for serious professionals.</p>
                 <div className="text-4xl font-extrabold mb-6">${settings.package_6m_price}</div>
-                <Link href="/signup" className="w-full flex items-center justify-center bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 rounded-xl hover:from-blue-500 hover:to-purple-500 font-bold transition shadow-lg">Get Started</Link>
+                <Link href="/payment" className="w-full flex items-center justify-center bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 rounded-xl hover:from-blue-500 hover:to-purple-500 font-bold transition shadow-lg">Upgrade</Link>
               </div>
 
+              {/* 1 Year */}
               <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-blue-500/50 transition duration-300 relative">
                 <h3 className="text-xl font-bold mb-2">1 Year</h3>
                 <p className="text-gray-400 text-sm mb-6">Long-term career growth plan.</p>
                 <div className="text-4xl font-extrabold mb-6">${settings.package_1y_price}</div>
-                <Link href="/signup" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">Get Started</Link>
+                <Link href="/payment" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">Upgrade</Link>
               </div>
 
+              {/* 5 Years */}
               <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-blue-500/50 transition duration-300 relative">
                 <h3 className="text-xl font-bold mb-2">5 Years</h3>
                 <p className="text-gray-400 text-sm mb-6">Lifetime access for experts.</p>
                 <div className="text-4xl font-extrabold mb-6">${settings.package_5y_price}</div>
-                <Link href="/signup" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">Get Started</Link>
+                <Link href="/payment" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">Upgrade</Link>
               </div>
             </div>
           </div>
