@@ -1,39 +1,66 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, Printer, Download } from 'lucide-react';
+import { ArrowLeft, Printer, Download, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { saveDocumentRecord } from '@/lib/supabase';
+import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount } from '@/lib/supabase';
 
 export default function ExperienceLetter() {
   const [formData, setFormData] = useState({
-    companyName: 'Zaman Trading',
-    companyAddress: 'Karachi, Pakistan',
-    date: 'November 9, 2026',
-    employeeName: 'Faisal Ilyas',
-    employeeDesignation: 'Assistant Accounts',
-    joiningDate: 'January 1, 2022',
-    leavingDate: 'Present',
-    body: 'This is to certify that Mr. Faisal Ilyas was employed with Zaman Trading as an Assistant Accounts from January 1, 2022 to Present. During his tenure, he demonstrated excellent skills in financial reporting and data analysis. He was a dedicated and hardworking employee.\n\nWe wish him the best of luck in his future endeavors.',
-    signatoryName: 'HR Manager',
-    signatoryDesignation: 'Human Resources Department'
+    companyName: '',
+    companyAddress: '',
+    date: '',
+    employeeName: '',
+    employeeDesignation: '',
+    joiningDate: '',
+    leavingDate: '',
+    body: '',
+    signatoryName: '',
+    signatoryDesignation: ''
   });
 
   const [template, setTemplate] = useState('modern');
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleAction = async () => {
+    setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    let userEmail = 'N/A';
+    let isLoggedIn = false;
+
+    if (user && user.email) {
+      userEmail = user.email;
+      isLoggedIn = true;
+      
+      const limitCheck = await checkUserLimit(userEmail);
+      
+      if (!limitCheck.allowed) {
+        alert("You have reached your free limit. Please upgrade to continue.");
+        window.location.href = '/#pricing';
+        setLoading(false);
+        return;
+      }
+    }
+
     await saveDocumentRecord({
       documentType: 'Experience Letter',
       templateName: template,
       fullName: formData.employeeName,
-      email: 'N/A',
-      phone: 'N/A',
+      email: userEmail,
+      phone: 'N/A', // Experience letter mein phone nahi hota aam tor par
       fullData: formData,
     });
+
+    if (isLoggedIn) {
+      await incrementUserCount(userEmail);
+    }
+
+    setLoading(false);
     window.print();
   };
 
@@ -91,11 +118,11 @@ export default function ExperienceLetter() {
           </div>
 
           <div className="flex gap-4 pt-4 border-t border-gray-200">
-            <button type="button" onClick={handleAction} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-4 py-3 rounded-xl hover:bg-gray-800 font-bold text-sm transition">
-              <Printer size={18} /> Print Letter
+            <button type="button" onClick={handleAction} disabled={loading} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-4 py-3 rounded-xl hover:bg-gray-800 font-bold text-sm transition disabled:opacity-50">
+              {loading ? <Loader2 size={18} className="animate-spin" /> : <Printer size={18} />} Print Letter
             </button>
-            <button type="button" onClick={handleAction} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 font-bold text-sm transition">
-              <Download size={18} /> Download PDF
+            <button type="button" onClick={handleAction} disabled={loading} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 font-bold text-sm transition disabled:opacity-50">
+              {loading ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />} Download PDF
             </button>
           </div>
         </div>

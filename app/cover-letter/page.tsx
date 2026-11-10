@@ -1,39 +1,66 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, Printer, Download } from 'lucide-react';
+import { ArrowLeft, Printer, Download, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { saveDocumentRecord } from '@/lib/supabase';
+import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount } from '@/lib/supabase';
 
 export default function CoverLetter() {
   const [formData, setFormData] = useState({
-    fullName: 'Faisal Ilyas',
-    email: 'faisal@nexifynova.co.uk',
-    phone: '+92 3122777836',
-    address: 'Karachi, Pakistan',
-    companyName: 'Zaman Trading',
-    companyAddress: 'Karachi, Pakistan',
-    jobTitle: 'Assistant Accounts',
-    hiringManager: 'Hiring Manager',
-    date: 'November 9, 2026',
-    body: 'Dear Hiring Manager,\n\nI am writing to express my strong interest in the Assistant Accounts position at Zaman Trading. With my background in accounting and finance, I am confident in my ability to contribute effectively to your team.\n\nThroughout my career, I have developed strong skills in financial reporting, data analysis, and client communication. I am eager to bring my expertise to your organization and help drive success.\n\nThank you for considering my application. I look forward to the opportunity to discuss how I can contribute to your team.\n\nSincerely,\nFaisal Ilyas',
+    fullName: '',
+    email: '',
+    phone: '',
+    address: '',
+    companyName: '',
+    companyAddress: '',
+    jobTitle: '',
+    hiringManager: '',
+    date: '',
+    body: '',
   });
 
   const [template, setTemplate] = useState('modern');
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleAction = async () => {
+    setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    let userEmail = formData.email;
+    let isLoggedIn = false;
+
+    if (user && user.email) {
+      userEmail = user.email;
+      isLoggedIn = true;
+      
+      const limitCheck = await checkUserLimit(userEmail);
+      
+      if (!limitCheck.allowed) {
+        alert("You have reached your free limit. Please upgrade to continue.");
+        window.location.href = '/#pricing';
+        setLoading(false);
+        return;
+      }
+    }
+
     await saveDocumentRecord({
       documentType: 'Cover Letter',
       templateName: template,
       fullName: formData.fullName,
-      email: formData.email,
+      email: userEmail,
       phone: formData.phone,
       fullData: formData,
     });
+
+    if (isLoggedIn) {
+      await incrementUserCount(userEmail);
+    }
+
+    setLoading(false);
     window.print();
   };
 
@@ -89,11 +116,11 @@ export default function CoverLetter() {
           </div>
 
           <div className="flex gap-4 pt-4 border-t border-gray-200">
-            <button type="button" onClick={handleAction} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-4 py-3 rounded-xl hover:bg-gray-800 font-bold text-sm transition">
-              <Printer size={18} /> Print Letter
+            <button type="button" onClick={handleAction} disabled={loading} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-4 py-3 rounded-xl hover:bg-gray-800 font-bold text-sm transition disabled:opacity-50">
+              {loading ? <Loader2 size={18} className="animate-spin" /> : <Printer size={18} />} Print Letter
             </button>
-            <button type="button" onClick={handleAction} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 font-bold text-sm transition">
-              <Download size={18} /> Download PDF
+            <button type="button" onClick={handleAction} disabled={loading} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 font-bold text-sm transition disabled:opacity-50">
+              {loading ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />} Download PDF
             </button>
           </div>
         </div>
@@ -151,4 +178,4 @@ export default function CoverLetter() {
       </main>
     </div>
   );
-}   
+}

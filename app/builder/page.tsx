@@ -7,18 +7,18 @@ import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount } from
 
 export default function Builder() {
   const [formData, setFormData] = useState({
-    fullName: 'Faisal Ilyas',
-    email: 'faisal@nexifynova.co.uk',
-    phone: '+92 3122777836',
-    address: 'Karachi, Pakistan',
-    jobTitle: 'Assistant Accounts',
-    summary: 'Passionate software engineer with experience in building modern web applications.',
-    skills: ['Ms-Office', 'English Language', 'JavaScript', 'Tailwind CSS'],
+    fullName: '',
+    email: '',
+    phone: '',
+    address: '',
+    jobTitle: '',
+    summary: '',
+    skills: [''],
     education: [
-      { degree: 'BS Computer Science', school: 'University of Karachi', year: '2018 - 2022' }
+      { degree: '', school: '', year: '' }
     ],
     experience: [
-      { role: 'Accountant', company: 'Zaman Trading', duration: '2022 - Present', desc: 'Built responsive web apps.' }
+      { role: '', company: '', duration: '', desc: '' }
     ],
   });
 
@@ -55,7 +55,7 @@ export default function Builder() {
 
   const handleGenerateAI = async () => {
     if (!formData.jobTitle) {
-      alert("Pehle Job Title likhein taake AI summary bana sake.");
+      alert("Please enter a Job Title first so AI can generate a summary.");
       return;
     }
     setIsGenerating(true);
@@ -70,7 +70,7 @@ export default function Builder() {
         setFormData({ ...formData, summary: data.summary });
       }
     } catch (error) {
-      alert("AI summary generate nahi ho saki. Dobara koshish karein.");
+      alert("Failed to generate AI summary. Please try again.");
     } finally {
       setIsGenerating(false);
     }
@@ -89,7 +89,7 @@ export default function Builder() {
       const limitCheck = await checkUserLimit(userEmail);
       
       if (!limitCheck.allowed) {
-        alert("Aapki free limit khatam ho gayi hai. Mazeed CVs banane ke liye please upgrade karein.");
+        alert("You have reached your free limit. Please upgrade to continue.");
         window.location.href = '/#pricing';
         return;
       }

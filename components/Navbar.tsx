@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { FileText, LogOut, LayoutDashboard, ChevronDown, User } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -10,16 +10,15 @@ export default function Navbar() {
   const [user, setUser] = useState<any>(null);
   const [isHovered, setIsHovered] = useState(false);
   const router = useRouter();
+  const hoverTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Session check karein
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user || null);
     };
     checkUser();
 
-    // Auth state change listener
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null);
     });
@@ -30,6 +29,18 @@ export default function Navbar() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/');
+  };
+
+  // Mouse enter/leave handle karne ka behtar tareeqa
+  const handleMouseEnter = () => {
+    if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
+    setIsHovered(true);
+  };
+
+  const handleMouseLeave = () => {
+    hoverTimeout.current = setTimeout(() => {
+      setIsHovered(false);
+    }, 150); // 150ms delay taake mouse dropdown tak pohanch sake
   };
 
   return (
@@ -50,11 +61,10 @@ export default function Navbar() {
 
       <div className="flex gap-4 items-center">
         {user ? (
-          // LOGGED IN VIEW (Hover Profile Dropdown)
           <div 
-            className="relative"
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
+            className="relative py-2" // Padding added to remove visual gap
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
           >
             <button className="flex items-center gap-2 bg-white/10 text-white px-4 py-2 rounded-full border border-white/20 hover:bg-white/20 transition">
               <User size={18} />
@@ -63,7 +73,7 @@ export default function Navbar() {
             </button>
 
             {isHovered && (
-              <div className="absolute right-0 mt-2 w-48 bg-[#1A233A] border border-white/10 rounded-xl shadow-2xl py-2 flex flex-col">
+              <div className="absolute right-0 top-full mt-1 w-48 bg-[#1A233A] border border-white/10 rounded-xl shadow-2xl py-2 flex flex-col">
                 <Link href="/dashboard" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition">
                   <LayoutDashboard size={16} /> Dashboard
                 </Link>
@@ -74,7 +84,6 @@ export default function Navbar() {
             )}
           </div>
         ) : (
-          // LOGGED OUT VIEW
           <>
             <Link href="/login" className="text-sm font-semibold text-gray-300 hover:text-white transition">Log in</Link>
             <Link href="/signup" className="bg-white text-[#0B1120] text-sm px-5 py-2.5 rounded-full hover:bg-gray-200 font-bold shadow-[0_0_15px_rgba(255,255,255,0.3)] transition-all transform hover:-translate-y-0.5">Get Started Free</Link>
