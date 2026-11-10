@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import { FileText, Loader2, ArrowLeft, Eye, EyeOff, Mail, CheckCircle } from 'lucide-react';
+import { FileText, Loader2, ArrowLeft, Eye, EyeOff, CheckCircle } from 'lucide-react';
 
 export default function Signup() {
   const router = useRouter();
@@ -53,8 +53,8 @@ export default function Signup() {
           <CheckCircle className="text-green-500 mx-auto mb-6" size={64} />
           <h2 className="text-2xl font-bold text-white mb-4">Verify Your Email</h2>
           <p className="text-gray-400 mb-6 leading-relaxed">
-            Aik confirmation link <span className="text-white font-bold">{formData.email}</span> par bhej diya gaya hai. 
-            Meharbani farma kar apni email inbox (aur spam folder) check karein aur account activate karne ke liye link par click karein.
+            A confirmation link has been sent to <span className="text-white font-bold">{formData.email}</span>. 
+            Please check your inbox (and spam folder) and click the link to activate your account.
           </p>
           <div className="bg-black/30 p-4 rounded-xl mb-6">
              <p className="text-sm text-gray-400 mb-1">Need help? Contact us:</p>

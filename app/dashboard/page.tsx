@@ -12,6 +12,7 @@ export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [documents, setDocuments] = useState<any[]>([]);
+  const [freeLimit, setFreeLimit] = useState(1); // Default 1
 
   useEffect(() => {
     checkUser();
@@ -30,6 +31,10 @@ export default function Dashboard() {
     // Profile fetch karein
     const { data: profileData } = await supabase.from('user_profiles').select('*').eq('id', user.id).single();
     if (profileData) setProfile(profileData);
+
+    // App Settings se Free Limit fetch karein
+    const { data: settingsData } = await supabase.from('app_settings').select('free_cv_limit').eq('id', 1).single();
+    if (settingsData) setFreeLimit(settingsData.free_cv_limit || 1);
 
     // Documents fetch karein (sirf is user ke)
     const { data: docs } = await supabase.from('generated_documents').select('*').eq('email', user.email).order('created_at', { ascending: false });
@@ -63,8 +68,6 @@ export default function Dashboard() {
       </nav>
 
       <main className="max-w-6xl mx-auto px-4 py-10">
-        
-        {/* Header with 3 Buttons */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">My Dashboard</h1>
@@ -83,11 +86,10 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <p className="text-sm text-gray-500 mb-1">Free CVs Used</p>
-            <p className="text-3xl font-bold text-gray-900">{profile?.free_cv_count || 0} / 6</p>
+            <p className="text-3xl font-bold text-gray-900">{profile?.free_cv_count || 0} / {freeLimit}</p>
           </div>
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <p className="text-sm text-gray-500 mb-1">Account Type</p>
@@ -95,7 +97,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Documents List */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-6 border-b border-gray-100"><h2 className="text-lg font-bold text-gray-900">My Documents</h2></div>
           <div className="overflow-x-auto">
@@ -122,7 +123,7 @@ export default function Dashboard() {
                   </tr>
                 ))}
                 {documents.length === 0 && (
-                  <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">Abhi tak koi document nahi banaya. Upar se koi option select karein.</td></tr>
+                  <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">No documents generated yet. Select an option above to start.</td></tr>
                 )}
               </tbody>
             </table>

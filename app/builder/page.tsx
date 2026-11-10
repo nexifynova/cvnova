@@ -2,28 +2,46 @@
 
 import { useState, useRef } from 'react';
 import Image from 'next/image';
-import { Sparkles, ArrowLeft, Download, Printer, Plus, Trash2, Loader2, Camera, Upload } from 'lucide-react';
+import { Sparkles, ArrowLeft, Download, Printer, Plus, Trash2, Loader2, Camera, Upload, RefreshCw, Info } from 'lucide-react';
 import Link from 'next/link';
 import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount } from '@/lib/supabase';
 
-export default function Builder() {
-  const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    address: '',
-    jobTitle: '',
-    summary: '',
-    photoUrl: '',
-    skills: [''],
-    education: [{ degree: '', school: '', year: '' }],
-    experience: [{ role: '', company: '', duration: '', desc: '' }],
-    languages: [{ language: '', proficiency: '' }],
-    certifications: [{ name: '', year: '', fileUrl: '' }],
-    hobbies: [''],
-    references: [{ name: '', role: '', contact: '' }],
-  });
+const dummyData = {
+  fullName: 'John Doe',
+  email: 'johndoe@example.com',
+  phone: '+1 234 567 8900',
+  address: 'New York, USA',
+  jobTitle: 'Software Engineer',
+  summary: 'A highly motivated Software Engineer with expertise in building scalable web applications. Proven ability to deliver high-quality results and collaborate effectively within teams to achieve organizational goals.',
+  photoUrl: '',
+  skills: ['JavaScript', 'React', 'Node.js', 'CSS', 'HTML'],
+  education: [{ degree: 'BS Computer Science', school: 'Tech University', year: '2020 - 2024' }],
+  experience: [{ role: 'Frontend Developer', company: 'Tech Corp', duration: '2022 - Present', desc: 'Developed responsive web applications.\nCollaborated with cross-functional teams to define and ship new features.' }],
+  languages: [{ language: 'English', proficiency: 'Native' }, { language: 'Spanish', proficiency: 'Basic' }],
+  certifications: [{ name: 'AWS Certified Developer', year: '2023', fileUrl: '' }],
+  hobbies: ['Reading', 'Hiking', 'Coding'],
+  references: [{ name: 'Jane Smith', role: 'CTO at Tech Corp', contact: 'jane@techcorp.com' }],
+};
 
+const emptyData = {
+  fullName: '',
+  email: '',
+  phone: '',
+  address: '',
+  jobTitle: '',
+  summary: '',
+  photoUrl: '',
+  skills: [''],
+  education: [{ degree: '', school: '', year: '' }],
+  experience: [{ role: '', company: '', duration: '', desc: '' }],
+  languages: [{ language: '', proficiency: '' }],
+  certifications: [{ name: '', year: '', fileUrl: '' }],
+  hobbies: [''],
+  references: [{ name: '', role: '', contact: '' }],
+};
+
+export default function Builder() {
+  const [formData, setFormData] = useState(dummyData); // Default dummy data
   const [template, setTemplate] = useState('classicgray'); 
   const [isGenerating, setIsGenerating] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -34,6 +52,12 @@ export default function Builder() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const resetForm = () => {
+    if(confirm("Are you sure you want to clear all data and start fresh?")) {
+      setFormData(emptyData);
+    }
   };
 
   // Profile Photo Upload
@@ -168,6 +192,22 @@ export default function Builder() {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Professional Banner */}
+          <div className="mb-6 bg-green-50 border border-green-200 p-4 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <Info className="text-green-600 shrink-0 mt-0.5" size={20} />
+              <p className="text-sm font-medium text-green-800">
+                Don't worry! We've filled a sample CV for you. Just replace the text in the fields below with your own details, or clear it to start fresh.
+              </p>
+            </div>
+            <button 
+              onClick={resetForm}
+              className="flex items-center gap-2 bg-white text-green-700 border border-green-300 px-4 py-2 rounded-lg font-bold text-sm hover:bg-green-100 transition shadow-sm shrink-0 w-full sm:w-auto justify-center"
+            >
+              <RefreshCw size={16} /> Clear & Start Fresh
+            </button>
           </div>
 
           <h1 className="text-xl font-bold text-gray-900 mb-4 border-b pb-2">Profile Photo (Optional)</h1>
