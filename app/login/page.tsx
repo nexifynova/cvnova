@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import { FileText, Loader2 } from 'lucide-react';
+import { FileText, Loader2, ArrowLeft } from 'lucide-react';
 
 export default function Login() {
   const router = useRouter();
@@ -31,7 +31,12 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0B1120] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[#0B1120] flex items-center justify-center px-4 relative">
+      {/* Back to Home Button */}
+      <Link href="/" className="absolute top-6 left-6 flex items-center gap-2 text-gray-400 hover:text-white transition font-medium">
+        <ArrowLeft size={20} /> Back to Home
+      </Link>
+
       <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
         <div className="flex items-center gap-2 mb-6 justify-center">
           <div className="bg-gradient-to-tr from-blue-500 to-purple-600 p-2 rounded-xl"><FileText className="text-white" size={20} /></div>
