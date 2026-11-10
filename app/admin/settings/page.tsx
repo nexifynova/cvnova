@@ -11,15 +11,46 @@ export default function AdminSettings() {
   const [uploading, setUploading] = useState<string | null>(null);
   
   const [settings, setSettings] = useState<any>({
-    additional_cv_price: 1.00, cvs_per_price: 1, free_cv_limit: 6,
-    package_3m_price: 5, package_6m_price: 8, package_1y_price: 12, package_5y_price: 40,
-    easy_paisa_enabled: true, easy_paisa_number: '', easy_paisa_name: '',
-    binance_enabled: true, binance_id: '', binance_name: '',
-    bank_enabled: false, bank_name: '', bank_account_name: '', bank_branch: '', bank_account_number: '', bank_iban: '',
-    site_logo_url: '', site_favicon_url: '', hero_images: [], hero_slider_interval: 4000, nav_menu: [],
+    // Pricing
+    additional_cv_price: 1.00,
+    cvs_per_price: 1, // Naya field
+    free_cv_limit: 6,
+    
+    // Packages
+    package_3m_price: 5,
+    package_6m_price: 8,
+    package_1y_price: 12,
+    package_5y_price: 40,
+    
+    // Payment - EasyPaisa
+    easy_paisa_enabled: true, 
+    easy_paisa_number: '', 
+    easy_paisa_name: '',
+    
+    // Payment - Binance
+    binance_enabled: true, 
+    binance_id: '', 
+    binance_name: '',
+    
+    // Payment - Bank (UPDATED)
+    bank_enabled: false, 
+    bank_account_name: '', 
+    bank_name: '', 
+    bank_branch: '', 
+    bank_account_number: '', 
+    bank_iban: '',
+    
+    // CMS
+    site_logo_url: '',
+    site_favicon_url: '',
+    hero_images: [],
+    hero_slider_interval: 4000,
+    nav_menu: [],
   });
 
-  useEffect(() => { fetchSettings(); }, []);
+  useEffect(() => {
+    fetchSettings();
+  }, []);
 
   const fetchSettings = async () => {
     const { data } = await supabase.from('app_settings').select('*').eq('id', 1).single();
@@ -30,15 +61,16 @@ export default function AdminSettings() {
   const handleSave = async () => {
     setSaving(true);
     const { error } = await supabase.from('app_settings').update({
-      ...settings, updated_at: new Date().toISOString(),
+      ...settings,
+      updated_at: new Date().toISOString(),
     }).eq('id', 1);
 
-    if (error) alert("Error: " + error.message);
+    if (error) alert("Error saving settings: " + error.message);
     else alert("Settings Saved Successfully!");
     setSaving(false);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     let val: any = value;
     if (type === 'checkbox') val = (e.target as HTMLInputElement).checked;
@@ -46,19 +78,24 @@ export default function AdminSettings() {
     setSettings({ ...settings, [name]: val });
   };
 
+  // --- UPLOAD FUNCTIONS ---
   const uploadFile = async (file: File, type: 'logo' | 'favicon' | 'hero') => {
     try {
       setUploading(type);
       const fileExt = file.name.split('.').pop();
       const fileName = `${type}-${Date.now()}.${fileExt}`;
+      
       const { error } = await supabase.storage.from('site-assets').upload(fileName, file, { upsert: true });
       if (error) throw error;
+      
       const { data } = supabase.storage.from('site-assets').getPublicUrl(fileName);
       return data.publicUrl;
     } catch (error: any) {
       alert("Upload error: " + error.message);
       return null;
-    } finally { setUploading(null); }
+    } finally {
+      setUploading(null);
+    }
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,7 +113,10 @@ export default function AdminSettings() {
   const handleHeroUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.[0]) return;
     const url = await uploadFile(e.target.files[0], 'hero');
-    if (url) setSettings({ ...settings, hero_images: [...(settings.hero_images || []), url] });
+    if (url) {
+      const currentImages = settings.hero_images || [];
+      setSettings({ ...settings, hero_images: [...currentImages, url] });
+    }
   };
 
   const removeHeroImage = (index: number) => {
@@ -85,20 +125,32 @@ export default function AdminSettings() {
     setSettings({ ...settings, hero_images: newImages });
   };
 
+  // --- MENU FUNCTIONS ---
   const addMenuItem = () => {
-    setSettings({ ...settings, nav_menu: [...(settings.nav_menu || []), { id: Date.now().toString(), label: 'New Link', href: '/', visible: true }] });
+    const newMenu = [...(settings.nav_menu || [])];
+    newMenu.push({ id: Date.now().toString(), label: 'New Link', href: '/', visible: true });
+    setSettings({ ...settings, nav_menu: newMenu });
   };
+
   const updateMenuItem = (index: number, key: string, value: any) => {
-    const newMenu = [...(settings.nav_menu || [])]; newMenu[index] = { ...newMenu[index], [key]: value }; setSettings({ ...settings, nav_menu: newMenu });
+    const newMenu = [...(settings.nav_menu || [])];
+    newMenu[index] = { ...newMenu[index], [key]: value };
+    setSettings({ ...settings, nav_menu: newMenu });
   };
+
   const removeMenuItem = (index: number) => {
-    const newMenu = [...(settings.nav_menu || [])]; newMenu.splice(index, 1); setSettings({ ...settings, nav_menu: newMenu });
+    const newMenu = [...(settings.nav_menu || [])];
+    newMenu.splice(index, 1);
+    setSettings({ ...settings, nav_menu: newMenu });
   };
+
   const moveMenuItem = (index: number, direction: 'up' | 'down') => {
     if (direction === 'up' && index === 0) return;
     if (direction === 'down' && index === (settings.nav_menu?.length || 0) - 1) return;
-    const newMenu = [...(settings.nav_menu || [])]; const temp = newMenu[index];
-    newMenu[index] = newMenu[index + (direction === 'up' ? -1 : 1)]; newMenu[index + (direction === 'up' ? -1 : 1)] = temp;
+    const newMenu = [...(settings.nav_menu || [])];
+    const temp = newMenu[index];
+    newMenu[index] = newMenu[index + (direction === 'up' ? -1 : 1)];
+    newMenu[index + (direction === 'up' ? -1 : 1)] = temp;
     setSettings({ ...settings, nav_menu: newMenu });
   };
 
@@ -107,34 +159,45 @@ export default function AdminSettings() {
   return (
     <div className="min-h-screen bg-gray-50 p-8 font-sans pb-20">
       <div className="max-w-5xl mx-auto">
+        
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
-            <Link href="/admin" className="p-2 bg-white rounded-lg shadow-sm hover:bg-gray-100 transition"><ArrowLeft size={20} className="text-gray-600" /></Link>
+            <Link href="/admin" className="p-2 bg-white rounded-lg shadow-sm hover:bg-gray-100 transition">
+              <ArrowLeft size={20} className="text-gray-600" />
+            </Link>
             <h1 className="text-3xl font-bold text-gray-900">Website Settings</h1>
           </div>
           <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-xl hover:bg-blue-700 font-bold transition shadow-md disabled:opacity-50">
-            {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}{saving ? 'Saving...' : 'Save Changes'}
+            {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+            {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
           {/* BRANDING */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 md:col-span-2">
             <h2 className="text-lg font-bold mb-4 border-b pb-2 flex items-center gap-2"><ImageIcon size={20} className="text-blue-600"/> Branding (Logo & Favicon)</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="border p-4 rounded-xl flex flex-col items-center justify-center gap-3">
                 <p className="text-sm font-semibold text-gray-700">Website Logo</p>
-                {settings.site_logo_url ? <img src={settings.site_logo_url} alt="Logo" className="h-12 object-contain" /> : <div className="h-12 text-xs text-gray-400">No Logo</div>}
+                {settings.site_logo_url ? (
+                  <img src={settings.site_logo_url} alt="Logo" className="h-12 object-contain" />
+                ) : <div className="h-12 text-xs text-gray-400">No Logo</div>}
                 <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2">
-                  {uploading === 'logo' ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}Upload Logo
+                  {uploading === 'logo' ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                  Upload Logo
                   <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
                 </label>
               </div>
               <div className="border p-4 rounded-xl flex flex-col items-center justify-center gap-3">
                 <p className="text-sm font-semibold text-gray-700">Favicon (Tab Icon)</p>
-                {settings.site_favicon_url ? <img src={settings.site_favicon_url} alt="Favicon" className="h-10 object-contain" /> : <div className="h-10 text-xs text-gray-400">No Icon</div>}
+                {settings.site_favicon_url ? (
+                  <img src={settings.site_favicon_url} alt="Favicon" className="h-10 object-contain" />
+                ) : <div className="h-10 text-xs text-gray-400">No Icon</div>}
                 <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2">
-                  {uploading === 'favicon' ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}Upload Favicon
+                  {uploading === 'favicon' ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                  Upload Favicon
                   <input type="file" accept="image/*" className="hidden" onChange={handleFaviconUpload} />
                 </label>
               </div>
@@ -188,6 +251,7 @@ export default function AdminSettings() {
           {/* PRICING & PACKAGES */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 md:col-span-2">
             <h2 className="text-lg font-bold mb-4 border-b pb-2 flex items-center gap-2"><IndianRupee size={20} className="text-orange-500"/> Pricing & Packages</h2>
+            
             <div className="mb-6 bg-blue-50 p-4 rounded-xl border border-blue-100">
               <h3 className="text-sm font-bold text-gray-800 mb-2">Additional CVs (For Free Users)</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -195,6 +259,7 @@ export default function AdminSettings() {
                 <div><label className="block text-xs font-semibold text-gray-600 mb-1">How many CVs for this price?</label><input type="number" name="cvs_per_price" value={settings.cvs_per_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
               </div>
             </div>
+
             <div>
               <h3 className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2"><Package size={16}/> Subscription Packages (Pricing)</h3>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -206,18 +271,46 @@ export default function AdminSettings() {
             </div>
           </div>
 
-          {/* OTHER SETTINGS */}
+          {/* OTHER SETTINGS (Free Limits & Payments) */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 md:col-span-2">
             <h2 className="text-lg font-bold mb-4 border-b pb-2 text-gray-500">Free Limits & Payment Methods</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
               <div><label className="block text-xs font-semibold text-gray-600 mb-1">Free CVs per User</label><input type="number" name="free_cv_limit" value={settings.free_cv_limit} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
             </div>
+
             <div className="space-y-4">
-               <div className="p-4 border rounded-xl"><div className="flex items-center gap-2 mb-2"><input type="checkbox" name="easy_paisa_enabled" checked={settings.easy_paisa_enabled} onChange={handleChange} className="w-4 h-4"/><label className="text-sm font-bold">EasyPaisa</label></div><div className="grid grid-cols-2 gap-2"><input type="text" name="easy_paisa_number" value={settings.easy_paisa_number} onChange={handleChange} placeholder="Number" className="px-2 py-1 border rounded text-sm"/><input type="text" name="easy_paisa_name" value={settings.easy_paisa_name} onChange={handleChange} placeholder="Name" className="px-2 py-1 border rounded text-sm"/></div></div>
-               <div className="p-4 border rounded-xl"><div className="flex items-center gap-2 mb-2"><input type="checkbox" name="binance_enabled" checked={settings.binance_enabled} onChange={handleChange} className="w-4 h-4"/><label className="text-sm font-bold">Binance</label></div><div className="grid grid-cols-2 gap-2"><input type="text" name="binance_id" value={settings.binance_id} onChange={handleChange} placeholder="Pay ID" className="px-2 py-1 border rounded text-sm"/><input type="text" name="binance_name" value={settings.binance_name} onChange={handleChange} placeholder="Name" className="px-2 py-1 border rounded text-sm"/></div></div>
-               <div className="p-4 border rounded-xl"><div className="flex items-center gap-2 mb-2"><input type="checkbox" name="bank_enabled" checked={settings.bank_enabled} onChange={handleChange} className="w-4 h-4"/><label className="text-sm font-bold">Bank Transfer</label></div><div className="grid grid-cols-2 gap-2"><input type="text" name="bank_account_name" value={settings.bank_account_name} onChange={handleChange} placeholder="Account Holder" className="px-2 py-1 border rounded text-sm"/><input type="text" name="bank_account_number" value={settings.bank_account_number} onChange={handleChange} placeholder="Account Number" className="px-2 py-1 border rounded text-sm"/></div></div>
+              {/* EasyPaisa */}
+              <div className="p-4 border rounded-xl">
+                <div className="flex items-center gap-2 mb-2"><input type="checkbox" name="easy_paisa_enabled" checked={settings.easy_paisa_enabled} onChange={handleChange} className="w-4 h-4"/><label className="text-sm font-bold">EasyPaisa</label></div>
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="text" name="easy_paisa_number" value={settings.easy_paisa_number} onChange={handleChange} placeholder="Account Number" className="px-2 py-1 border rounded text-sm"/>
+                  <input type="text" name="easy_paisa_name" value={settings.easy_paisa_name} onChange={handleChange} placeholder="Account Name" className="px-2 py-1 border rounded text-sm"/>
+                </div>
+              </div>
+              
+              {/* Binance */}
+              <div className="p-4 border rounded-xl">
+                <div className="flex items-center gap-2 mb-2"><input type="checkbox" name="binance_enabled" checked={settings.binance_enabled} onChange={handleChange} className="w-4 h-4"/><label className="text-sm font-bold">Binance</label></div>
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="text" name="binance_id" value={settings.binance_id} onChange={handleChange} placeholder="Pay ID" className="px-2 py-1 border rounded text-sm"/>
+                  <input type="text" name="binance_name" value={settings.binance_name} onChange={handleChange} placeholder="Account Name" className="px-2 py-1 border rounded text-sm"/>
+                </div>
+              </div>
+
+              {/* Bank (UPDATED FIELDS) */}
+              <div className="p-4 border rounded-xl">
+                <div className="flex items-center gap-2 mb-2"><input type="checkbox" name="bank_enabled" checked={settings.bank_enabled} onChange={handleChange} className="w-4 h-4"/><label className="text-sm font-bold">Bank Transfer</label></div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <input type="text" name="bank_account_name" value={settings.bank_account_name} onChange={handleChange} placeholder="Account Holder Name" className="px-2 py-1 border rounded text-sm"/>
+                  <input type="text" name="bank_name" value={settings.bank_name} onChange={handleChange} placeholder="Bank Name" className="px-2 py-1 border rounded text-sm"/>
+                  <input type="text" name="bank_branch" value={settings.bank_branch} onChange={handleChange} placeholder="Branch" className="px-2 py-1 border rounded text-sm"/>
+                  <input type="text" name="bank_account_number" value={settings.bank_account_number} onChange={handleChange} placeholder="Account Number" className="px-2 py-1 border rounded text-sm"/>
+                  <input type="text" name="bank_iban" value={settings.bank_iban} onChange={handleChange} placeholder="IBAN (Optional)" className="px-2 py-1 border rounded text-sm sm:col-span-2"/>
+                </div>
+              </div>
             </div>
           </div>
+
         </div>
       </div>
     </div>
