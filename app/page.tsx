@@ -1,14 +1,27 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { FileText, Sparkles, ArrowRight, Mail, Briefcase } from 'lucide-react';
+import { FileText, Sparkles, ArrowRight, Mail, Briefcase, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import Navbar from '@/components/Navbar';
+import useEmblaCarousel from 'embla-carousel-react';
+import Autoplay from 'embla-carousel-autoplay';
 
 export default function Home() {
   const [settings, setSettings] = useState<any>(null);
+  
+  // Embla Carousel Setup for Hero Slider
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true }, [Autoplay({ delay: 4000, stopOnInteraction: false })]);
+  
+  const scrollPrev = useCallback(() => {
+    if (emblaApi) emblaApi.scrollPrev();
+  }, [emblaApi]);
+
+  const scrollNext = useCallback(() => {
+    if (emblaApi) emblaApi.scrollNext();
+  }, [emblaApi]);
 
   useEffect(() => {
     fetchSettings();
@@ -16,18 +29,28 @@ export default function Home() {
 
   const fetchSettings = async () => {
     const { data } = await supabase.from('app_settings').select('*').eq('id', 1).single();
-    if (data) setSettings(data);
+    if (data) {
+      setSettings(data);
+      // Update Autoplay delay if API exists
+      if (emblaApi) {
+        const autoplay = emblaApi.plugins().autoplay;
+        if (autoplay) autoplay.options.delay = data.hero_slider_interval || 4000;
+      }
+    }
   };
 
   if (!settings) return <div className="min-h-screen bg-[#0B1120]" />;
 
+  // Fallback if no images uploaded
+  const heroImages = settings.hero_images && settings.hero_images.length > 0 
+    ? settings.hero_images 
+    : ['/hero.png']; // Default fallback
+
   return (
     <div className="min-h-screen bg-[#0B1120] text-white flex flex-col font-sans selection:bg-blue-500 selection:text-white">
       
-      {/* Navbar Component - Login/Logout ka kaam yeh khud handle karega */}
       <Navbar />
 
-      {/* Hero Section */}
       <main className="flex-grow relative overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-blue-600/30 blur-[120px] rounded-full pointer-events-none"></div>
         <div className="absolute top-40 right-0 w-[400px] h-[400px] bg-purple-600/20 blur-[100px] rounded-full pointer-events-none"></div>
@@ -51,9 +74,38 @@ export default function Home() {
             </div>
           </div>
 
+          {/* HERO CAROUSEL */}
           <div className="flex-1 relative w-full max-w-lg lg:max-w-none">
             <div className="relative rounded-3xl overflow-hidden border border-white/10 bg-white/5 backdrop-blur-xl shadow-2xl p-2 transform rotate-2 hover:rotate-0 transition-transform duration-500">
-                <Image src="/hero.png" alt="CVNova Professional Resume Builder" width={800} height={600} className="rounded-2xl w-full h-auto object-cover" priority />
+              
+              <div className="overflow-hidden rounded-2xl relative group" ref={emblaRef}>
+                <div className="flex">
+                  {heroImages.map((img: string, index: number) => (
+                    <div key={index} className="flex-[0_0_100%] min-w-0 relative aspect-[4/3]">
+                      <Image 
+                        src={img} 
+                        alt={`CVNova Slide ${index + 1}`} 
+                        fill 
+                        className="object-cover" 
+                        priority={index === 0} 
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Slider Buttons (Show on hover) */}
+                {heroImages.length > 1 && (
+                  <>
+                    <button onClick={scrollPrev} className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition z-10">
+                      <ChevronLeft size={20} />
+                    </button>
+                    <button onClick={scrollNext} className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition z-10">
+                      <ChevronRight size={20} />
+                    </button>
+                  </>
+                )}
+              </div>
+
             </div>
           </div>
         </section>
@@ -68,7 +120,7 @@ export default function Home() {
               <Link href="/builder" className="group bg-white/5 p-8 rounded-3xl border border-white/10 hover:bg-white/10 transition duration-300 cursor-pointer">
                 <div className="w-14 h-14 bg-blue-500/20 rounded-2xl flex items-center justify-center mb-6 border border-blue-500/30 group-hover:scale-110 transition"><FileText className="text-blue-400" size={28} /></div>
                 <h3 className="text-xl font-bold mb-3">CV Builder</h3>
-                <p className="text-gray-400 leading-relaxed">Create a professional resume with 16+ modern templates and real-time preview.</p>
+                <p className="text-gray-400 leading-relaxed">Create a professional resume with 19+ modern templates and real-time preview.</p>
               </Link>
               <Link href="/cover-letter" className="group bg-white/5 p-8 rounded-3xl border border-white/10 hover:bg-white/10 transition duration-300 cursor-pointer">
                 <div className="w-14 h-14 bg-green-500/20 rounded-2xl flex items-center justify-center mb-6 border border-green-500/30 group-hover:scale-110 transition"><Mail className="text-green-400" size={28} /></div>
@@ -84,7 +136,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Pricing Section */}
+        {/* PRICING SECTION - Dynamic from DB */}
         <section id="pricing" className="py-24 relative z-10 bg-black/20">
           <div className="max-w-7xl mx-auto px-6">
             <div className="text-center mb-16">
@@ -101,7 +153,7 @@ export default function Home() {
                 <Link href="/payment" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">Upgrade</Link>
               </div>
 
-              {/* 6 Months (Popular) */}
+              {/* 6 Months */}
               <div className="bg-gradient-to-b from-blue-900/40 to-purple-900/40 p-8 rounded-3xl border border-blue-500/50 transition duration-300 relative transform lg:-translate-y-4 shadow-[0_0_30px_rgba(59,130,246,0.2)]">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-bold px-4 py-1 rounded-full">MOST POPULAR</div>
                 <h3 className="text-xl font-bold mb-2">6 Months</h3>
@@ -130,7 +182,6 @@ export default function Home() {
         </section>
       </main>
 
-      {/* Footer */}
       <footer className="border-t border-white/10 py-8 text-center text-sm text-gray-500 relative z-10">
         <p>© 2026 CVNova. All rights reserved.</p>
       </footer>

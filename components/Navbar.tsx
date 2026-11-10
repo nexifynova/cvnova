@@ -5,10 +5,12 @@ import Link from 'next/link';
 import { FileText, LogOut, LayoutDashboard, ChevronDown, User } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 export default function Navbar() {
   const [user, setUser] = useState<any>(null);
   const [isHovered, setIsHovered] = useState(false);
+  const [settings, setSettings] = useState<any>(null);
   const router = useRouter();
   const hoverTimeout = useRef<NodeJS.Timeout | null>(null);
 
@@ -18,6 +20,13 @@ export default function Navbar() {
       setUser(session?.user || null);
     };
     checkUser();
+
+    // Fetch dynamic settings for Logo & Menu
+    const fetchSettings = async () => {
+      const { data } = await supabase.from('app_settings').select('site_logo_url, nav_menu').eq('id', 1).single();
+      if (data) setSettings(data);
+    };
+    fetchSettings();
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null);
@@ -42,30 +51,51 @@ export default function Navbar() {
     }, 150); 
   };
 
+  // Default menu (agar database se load na ho)
+  const defaultMenu = [
+    { label: 'CV Builder', href: '/builder', visible: true },
+    { label: 'Cover Letter', href: '/cover-letter', visible: true },
+    { label: 'Experience Letter', href: '/experience-letter', visible: true },
+    { label: 'Contact Us', href: '/contact', visible: true },
+    { label: 'Pricing', href: '/#pricing', visible: true },
+  ];
+
+  const activeMenu = settings?.nav_menu && settings.nav_menu.length > 0 
+    ? settings.nav_menu.filter((m: any) => m.visible) 
+    : defaultMenu;
+
   return (
     <nav className="bg-[#0B1120]/80 backdrop-blur-md border-b border-white/10 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+      
+      {/* LOGO */}
       <Link href="/" className="flex items-center gap-2">
-        <div className="bg-gradient-to-tr from-blue-500 to-purple-600 p-2 rounded-xl">
-          <FileText className="text-white" size={20} />
-        </div>
-        <span className="text-2xl font-extrabold tracking-tight text-white">CVNova</span>
+        {settings?.site_logo_url ? (
+          <div className="h-10 w-auto relative">
+            <img src={settings.site_logo_url} alt="CVNova Logo" className="h-10 w-auto object-contain" />
+          </div>
+        ) : (
+          <>
+            <div className="bg-gradient-to-tr from-blue-500 to-purple-600 p-2 rounded-xl">
+              <FileText className="text-white" size={20} />
+            </div>
+            <span className="text-2xl font-extrabold tracking-tight text-white">CVNova</span>
+          </>
+        )}
       </Link>
       
+      {/* MENU */}
       <div className="hidden md:flex gap-6 text-sm font-medium text-gray-300">
-        <Link href="/builder" className="hover:text-white transition">CV Builder</Link>
-        <Link href="/cover-letter" className="hover:text-white transition">Cover Letter</Link>
-        <Link href="/experience-letter" className="hover:text-white transition">Experience Letter</Link>
-        <Link href="/contact" className="hover:text-white transition">Contact Us</Link>
-        <Link href="/#pricing" className="hover:text-white transition">Pricing</Link>
+        {activeMenu.map((item: any, idx: number) => (
+          <Link key={idx} href={item.href} className="hover:text-white transition">
+            {item.label}
+          </Link>
+        ))}
       </div>
 
+      {/* USER ACTIONS */}
       <div className="flex gap-4 items-center">
         {user ? (
-          <div 
-            className="relative py-2" 
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
-          >
+          <div className="relative py-2" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
             <button className="flex items-center gap-2 bg-white/10 text-white px-4 py-2 rounded-full border border-white/20 hover:bg-white/20 transition">
               <User size={18} />
               <span className="text-sm font-semibold truncate max-w-[100px]">{user.email?.split('@')[0]}</span>
