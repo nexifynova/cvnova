@@ -4,17 +4,19 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import { FileText, Loader2, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { FileText, Loader2, ArrowLeft, Eye, EyeOff, AlertCircle } from 'lucide-react';
 
 export default function Login() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({ email: '', password: '' });
+  const [errorMsg, setErrorMsg] = useState('');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMsg('');
 
     const { error } = await supabase.auth.signInWithPassword({
       email: formData.email,
@@ -22,7 +24,13 @@ export default function Login() {
     });
 
     if (error) {
-      alert(error.message);
+      if (error.message.includes('Email not confirmed')) {
+        setErrorMsg("Aapne abhi tak apni email confirm nahi ki. Meharbani farma kar apni email inbox (ya spam folder) check karein aur 'Confirm Email' wale link par click karein.");
+      } else if (error.message.includes('Invalid login credentials')) {
+        setErrorMsg("Ghalat email ya password. Agar password bhool gaye hain to neeche 'Forgot Password?' par click karein.");
+      } else {
+        setErrorMsg(error.message);
+      }
       setLoading(false);
       return;
     }
@@ -44,10 +52,24 @@ export default function Login() {
         </div>
         <h1 className="text-2xl font-bold text-gray-900 mb-6 text-center">Welcome Back</h1>
         
+        {errorMsg && (
+          <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl mb-4 text-sm flex items-start gap-2">
+            <AlertCircle size={18} className="shrink-0 mt-0.5" />
+            <p>{errorMsg}</p>
+          </div>
+        )}
+
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
-            <input type="email" required value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full px-4 py-3 rounded-xl border text-gray-900" />
+            <input 
+              type="email" 
+              required 
+              value={formData.email} 
+              onChange={(e) => setFormData({...formData, email: e.target.value})} 
+              className="w-full px-4 py-3 rounded-xl border text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" 
+              placeholder="you@example.com"
+            />
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">Password</label>
@@ -57,7 +79,8 @@ export default function Login() {
                 required 
                 value={formData.password} 
                 onChange={(e) => setFormData({...formData, password: e.target.value})} 
-                className="w-full px-4 py-3 rounded-xl border text-gray-900 pr-12" 
+                className="w-full px-4 py-3 rounded-xl border text-gray-900 pr-12 focus:ring-2 focus:ring-blue-500 outline-none" 
+                placeholder="••••••••"
               />
               <button 
                 type="button" 
@@ -68,12 +91,19 @@ export default function Login() {
               </button>
             </div>
           </div>
+          
+          <div className="flex justify-end">
+            <Link href="/forgot-password" className="text-sm text-blue-600 font-semibold hover:underline">
+              Forgot Password?
+            </Link>
+          </div>
+
           <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-bold hover:from-blue-500 hover:to-purple-500 transition disabled:opacity-50">
             {loading ? <Loader2 className="animate-spin mx-auto" /> : 'Log In'}
           </button>
         </form>
         
-        <p className="text-center text-sm text-gray-500 mt-4">
+        <p className="text-center text-sm text-gray-500 mt-6">
           Don't have an account? <Link href="/signup" className="text-blue-600 font-bold hover:underline">Sign Up</Link>
         </p>
       </div>

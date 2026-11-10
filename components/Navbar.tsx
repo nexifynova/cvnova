@@ -31,7 +31,6 @@ export default function Navbar() {
     router.push('/');
   };
 
-  // Mouse enter/leave handle karne ka behtar tareeqa
   const handleMouseEnter = () => {
     if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
     setIsHovered(true);
@@ -40,7 +39,7 @@ export default function Navbar() {
   const handleMouseLeave = () => {
     hoverTimeout.current = setTimeout(() => {
       setIsHovered(false);
-    }, 150); // 150ms delay taake mouse dropdown tak pohanch sake
+    }, 150); 
   };
 
   return (
@@ -56,13 +55,14 @@ export default function Navbar() {
         <Link href="/builder" className="hover:text-white transition">CV Builder</Link>
         <Link href="/cover-letter" className="hover:text-white transition">Cover Letter</Link>
         <Link href="/experience-letter" className="hover:text-white transition">Experience Letter</Link>
+        <Link href="/contact" className="hover:text-white transition">Contact Us</Link>
         <Link href="/#pricing" className="hover:text-white transition">Pricing</Link>
       </div>
 
       <div className="flex gap-4 items-center">
         {user ? (
           <div 
-            className="relative py-2" // Padding added to remove visual gap
+            className="relative py-2" 
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
           >

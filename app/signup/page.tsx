@@ -4,12 +4,13 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import { FileText, Loader2, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { FileText, Loader2, ArrowLeft, Eye, EyeOff, Mail, CheckCircle } from 'lucide-react';
 
 export default function Signup() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [formData, setFormData] = useState({ fullName: '', email: '', password: '', confirmPassword: '' });
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -25,6 +26,9 @@ export default function Signup() {
     const { data, error } = await supabase.auth.signUp({
       email: formData.email,
       password: formData.password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/confirm`,
+      }
     });
 
     if (error) {
@@ -37,11 +41,32 @@ export default function Signup() {
       await supabase.from('user_profiles').insert([
         { id: data.user.id, full_name: formData.fullName, email: formData.email }
       ]);
-      alert("Account Created Successfully! Please Login.");
-      router.push('/login');
+      setIsSuccess(true);
     }
     setLoading(false);
   };
+
+  if (isSuccess) {
+    return (
+      <div className="min-h-screen bg-[#0B1120] flex items-center justify-center px-4 relative">
+        <div className="bg-white/5 border border-white/10 p-10 rounded-3xl max-w-md w-full text-center shadow-2xl backdrop-blur-sm">
+          <CheckCircle className="text-green-500 mx-auto mb-6" size={64} />
+          <h2 className="text-2xl font-bold text-white mb-4">Verify Your Email</h2>
+          <p className="text-gray-400 mb-6 leading-relaxed">
+            Aik confirmation link <span className="text-white font-bold">{formData.email}</span> par bhej diya gaya hai. 
+            Meharbani farma kar apni email inbox (aur spam folder) check karein aur account activate karne ke liye link par click karein.
+          </p>
+          <div className="bg-black/30 p-4 rounded-xl mb-6">
+             <p className="text-sm text-gray-400 mb-1">Need help? Contact us:</p>
+             <p className="text-sm text-blue-400 font-mono">support@nexifynova.co.uk</p>
+          </div>
+          <Link href="/login" className="inline-block bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-xl font-bold hover:from-blue-500 hover:to-purple-500 transition shadow-lg">
+            Go to Login
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0B1120] flex items-center justify-center px-4 relative">
@@ -59,11 +84,25 @@ export default function Signup() {
         <form onSubmit={handleSignup} className="space-y-4">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">Full Name</label>
-            <input type="text" required value={formData.fullName} onChange={(e) => setFormData({...formData, fullName: e.target.value})} className="w-full px-4 py-3 rounded-xl border text-gray-900" />
+            <input 
+              type="text" 
+              required 
+              value={formData.fullName} 
+              onChange={(e) => setFormData({...formData, fullName: e.target.value})} 
+              className="w-full px-4 py-3 rounded-xl border text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" 
+              placeholder="John Doe"
+            />
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
-            <input type="email" required value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full px-4 py-3 rounded-xl border text-gray-900" />
+            <input 
+              type="email" 
+              required 
+              value={formData.email} 
+              onChange={(e) => setFormData({...formData, email: e.target.value})} 
+              className="w-full px-4 py-3 rounded-xl border text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" 
+              placeholder="you@example.com"
+            />
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">Password</label>
@@ -73,7 +112,8 @@ export default function Signup() {
                 required 
                 value={formData.password} 
                 onChange={(e) => setFormData({...formData, password: e.target.value})} 
-                className="w-full px-4 py-3 rounded-xl border text-gray-900 pr-12" 
+                className="w-full px-4 py-3 rounded-xl border text-gray-900 pr-12 focus:ring-2 focus:ring-blue-500 outline-none" 
+                placeholder="••••••••"
               />
               <button 
                 type="button" 
@@ -86,22 +126,21 @@ export default function Signup() {
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">Confirm Password</label>
-            <div className="relative">
-              <input 
-                type={showPassword ? "text" : "password"} 
-                required 
-                value={formData.confirmPassword} 
-                onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} 
-                className="w-full px-4 py-3 rounded-xl border text-gray-900 pr-12" 
-              />
-            </div>
+            <input 
+              type={showPassword ? "text" : "password"} 
+              required 
+              value={formData.confirmPassword} 
+              onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} 
+              className="w-full px-4 py-3 rounded-xl border text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" 
+              placeholder="••••••••"
+            />
           </div>
-          <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-bold hover:from-blue-500 hover:to-purple-500 transition disabled:opacity-50">
+          <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-bold hover:from-blue-500 hover:to-purple-500 transition disabled:opacity-50 mt-2">
             {loading ? <Loader2 className="animate-spin mx-auto" /> : 'Sign Up'}
           </button>
         </form>
         
-        <p className="text-center text-sm text-gray-500 mt-4">
+        <p className="text-center text-sm text-gray-500 mt-6">
           Already have an account? <Link href="/login" className="text-blue-600 font-bold hover:underline">Login</Link>
         </p>
       </div>
