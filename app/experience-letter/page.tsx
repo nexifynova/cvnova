@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ArrowLeft, Printer, Download, Loader2, RefreshCw, Info } from 'lucide-react';
 import Link from 'next/link';
 import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount } from '@/lib/supabase';
+import { downloadAsWord, downloadAsPDF } from '@/lib/download-utils';
 
 // Demo Data
 const dummyData = {
@@ -144,17 +145,26 @@ export default function ExperienceLetter() {
           </div>
 
           <div className="flex gap-4 pt-4 border-t border-gray-200">
-            <button type="button" onClick={handleAction} disabled={loading} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-4 py-3 rounded-xl hover:bg-gray-800 font-bold text-sm transition disabled:opacity-50">
-              {loading ? <Loader2 size={18} className="animate-spin" /> : <Printer size={18} />} Print Letter
+            <button 
+              type="button" 
+              onClick={handleAction} 
+              disabled={loading} 
+              className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-4 py-3 rounded-xl hover:bg-gray-800 font-bold text-sm transition disabled:opacity-50"
+            >
+              {loading ? <Loader2 size={18} className="animate-spin" /> : <Printer size={18} />} Print / PDF
             </button>
-            <button type="button" onClick={handleAction} disabled={loading} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 font-bold text-sm transition disabled:opacity-50">
-              {loading ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />} Download PDF
+            <button 
+              type="button" 
+              onClick={() => downloadAsWord('exp-preview', formData.employeeName || 'Experience-Letter')} 
+              className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 font-bold text-sm transition"
+            >
+              <Download size={18} /> Word Download
             </button>
           </div>
         </div>
 
         {/* RIGHT SIDE: LIVE PREVIEW */}
-        <div className="bg-white shadow-2xl rounded-xl p-12 border border-gray-200 print:shadow-none print:border-none print:p-0 print-area h-fit min-h-[A4]">
+        <div id="exp-preview" className="bg-white shadow-2xl rounded-xl p-12 border border-gray-200 print:shadow-none print:border-none print:p-0 print-area h-fit min-h-[A4]">
           
           {template === 'modern' && (
             <div>

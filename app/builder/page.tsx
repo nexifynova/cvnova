@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { Sparkles, ArrowLeft, Download, Printer, Plus, Trash2, Loader2, Camera, Upload, RefreshCw, Info } from 'lucide-react';
 import Link from 'next/link';
 import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount } from '@/lib/supabase';
+import { downloadAsWord, downloadAsPDF } from '@/lib/download-utils';
 
 const dummyData = {
   fullName: 'John Doe',
@@ -382,17 +383,25 @@ export default function Builder() {
           </div>
 
           <div className="flex gap-4 pt-4 border-t border-gray-200">
-            <button type="button" onClick={handleAction} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-4 py-3 rounded-xl hover:bg-gray-800 font-bold text-sm transition">
-              <Printer size={18} /> Print CV
+            <button 
+              type="button" 
+              onClick={handleAction} 
+              className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-4 py-3 rounded-xl hover:bg-gray-800 font-bold text-sm transition"
+            >
+              <Printer size={18} /> Print / PDF
             </button>
-            <button type="button" onClick={handleAction} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 font-bold text-sm transition">
-              <Download size={18} /> Download
+            <button 
+              type="button" 
+              onClick={() => downloadAsWord('cv-preview', formData.fullName || 'CV')} 
+              className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 font-bold text-sm transition"
+            >
+              <Download size={18} /> Word Download
             </button>
           </div>
         </div>
 
         {/* RIGHT SIDE: LIVE CV PREVIEW */}
-        <div className="bg-white shadow-2xl rounded-xl border border-gray-200 print:shadow-none print:border-none print:p-0 print-area h-fit min-h-[A4] overflow-hidden">
+        <div id="cv-preview" className="bg-white shadow-2xl rounded-xl border border-gray-200 print:shadow-none print:border-none print:p-0 print-area h-fit min-h-[A4] overflow-hidden">
           
           {/* TEMPLATE 1: CLASSIC GRAY */}
           {template === 'classicgray' && (
