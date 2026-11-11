@@ -55,7 +55,6 @@ export default function PaymentPage() {
     setLoading(true);
 
     try {
-      // 1. Upload Slip to Supabase Storage
       const fileExt = formData.slipFile.name.split('.').pop();
       const fileName = `${user.id}-${Date.now()}.${fileExt}`;
       const { error: uploadError } = await supabase.storage
@@ -64,10 +63,8 @@ export default function PaymentPage() {
 
       if (uploadError) throw uploadError;
 
-      // 2. Get Public URL
       const { data: urlData } = supabase.storage.from('payment-slips').getPublicUrl(fileName);
 
-      // 3. Save Record in DB
       const { error: dbError } = await supabase.from('payments').insert([{
         user_id: user.id,
         user_email: user.email,
@@ -118,7 +115,6 @@ export default function PaymentPage() {
           <p className="text-gray-400 text-sm mb-6">Payment slip upload karein aur admin approval ka intezar karein.</p>
           
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Package Select */}
             <div>
               <label className="block text-sm font-semibold text-gray-300 mb-2">Select Package</label>
               <select value={formData.packageType} onChange={handlePackageChange} className="w-full bg-[#0B1120] border border-white/20 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500">
@@ -129,7 +125,6 @@ export default function PaymentPage() {
               </select>
             </div>
 
-            {/* Payment Details Box */}
             <div className="bg-blue-900/20 border border-blue-500/30 p-4 rounded-xl text-sm space-y-2">
               <p className="font-bold text-blue-300">Amount to Pay: ${formData.amount}</p>
               {settings?.easy_paisa_enabled && (
@@ -147,7 +142,6 @@ export default function PaymentPage() {
               )}
             </div>
 
-            {/* Method Select */}
             <div>
               <label className="block text-sm font-semibold text-gray-300 mb-2">Select Payment Method Used</label>
               <select value={formData.paymentMethod} onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})} className="w-full bg-[#0B1120] border border-white/20 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500">
@@ -157,13 +151,11 @@ export default function PaymentPage() {
               </select>
             </div>
 
-            {/* Transaction ID */}
             <div>
               <label className="block text-sm font-semibold text-gray-300 mb-2">Transaction ID / TID (Optional)</label>
               <input type="text" placeholder="e.g. 123456789" value={formData.transactionId} onChange={(e) => setFormData({...formData, transactionId: e.target.value})} className="w-full bg-[#0B1120] border border-white/20 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500" />
             </div>
 
-            {/* File Upload */}
             <div>
               <label className="block text-sm font-semibold text-gray-300 mb-2">Upload Payment Slip (Screenshot)</label>
               <div className="border-2 border-dashed border-white/20 rounded-xl p-6 text-center hover:border-blue-500 transition relative">
@@ -173,7 +165,6 @@ export default function PaymentPage() {
               </div>
             </div>
 
-            {/* Approval Info */}
             <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-xl">
               <p className="text-yellow-300 text-sm font-bold flex items-center gap-2 mb-1"><AlertCircle size={16}/> Important Note:</p>
               <p className="text-gray-400 text-xs">Payment submit karne ke baad admin aapki slip ko <b>30 minutes se 24 hours</b> ke andar verify karega. Approve hone par aapka account automatic Pro mein convert ho jayega aur aap unlimited documents bana sakenge.</p>

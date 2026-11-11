@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { FileText, Mail, Briefcase, ExternalLink, Phone, Settings, Users, Trash2, Loader2, ShieldCheck } from 'lucide-react';
+import { FileText, Mail, Briefcase, ExternalLink, Phone, Settings, Users, Trash2, Loader2, ShieldCheck, CreditCard } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AdminPanel() {
@@ -72,10 +72,13 @@ export default function AdminPanel() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-8 font-sans">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <h1 className="text-3xl font-bold text-gray-900">CVNova Admin Panel</h1>
         
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <Link href="/admin/payments" className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-blue-600 bg-white px-4 py-2 rounded-lg border shadow-sm transition">
+            <CreditCard size={16} /> Payments
+          </Link>
           <Link href="/admin/settings" className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-blue-600 bg-white px-4 py-2 rounded-lg border shadow-sm transition">
             <Settings size={16} /> Settings
           </Link>

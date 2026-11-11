@@ -10,7 +10,7 @@ export default function AdminPayments() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filter, setFilter] = useState('all'); // all, pending, approved, rejected
+  const [filter, setFilter] = useState('all');
 
   useEffect(() => {
     fetchPayments();
@@ -28,7 +28,6 @@ export default function AdminPayments() {
     setProcessing(payment.id);
 
     try {
-      // 1. Update Payment Status
       const { error: payError } = await supabase
         .from('payments')
         .update({ status, approved_at: new Date().toISOString() })
@@ -36,7 +35,6 @@ export default function AdminPayments() {
 
       if (payError) throw payError;
 
-      // 2. Agar Approve hua, to User Profile Update karein
       if (status === 'approved') {
         const expiryDate = new Date();
         if (payment.package_type === '3 Months') expiryDate.setMonth(expiryDate.getMonth() + 3);
@@ -47,14 +45,14 @@ export default function AdminPayments() {
         const { error: userError } = await supabase.from('user_profiles').update({
           subscription_type: payment.package_type,
           subscription_expiry: expiryDate.toISOString(),
-          free_cv_count: 0 // Reset count on upgrade
+          free_cv_count: 0
         }).eq('id', payment.user_id);
         
         if (userError) throw userError;
       }
 
-      alert(`Payment ${status} successfully! User's account has been ${status === 'approved' ? 'upgraded to ' + payment.package_type : 'not changed'}.`);
-      fetchPayments(); // Refresh
+      alert(`Payment ${status} successfully! User's account has been updated.`);
+      fetchPayments();
     } catch (error: any) {
       alert("Error: " + error.message);
     } finally {
@@ -75,7 +73,6 @@ export default function AdminPayments() {
     <div className="min-h-screen bg-gray-50 p-8 font-sans">
       <div className="max-w-7xl mx-auto">
         
-        {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <Link href="/admin" className="p-2 bg-white rounded-lg shadow-sm hover:bg-gray-100 transition">
             <ArrowLeft size={20} />
@@ -86,7 +83,7 @@ export default function AdminPayments() {
           </div>
         </div>
 
-        {/* Stats & Filters */}
+        {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white p-4 rounded-xl border shadow-sm">
             <p className="text-xs text-gray-500">Total Requests</p>
