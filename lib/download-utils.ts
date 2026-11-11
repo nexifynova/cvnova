@@ -1,7 +1,6 @@
 import { saveAs } from 'file-saver';
 import htmlDocx from 'html-docx-js/dist/html-docx';
 
-// Function to download HTML as Word Document
 export const downloadAsWord = (elementId: string, fileName: string) => {
   const element = document.getElementById(elementId);
   if (!element) {
@@ -9,26 +8,27 @@ export const downloadAsWord = (elementId: string, fileName: string) => {
     return;
   }
 
-  // Basic styling for Word
+  // Word document ke liye proper CSS
   const styles = `
     <style>
-      @page { size: A4; margin: 0.75in; }
-      body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: #222; }
-      h1 { font-size: 22pt; color: #111; margin-bottom: 6pt; }
-      h2 { font-size: 14pt; color: #333; margin-top: 16pt; border-bottom: 1px solid #ccc; padding-bottom: 4pt; }
-      h3 { font-size: 12pt; color: #222; margin-top: 10pt; }
-      p { margin-bottom: 8pt; }
-      ul { margin-top: 4pt; margin-bottom: 8pt; padding-left: 18pt; }
-      li { margin-bottom: 3pt; }
+      @page { size: A4; margin: 0.5in; }
+      body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.4; color: #222; }
+      h1 { font-size: 24pt; color: #111; margin-bottom: 8pt; font-weight: bold; }
+      h2 { font-size: 14pt; color: #333; margin-top: 16pt; margin-bottom: 8pt; border-bottom: 1px solid #ccc; padding-bottom: 4pt; text-transform: uppercase; }
+      h3 { font-size: 12pt; color: #222; margin-top: 10pt; margin-bottom: 4pt; }
+      p { margin-bottom: 6pt; }
+      ul { margin-top: 4pt; margin-bottom: 8pt; padding-left: 20pt; }
+      li { margin-bottom: 2pt; }
       .avoid-break { page-break-inside: avoid; }
       table { border-collapse: collapse; width: 100%; }
+      /* Layout fixes for specific templates */
+      .flex { display: flex; }
+      .grid { display: block; } /* Fallback for grids in Word */
     </style>
   `;
 
-  // Get the HTML content
   const content = element.innerHTML;
 
-  // Combine styles and content
   const fullHtml = `
     <!DOCTYPE html>
     <html>
@@ -43,7 +43,6 @@ export const downloadAsWord = (elementId: string, fileName: string) => {
     </html>
   `;
 
-  // Convert to blob and download
   try {
     const converted = htmlDocx.asBlob(fullHtml, {
       orientation: 'portrait',
@@ -56,7 +55,6 @@ export const downloadAsWord = (elementId: string, fileName: string) => {
   }
 };
 
-// Function to trigger print (for PDF)
 export const downloadAsPDF = () => {
   window.print();
 };

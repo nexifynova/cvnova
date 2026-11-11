@@ -135,7 +135,7 @@ export default function Builder() {
     }
   };
 
-  const handleAction = async () => {
+    const handleAction = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     let userEmail = formData.email;
     let isLoggedIn = false;
@@ -151,6 +151,7 @@ export default function Builder() {
       }
     }
 
+    // 1. Pehle Document Record Save karein
     await saveDocumentRecord({
       documentType: 'CV',
       templateName: template,
@@ -160,8 +161,15 @@ export default function Builder() {
       fullData: formData,
     });
 
-    if (isLoggedIn) await incrementUserCount(userEmail);
-    window.print();
+    // 2. Phir Counter Update karein
+    if (isLoggedIn) {
+      await incrementUserCount(userEmail);
+    }
+
+    // 3. Thora sa wait karein taake DB update ho jaye, phir Print karein
+    setTimeout(() => {
+      window.print();
+    }, 500); 
   };
 
   return (

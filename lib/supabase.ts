@@ -68,7 +68,7 @@ export const checkUserLimit = async (_userEmail?: string) => {
         .update({ subscription_type: 'free', subscription_expiry: null })
         .eq('id', user.id);
 
-      const limit = settings.free_cv_limit || 3;
+      const limit = settings.free_cv_limit || 1;
       const used = profile.free_cv_count || 0;
       if (used >= limit) {
         return { allowed: false, isPro: false, reason: 'free_limit_reached' as const };
@@ -78,7 +78,7 @@ export const checkUserLimit = async (_userEmail?: string) => {
     return { allowed: true, isPro: true, reason: 'pro_no_expiry' as const };
   }
 
-  const limit = settings.free_cv_limit || 3;
+  const limit = settings.free_cv_limit || 1;
   const used = profile.free_cv_count || 0;
   if (used >= limit) {
     return { allowed: false, isPro: false, reason: 'free_limit_reached' as const };
@@ -86,11 +86,13 @@ export const checkUserLimit = async (_userEmail?: string) => {
   return { allowed: true, isPro: false, reason: 'free' as const };
 };
 
-// Increment Count
+// Increment Count - Fixed Version
 export const incrementUserCount = async (_userEmail?: string) => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
+  // Directly increment using RPC (Better approach if you have a function)
+  // For now, let's fetch and update
   const { data: profile, error: fetchError } = await supabase
     .from('user_profiles')
     .select('free_cv_count')
