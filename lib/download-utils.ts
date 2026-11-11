@@ -1,4 +1,5 @@
 import { saveAs } from 'file-saver';
+import htmlDocx from 'html-docx-js/dist/html-docx';
 
 // Function to download HTML as Word Document
 export const downloadAsWord = (elementId: string, fileName: string) => {
@@ -11,13 +12,16 @@ export const downloadAsWord = (elementId: string, fileName: string) => {
   // Basic styling for Word
   const styles = `
     <style>
-      body { font-family: Arial, sans-serif; font-size: 12pt; line-height: 1.5; }
-      h1 { font-size: 24pt; color: #333; }
-      h2 { font-size: 16pt; color: #444; margin-top: 20px; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
-      h3 { font-size: 14pt; color: #222; }
-      p { margin-bottom: 10px; }
-      ul { margin-top: 5px; margin-bottom: 10px; }
+      @page { size: A4; margin: 0.75in; }
+      body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: #222; }
+      h1 { font-size: 22pt; color: #111; margin-bottom: 6pt; }
+      h2 { font-size: 14pt; color: #333; margin-top: 16pt; border-bottom: 1px solid #ccc; padding-bottom: 4pt; }
+      h3 { font-size: 12pt; color: #222; margin-top: 10pt; }
+      p { margin-bottom: 8pt; }
+      ul { margin-top: 4pt; margin-bottom: 8pt; padding-left: 18pt; }
+      li { margin-bottom: 3pt; }
       .avoid-break { page-break-inside: avoid; }
+      table { border-collapse: collapse; width: 100%; }
     </style>
   `;
 
@@ -26,6 +30,7 @@ export const downloadAsWord = (elementId: string, fileName: string) => {
 
   // Combine styles and content
   const fullHtml = `
+    <!DOCTYPE html>
     <html>
       <head>
         <meta charset="utf-8">
@@ -40,12 +45,14 @@ export const downloadAsWord = (elementId: string, fileName: string) => {
 
   // Convert to blob and download
   try {
-    // @ts-ignore (html-docx-js lacks proper types)
-    const converted = window.htmlDocx.asBlob(fullHtml, { orientation: 'portrait', margins: { top: 720, right: 720, bottom: 720, left: 720 } });
+    const converted = htmlDocx.asBlob(fullHtml, {
+      orientation: 'portrait',
+      margins: { top: 720, right: 720, bottom: 720, left: 720 },
+    });
     saveAs(converted, `${fileName}.docx`);
   } catch (error) {
     console.error("Word generation error:", error);
-    alert("Failed to generate Word document. Please try PDF.");
+    alert("Failed to generate Word document. Please try PDF instead.");
   }
 };
 

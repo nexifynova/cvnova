@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { Sparkles, ArrowLeft, Download, Printer, Plus, Trash2, Loader2, Camera, Upload, RefreshCw, Info } from 'lucide-react';
 import Link from 'next/link';
 import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount } from '@/lib/supabase';
-import { downloadAsWord, downloadAsPDF } from '@/lib/download-utils';
+import { downloadAsWord } from '@/lib/download-utils';
 
 const dummyData = {
   fullName: 'John Doe',
@@ -42,12 +42,12 @@ const emptyData = {
 };
 
 export default function Builder() {
-  const [formData, setFormData] = useState(dummyData); 
-  const [template, setTemplate] = useState('classicgray'); 
+  const [formData, setFormData] = useState(dummyData);
+  const [template, setTemplate] = useState('classicgray');
   const [isGenerating, setIsGenerating] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingCert, setUploadingCert] = useState<number | null>(null);
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const certInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -56,7 +56,7 @@ export default function Builder() {
   };
 
   const resetForm = () => {
-    if(confirm("Are you sure you want to clear all data and start fresh?")) {
+    if (confirm("Are you sure you want to clear all data and start fresh?")) {
       setFormData(emptyData);
     }
   };
@@ -82,16 +82,13 @@ export default function Builder() {
   const handleCertUpload = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
     setUploadingCert(index);
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `cert-${Date.now()}.${fileExt}`;
       const { error } = await supabase.storage.from('certificates').upload(fileName, file);
       if (error) throw error;
-      
       const { data } = await supabase.storage.from('certificates').getPublicUrl(fileName);
-      
       const newCert = [...formData.certifications];
       newCert[index].fileUrl = data.publicUrl;
       setFormData({ ...formData, certifications: newCert });
@@ -149,7 +146,7 @@ export default function Builder() {
       const limitCheck = await checkUserLimit(userEmail);
       if (!limitCheck.allowed) {
         alert("You have reached your free limit. Please upgrade to continue.");
-        window.location.href = '/#pricing';
+        window.location.href = '/payment';
         return;
       }
     }
@@ -178,10 +175,10 @@ export default function Builder() {
       </nav>
 
       <main className="flex-grow max-w-[1500px] mx-auto w-full px-4 py-8 grid grid-cols-1 lg:grid-cols-2 gap-8 print:block print:p-0 print:m-0 print:max-w-none">
-        
+
         {/* LEFT SIDE: FORM */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-fit max-h-[85vh] overflow-y-auto print:hidden">
-          
+
           <div className="mb-6 bg-blue-50 p-4 rounded-xl border border-blue-100">
             <h3 className="text-sm font-bold text-gray-800 mb-2">Choose Template Design (19 Options):</h3>
             <div className="flex flex-wrap gap-2">
@@ -200,7 +197,7 @@ export default function Builder() {
                 Don't worry! We've filled a sample CV for you. Just replace the text in the fields below with your own details, or clear it to start fresh.
               </p>
             </div>
-            <button 
+            <button
               onClick={resetForm}
               className="flex items-center gap-2 bg-white text-green-700 border border-green-300 px-4 py-2 rounded-lg font-bold text-sm hover:bg-green-100 transition shadow-sm shrink-0 w-full sm:w-auto justify-center"
             >
@@ -328,16 +325,16 @@ export default function Builder() {
                   <input type="text" placeholder="Year" value={cert.year} onChange={(e) => handleArrayChange('certifications', index, 'year', e.target.value)} className="w-24 px-3 py-2 rounded-lg border text-sm" />
                 </div>
                 <div className="flex items-center gap-2">
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    ref={(el) => { certInputRefs.current[index] = el; }} 
-                    onChange={(e) => handleCertUpload(e, index)} 
-                    className="hidden" 
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={(el) => { certInputRefs.current[index] = el; }}
+                    onChange={(e) => handleCertUpload(e, index)}
+                    className="hidden"
                   />
-                  <button 
+                  <button
                     type="button"
-                    onClick={() => certInputRefs.current[index]?.click()} 
+                    onClick={() => certInputRefs.current[index]?.click()}
                     disabled={uploadingCert === index}
                     className="flex items-center gap-1.5 bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-gray-300 transition"
                   >
@@ -383,26 +380,28 @@ export default function Builder() {
           </div>
 
           <div className="flex gap-4 pt-4 border-t border-gray-200">
-  <button 
-    type="button" 
-    onClick={handleAction} 
-    className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-4 py-3 rounded-xl hover:bg-gray-800 font-bold text-sm transition"
-  >
-    <Printer size={18} /> Print / PDF
-  </button>
-  <button 
-    type="button" 
-    onClick={() => downloadAsWord('cv-preview', formData.fullName || 'CV')} 
-    className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 font-bold text-sm transition"
-  >
-    <Download size={18} /> Word Download
-  </button>
-</div>
+            <button
+              type="button"
+              onClick={handleAction}
+              className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-4 py-3 rounded-xl hover:bg-gray-800 font-bold text-sm transition"
+            >
+              <Printer size={18} /> Print / PDF
+            </button>
+            <button
+              type="button"
+              onClick={() => downloadAsWord('cv-preview', formData.fullName || 'CV')}
+              className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 font-bold text-sm transition"
+            >
+              <Download size={18} /> Word Download
+            </button>
+          </div>
+        </div>
 
         {/* RIGHT SIDE: LIVE CV PREVIEW */}
         <div id="cv-preview" className="bg-white shadow-2xl rounded-xl border border-gray-200 print:shadow-none print:border-none print:p-0 print-area h-fit min-h-[A4] overflow-hidden">
-          
-          {/* TEMPLATE 1: CLASSIC GRAY */}
+
+
+                    {/* TEMPLATE 1: CLASSIC GRAY */}
           {template === 'classicgray' && (
             <div className="bg-white h-full text-gray-800">
               <div className="flex h-full">
@@ -412,7 +411,6 @@ export default function Builder() {
                   ) : (
                     <div className="w-32 h-32 rounded-full bg-gray-300 mx-auto mb-6 border-4 border-white"></div>
                   )}
-                  
                   <div className="w-full mb-6">
                     <h3 className="font-bold text-gray-900 border-b border-gray-400 pb-1 mb-3 uppercase text-sm">Contact</h3>
                     <div className="text-[11px] space-y-1">
@@ -421,7 +419,6 @@ export default function Builder() {
                       <p className="mt-2"><strong>Email:</strong><br/>{formData.email}</p>
                     </div>
                   </div>
-
                   {formData.skills.some(s => s) && (
                   <div className="w-full mb-6">
                     <h3 className="font-bold text-gray-900 border-b border-gray-400 pb-1 mb-3 uppercase text-sm">Skill Highlights</h3>
@@ -430,7 +427,6 @@ export default function Builder() {
                     </ul>
                   </div>
                   )}
-
                   {formData.languages.some(l => l.language) && (
                   <div className="w-full mb-6">
                     <h3 className="font-bold text-gray-900 border-b border-gray-400 pb-1 mb-3 uppercase text-sm">Languages</h3>
@@ -439,7 +435,6 @@ export default function Builder() {
                     </ul>
                   </div>
                   )}
-
                   {formData.hobbies.some(h => h) && (
                   <div className="w-full mb-6">
                     <h3 className="font-bold text-gray-900 border-b border-gray-400 pb-1 mb-3 uppercase text-sm">Hobbies</h3>
@@ -449,20 +444,17 @@ export default function Builder() {
                   </div>
                   )}
                 </div>
-
                 <div className="w-[65%] p-8 bg-white">
                   <div className="mb-6 border-b-2 border-gray-200 pb-4 avoid-break">
                     <h1 className="text-3xl font-bold text-gray-900 tracking-wide uppercase">{formData.fullName}</h1>
                     <h2 className="text-lg text-[#D97706] font-semibold mt-1">{formData.jobTitle}</h2>
                   </div>
-                  
                   {formData.summary && (
                   <div className="mb-6 avoid-break">
                     <h3 className="font-bold text-gray-800 text-sm mb-2 uppercase tracking-wider border-b border-gray-200 pb-1">Professional Summary</h3>
                     <p className="text-[11px] text-gray-700 leading-relaxed text-justify">{formData.summary}</p>
                   </div>
                   )}
-
                   {formData.experience.some(e => e.role) && (
                   <div className="mb-6">
                     <h3 className="font-bold text-gray-800 text-sm mb-3 uppercase tracking-wider border-b border-gray-200 pb-1">Experience</h3>
@@ -480,7 +472,6 @@ export default function Builder() {
                     ))}
                   </div>
                   )}
-
                   {formData.education.some(e => e.degree) && (
                   <div className="mb-6">
                     <h3 className="font-bold text-gray-800 text-sm mb-3 uppercase tracking-wider border-b border-gray-200 pb-1">Education</h3>
@@ -495,7 +486,6 @@ export default function Builder() {
                     ))}
                   </div>
                   )}
-
                   {formData.certifications.some(c => c.name) && (
                   <div className="mb-6">
                     <h3 className="font-bold text-gray-800 text-sm mb-3 uppercase tracking-wider border-b border-gray-200 pb-1">Certifications</h3>
@@ -511,7 +501,6 @@ export default function Builder() {
                     ))}
                   </div>
                   )}
-
                   {formData.references.some(r => r.name) && (
                   <div>
                     <h3 className="font-bold text-gray-800 text-sm mb-3 uppercase tracking-wider border-b border-gray-200 pb-1">References</h3>
@@ -544,11 +533,9 @@ export default function Builder() {
                    </p>
                 </div>
               </div>
-
               <div className="bg-gray-600 text-white p-3 mb-6 avoid-break">
                 <h1 className="text-3xl font-bold uppercase tracking-wide">{formData.fullName}</h1>
               </div>
-
               <div className="flex gap-6">
                 <div className="w-1/3">
                   <div className="mb-4 text-xs avoid-break">
@@ -556,7 +543,6 @@ export default function Builder() {
                     <p className="mt-2"><strong>E-Mail:</strong><br/>{formData.email}</p>
                     <p className="mt-2"><strong>Address:</strong><br/>{formData.address}</p>
                   </div>
-
                   {formData.skills.some(s => s) && (
                   <div className="mb-4 avoid-break">
                     <h3 className="font-bold text-gray-800 text-sm mb-2 border-b border-gray-300 pb-1 uppercase tracking-wide">Skill Highlights</h3>
@@ -565,7 +551,6 @@ export default function Builder() {
                     </ul>
                   </div>
                   )}
-
                   {formData.languages.some(l => l.language) && (
                   <div className="mb-4 avoid-break">
                     <h3 className="font-bold text-gray-800 text-sm mb-2 border-b border-gray-300 pb-1 uppercase tracking-wide">Languages</h3>
@@ -574,7 +559,6 @@ export default function Builder() {
                     </ul>
                   </div>
                   )}
-
                   {formData.hobbies.some(h => h) && (
                   <div className="mb-4 avoid-break">
                     <h3 className="font-bold text-gray-800 text-sm mb-2 border-b border-gray-300 pb-1 uppercase tracking-wide">Hobbies</h3>
@@ -584,7 +568,6 @@ export default function Builder() {
                   </div>
                   )}
                 </div>
-
                 <div className="w-2/3">
                   {formData.experience.some(e => e.role) && (
                   <div className="mb-5">
@@ -602,7 +585,6 @@ export default function Builder() {
                     ))}
                   </div>
                   )}
-
                   {formData.education.some(e => e.degree) && (
                   <div className="mb-5">
                     <h3 className="font-bold text-gray-800 text-sm mb-3 border-b border-gray-300 pb-1 uppercase tracking-wide">Education</h3>
@@ -617,7 +599,6 @@ export default function Builder() {
                     ))}
                   </div>
                   )}
-
                   {formData.certifications.some(c => c.name) && (
                   <div className="mb-5">
                     <h3 className="font-bold text-gray-800 text-sm mb-3 border-b border-gray-300 pb-1 uppercase tracking-wide">Certifications</h3>
@@ -631,7 +612,6 @@ export default function Builder() {
                     </ul>
                   </div>
                   )}
-
                   {formData.references.some(r => r.name) && (
                   <div>
                     <h3 className="font-bold text-gray-800 text-sm mb-3 border-b border-gray-300 pb-1 uppercase tracking-wide">References</h3>
@@ -764,7 +744,6 @@ export default function Builder() {
                   <p className="text-sm text-gray-700 leading-relaxed mb-6 avoid-break">{formData.summary}</p>
                   <h2 className="text-sm font-bold text-gray-900 uppercase tracking-widest mb-2 text-blue-600">Experience</h2>
                   {formData.experience.map((e, i) => <div key={i} className="mb-4 avoid-break"><h3 className="font-bold text-gray-900 text-sm">{e.role}</h3><p className="text-xs text-blue-600 font-semibold mb-1">{e.company} | {e.duration}</p><p className="text-xs text-gray-700 leading-relaxed">{e.desc}</p></div>)}
-                  
                   {formData.certifications.some(c=>c.name) && (
                   <div className="mt-6 avoid-break">
                     <h2 className="text-sm font-bold text-gray-900 uppercase tracking-widest mb-2 text-blue-600">Certifications</h2>
@@ -792,12 +771,10 @@ export default function Builder() {
               <div className="mb-5 avoid-break"><h2 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-1 border-b-2 border-gray-900 inline-block pb-1">Profile</h2><p className="text-gray-700 text-sm leading-relaxed mt-2">{formData.summary}</p></div>
               <div className="mb-5"><h2 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-2 border-b-2 border-gray-900 inline-block pb-1">Experience</h2>{formData.experience.map((e, i) => <div key={i} className="mb-3 avoid-break"><div className="flex justify-between"><h3 className="font-bold text-gray-900 text-sm">{e.role}</h3><span className="text-xs text-gray-600">{e.duration}</span></div><p className="text-xs font-semibold text-gray-700">{e.company}</p><p className="text-xs text-gray-600 mt-1">{e.desc}</p></div>)}</div>
               <div className="mb-5"><h2 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-2 border-b-2 border-gray-900 inline-block pb-1">Education</h2>{formData.education.map((e, i) => <div key={i} className="flex justify-between mb-2 avoid-break"><div><h3 className="font-bold text-gray-900 text-sm">{e.degree}</h3><p className="text-xs text-gray-600">{e.school}</p></div><span className="text-xs text-gray-600">{e.year}</span></div>)}</div>
-              
               <div className="grid grid-cols-2 gap-4 mb-4 avoid-break">
                 <div><h2 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-1 border-b-2 border-gray-900 inline-block pb-1">Skills</h2><ul className="flex flex-wrap gap-x-4 gap-y-1 mt-2">{formData.skills.map((s, i) => s && <li key={i} className="text-sm text-gray-700">• {s}</li>)}</ul></div>
                 <div><h2 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-1 border-b-2 border-gray-900 inline-block pb-1">Languages</h2><ul className="flex flex-wrap gap-x-4 gap-y-1 mt-2">{formData.languages.map((l, i) => l.language && <li key={i} className="text-sm text-gray-700">• {l.language}</li>)}</ul></div>
               </div>
-              
               <div className="grid grid-cols-2 gap-4 avoid-break">
                 {formData.certifications.some(c=>c.name) && (
                   <div><h2 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-1 border-b-2 border-gray-900 inline-block pb-1">Certifications</h2><ul className="flex flex-wrap gap-x-4 gap-y-1 mt-2">{formData.certifications.map((c, i) => c.name && <li key={i} className="text-sm text-gray-700">• {c.name}</li>)}</ul></div>
@@ -1109,7 +1086,6 @@ export default function Builder() {
                   <p className="text-xs text-gray-600 leading-relaxed text-justify">{formData.summary}</p>
                 </div>
                 )}
-                
                 <div className="grid grid-cols-3 gap-8">
                   <div className="col-span-2 space-y-6">
                     {formData.experience.some(e => e.role) && (
@@ -1144,7 +1120,6 @@ export default function Builder() {
                     </div>
                     )}
                   </div>
-                  
                   <div className="col-span-1 space-y-6">
                     {formData.skills.some(s => s) && (
                     <div className="avoid-break">
@@ -1189,30 +1164,24 @@ export default function Builder() {
             </div>
           )}
 
-          {/* TEMPLATE 19: PROFESSIONAL (Aapki PDF ke Mutabiq) */}
+          {/* TEMPLATE 19: PROFESSIONAL (ATS-friendly) */}
           {template === 'professional' && (
             <div className="bg-white h-full text-gray-800 p-10 print-area">
-              
-              {/* Header */}
               <div className="border-b-2 border-gray-900 pb-4 mb-6 avoid-break">
                 <h1 className="text-4xl font-black text-gray-900 uppercase tracking-tight">{formData.fullName}</h1>
                 <p className="text-lg text-blue-700 font-bold mt-1">{formData.jobTitle}</p>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 mt-2 font-medium">
-                  <span>{formData.phone}</span> <span>•</span> 
-                  <span>{formData.email}</span> <span>•</span> 
+                  <span>{formData.phone}</span> <span>•</span>
+                  <span>{formData.email}</span> <span>•</span>
                   <span>{formData.address}</span>
                 </div>
               </div>
-
-              {/* Professional Summary */}
               {formData.summary && (
                 <div className="mb-6 avoid-break">
                   <h2 className="text-sm font-bold text-gray-900 uppercase tracking-widest mb-2 border-b border-gray-300 pb-1">Professional Summary</h2>
                   <p className="text-xs text-gray-700 leading-relaxed text-justify">{formData.summary}</p>
                 </div>
               )}
-
-              {/* Core Competencies (Skills) */}
               {formData.skills.some(s => s) && (
                 <div className="mb-6 avoid-break">
                   <h2 className="text-sm font-bold text-gray-900 uppercase tracking-widest mb-2 border-b border-gray-300 pb-1">Core Competencies</h2>
@@ -1225,8 +1194,6 @@ export default function Builder() {
                   </div>
                 </div>
               )}
-
-              {/* Professional Experience */}
               {formData.experience.some(e => e.role) && (
                 <div className="mb-6">
                   <h2 className="text-sm font-bold text-gray-900 uppercase tracking-widest mb-3 border-b border-gray-300 pb-1">Professional Experience</h2>
@@ -1244,8 +1211,6 @@ export default function Builder() {
                   ))}
                 </div>
               )}
-
-              {/* Education */}
               {formData.education.some(e => e.degree) && (
                 <div className="mb-6 avoid-break">
                   <h2 className="text-sm font-bold text-gray-900 uppercase tracking-widest mb-3 border-b border-gray-300 pb-1">Education</h2>
@@ -1261,8 +1226,6 @@ export default function Builder() {
                   </div>
                 </div>
               )}
-
-              {/* Languages & Interests */}
               <div className="grid grid-cols-2 gap-6 avoid-break">
                 {formData.languages.some(l => l.language) && (
                   <div>
@@ -1277,15 +1240,12 @@ export default function Builder() {
                   </div>
                 )}
               </div>
-
-              {/* References */}
               {formData.references.some(r => r.name) && (
                 <div className="mt-6 avoid-break">
                   <h2 className="text-sm font-bold text-gray-900 uppercase tracking-widest mb-2 border-b border-gray-300 pb-1">References</h2>
                   <p className="text-xs italic text-gray-600">References available upon request.</p>
                 </div>
               )}
-
             </div>
           )}
 
