@@ -33,11 +33,15 @@ export const saveDocumentRecord = async (data: {
   }
 };
 
+// Check if user has valid subscription (Pro) or free limit not exceeded
 export const checkUserLimit = async (userEmail: string) => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { allowed: false, reason: 'not_logged_in' };
+
   const { data: profile, error: profileError } = await supabase
     .from('user_profiles')
     .select('*')
-    .eq('email', userEmail)
+    .eq('id', user.id)
     .single();
 
   const { data: settings, error: settingsError } = await supabase
@@ -46,28 +50,61 @@ export const checkUserLimit = async (userEmail: string) => {
     .eq('id', 1)
     .single();
 
-  if (profileError) console.error("Profile Error:", profileError);
-  if (settingsError) console.error("Settings Error:", settingsError);
-
-  if (!profile || !settings) {
-    return { allowed: true, isLoggedIn: !!profile };
+  if (profileError || settingsError || !profile || !settings) {
+    return { allowed: true, reason: 'error_fallback' }; // Allow on error to avoid blocking
   }
 
-  const limit = settings.free_cv_limit || 6;
+  // Check Subscription
+  const isPro = profile.subscription_type && profile.subscription_type !== 'free';
+  
+  if (isPro) {
+    // Check if subscription is expired
+    if (profile.subscription_expiry) {
+      const expiry = new Date(profile.subscription_expiry);
+      const now = new Date();
+      
+      if (expiry > now) {
+        // Valid subscription - unlimited access
+        return { allowed: true, isPro: true, reason: 'pro_active' };
+      } else {
+        // Subscription expired - downgrade to free
+        await supabase.from('user_profiles').update({
+          subscription_type: 'free',
+          subscription_expiry: null
+        }).eq('id', user.id);
+        
+        // After expiry, check free limit
+        const limit = settings.free_cv_limit || 3;
+        const used = profile.free_cv_count || 0;
+        
+        if (used >= limit) {
+          return { allowed: false, isPro: false, reason: 'free_limit_reached' };
+        }
+        return { allowed: true, isPro: false, reason: 'free' };
+      }
+    }
+    return { allowed: true, isPro: true, reason: 'pro_no_expiry' };
+  }
+
+  // Free user - check limit
+  const limit = settings.free_cv_limit || 3;
   const used = profile.free_cv_count || 0;
 
-  if (used >= limit && profile.subscription_type === 'free') {
-    return { allowed: false, isLoggedIn: true };
+  if (used >= limit) {
+    return { allowed: false, isPro: false, reason: 'free_limit_reached' };
   }
 
-  return { allowed: true, isLoggedIn: true };
+  return { allowed: true, isPro: false, reason: 'free' };
 };
 
 export const incrementUserCount = async (userEmail: string) => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
   const { data: profile, error: fetchError } = await supabase
     .from('user_profiles')
     .select('free_cv_count')
-    .eq('email', userEmail)
+    .eq('id', user.id)
     .single();
 
   if (fetchError) {
@@ -80,14 +117,8 @@ export const incrementUserCount = async (userEmail: string) => {
     const { error } = await supabase
       .from('user_profiles')
       .update({ free_cv_count: currentCount + 1 })
-      .eq('email', userEmail);
+      .eq('id', user.id);
     
-    if (error) {
-      console.error("Increment Error:", error);
-    } else {
-      console.log("Count incremented to:", currentCount + 1);
-    }
-  } else {
-    console.error("No profile found for email:", userEmail);
+    if (error) console.error("Increment Error:", error);
   }
 };

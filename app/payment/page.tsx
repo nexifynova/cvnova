@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Upload, Loader2, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Upload, Loader2, ArrowLeft, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -91,12 +91,16 @@ export default function PaymentPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-[#0B1120] flex items-center justify-center text-white">
+      <div className="min-h-screen bg-[#0B1120] flex items-center justify-center text-white p-4">
         <div className="bg-white/5 p-8 rounded-3xl border border-white/10 text-center max-w-md">
           <CheckCircle className="text-green-500 mx-auto mb-4" size={64} />
           <h2 className="text-2xl font-bold mb-2">Payment Submitted!</h2>
-          <p className="text-gray-400 mb-6">Aapki slip admin ko bhej di gayi hai. Approve hone par aapka account Pro ho jayega.</p>
-          <Link href="/dashboard" className="bg-blue-600 px-6 py-3 rounded-xl font-bold">Go to Dashboard</Link>
+          <p className="text-gray-400 mb-4">Aapki slip admin ko bhej di gayi hai. Approve hone par aapka account Pro ho jayega.</p>
+          <div className="bg-yellow-500/20 border border-yellow-500/30 p-4 rounded-xl mb-6 text-left">
+            <p className="text-yellow-300 text-sm font-bold flex items-center gap-2 mb-1"><Clock size={16}/> Approval Time:</p>
+            <p className="text-gray-300 text-xs">Admin aapki payment ko <b>30 minutes se 24 hours</b> ke andar approve karega. Approve hone par aapka account automatic Pro ban jayega.</p>
+          </div>
+          <Link href="/dashboard" className="inline-block bg-blue-600 px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition">Go to Dashboard</Link>
         </div>
       </div>
     );
@@ -110,7 +114,8 @@ export default function PaymentPage() {
         </Link>
         
         <div className="bg-white/5 p-8 rounded-3xl border border-white/10">
-          <h1 className="text-3xl font-bold mb-6">Complete Your Payment</h1>
+          <h1 className="text-3xl font-bold mb-2">Complete Your Payment</h1>
+          <p className="text-gray-400 text-sm mb-6">Payment slip upload karein aur admin approval ka intezar karein.</p>
           
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Package Select */}
@@ -134,7 +139,11 @@ export default function PaymentPage() {
                 <p>Binance ID: <span className="font-mono text-white">{settings.binance_id}</span></p>
               )}
               {settings?.bank_enabled && (
-                <p>Bank: <span className="font-mono text-white">{settings.bank_account_number}</span> ({settings.bank_name})</p>
+                <>
+                  <p>Bank: <span className="font-mono text-white">{settings.bank_name}</span></p>
+                  <p>Account: <span className="font-mono text-white">{settings.bank_account_number}</span> ({settings.bank_account_name})</p>
+                  {settings.bank_iban && <p>IBAN: <span className="font-mono text-white">{settings.bank_iban}</span></p>}
+                </>
               )}
             </div>
 
@@ -162,6 +171,12 @@ export default function PaymentPage() {
                 <Upload className="mx-auto text-gray-400 mb-2" size={32} />
                 <p className="text-sm text-gray-400">{formData.slipFile ? formData.slipFile.name : 'Click or drag to upload image'}</p>
               </div>
+            </div>
+
+            {/* Approval Info */}
+            <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-xl">
+              <p className="text-yellow-300 text-sm font-bold flex items-center gap-2 mb-1"><AlertCircle size={16}/> Important Note:</p>
+              <p className="text-gray-400 text-xs">Payment submit karne ke baad admin aapki slip ko <b>30 minutes se 24 hours</b> ke andar verify karega. Approve hone par aapka account automatic Pro mein convert ho jayega aur aap unlimited documents bana sakenge.</p>
             </div>
 
             <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-xl font-bold hover:from-blue-500 hover:to-purple-500 transition disabled:opacity-50 flex items-center justify-center gap-2">
