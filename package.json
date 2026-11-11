@@ -23,6 +23,7 @@
   "devDependencies": {
     "@tailwindcss/turbopack": "^4.3.3",
     "@types/file-saver": "^2.0.7",
+    "@types/html-docx-js": "^0.3.4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

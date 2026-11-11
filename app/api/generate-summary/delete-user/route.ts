@@ -9,10 +9,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
-    // Admin privileges use karne ke liye (Name changed to match Vercel)
+    // Admin privileges use karne ke liye (Vercel wala naam)
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_RO! // <--- Yahan naam change kar diya hai
+      process.env.SUPABASE_SERVICE_RO! 
     );
 
     // 1. Delete user's profile data
