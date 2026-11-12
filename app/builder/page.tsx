@@ -8,8 +8,8 @@ import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount } from
 import { downloadAsWord } from '@/lib/download-utils';
 
 const dummyData = {
-  fullName: 'John Doe',
-  email: 'johndoe@example.com',
+  fullName: 'Muhammad Ali',
+  email: 'muhammad.ali@example.com',
   phone: '+1 234 567 8900',
   address: 'New York, USA',
   jobTitle: 'Software Engineer',
