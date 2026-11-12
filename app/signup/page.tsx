@@ -23,6 +23,7 @@ export default function Signup() {
 
     setLoading(true);
 
+    // 1. Pehle Supabase Auth mein user banayein
     const { data, error } = await supabase.auth.signUp({
       email: formData.email,
       password: formData.password,
@@ -38,10 +39,23 @@ export default function Signup() {
     }
 
     if (data.user) {
-      await supabase.from('user_profiles').insert([
-        { id: data.user.id, full_name: formData.fullName, email: formData.email }
+      // 2. Phir user_profiles table mein uski profile save karein
+      const { error: profileError } = await supabase.from('user_profiles').insert([
+        { 
+          id: data.user.id, 
+          full_name: formData.fullName, 
+          email: formData.email,
+          free_cv_count: 0,
+          subscription_type: 'free'
+        }
       ]);
-      setIsSuccess(true);
+      
+      if (profileError) {
+        console.error("Profile Save Error:", profileError);
+        alert("Account ban gaya lekin profile save nahi hui. Error: " + profileError.message);
+      } else {
+        setIsSuccess(true);
+      }
     }
     setLoading(false);
   };
