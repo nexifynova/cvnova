@@ -18,15 +18,23 @@ export default function ContactUs() {
     fetchSettings();
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Yahan aap apni API call laga sakte hain
-    setTimeout(() => {
+    
+    const { error } = await supabase.from('contact_messages').insert([{
+      name: formData.name,
+      email: formData.email,
+      message: formData.message
+    }]);
+
+    if (error) {
+      alert("Failed to send message: " + error.message);
+    } else {
       alert("Message sent successfully! We will get back to you soon.");
       setFormData({ name: '', email: '', message: '' });
-      setLoading(false);
-    }, 1500);
+    }
+    setLoading(false);
   };
 
   return (
@@ -54,14 +62,14 @@ export default function ContactUs() {
                 <div className="bg-green-500/20 p-3 rounded-full text-green-400"><Phone size={24} /></div>
                 <div>
                   <p className="text-sm text-gray-400">Call / WhatsApp</p>
-                  <p className="font-semibold">{settings?.contact_phone || '+92 (300) 123-4567'}</p>
+                  <p className="font-semibold">{settings?.contact_phone || '+44 7564 920084'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
                 <div className="bg-purple-500/20 p-3 rounded-full text-purple-400"><MapPin size={24} /></div>
                 <div>
                   <p className="text-sm text-gray-400">Location</p>
-                  <p className="font-semibold">{settings?.contact_location || 'Karachi, Pakistan'}</p>
+                  <p className="font-semibold">{settings?.contact_location || 'Berkeley square House, London W1J 6JD'}</p>
                 </div>
               </div>
             </div>
