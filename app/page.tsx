@@ -64,49 +64,33 @@ export default function Home() {
             </div>
           </div>
 
-          {/* HERO CAROUSEL (SEAMLESS / NO BORDER) */}
           <div className="flex-1 relative w-full max-w-lg lg:max-w-none">
-            {/* Yahan se border, bg, aur p-2 hata diya hai */}
-            <div className="relative overflow-hidden rounded-3xl">
-              
+            <div className="relative rounded-3xl overflow-hidden border border-white/10 bg-white/5 backdrop-blur-xl shadow-2xl p-2 transform rotate-2 hover:rotate-0 transition-transform duration-500">
               {heroImages.length > 0 ? (
-                <div className="overflow-hidden rounded-3xl relative group" ref={emblaRef}>
+                <div className="overflow-hidden rounded-2xl relative group" ref={emblaRef}>
                   <div className="flex">
                     {heroImages.map((img: string, index: number) => (
                       <div key={index} className="flex-[0_0_100%] min-w-0 relative aspect-[4/3]">
-                        <Image 
-                          src={img} 
-                          alt={`CVNova Slide ${index + 1}`} 
-                          fill 
-                          className="object-cover" 
-                          priority={index === 0} 
-                        />
+                        <Image src={img} alt={`CVNova Slide ${index + 1}`} fill className="object-cover" priority={index === 0} />
                       </div>
                     ))}
                   </div>
-
                   {heroImages.length > 1 && (
                     <>
-                      <button onClick={scrollPrev} className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition z-10">
-                        <ChevronLeft size={24} />
-                      </button>
-                      <button onClick={scrollNext} className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition z-10">
-                        <ChevronRight size={24} />
-                      </button>
+                      <button onClick={scrollPrev} className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition z-10"><ChevronLeft size={20} /></button>
+                      <button onClick={scrollNext} className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition z-10"><ChevronRight size={20} /></button>
                     </>
                   )}
                 </div>
               ) : (
-                <div className="w-full aspect-[4/3] rounded-3xl bg-gradient-to-br from-blue-900/50 to-purple-900/50 flex items-center justify-center">
-                  <p className="text-gray-400 text-sm">Upload images from Admin Settings</p>
+                <div className="w-full aspect-[4/3] rounded-2xl bg-gradient-to-br from-blue-900/50 to-purple-900/50 flex items-center justify-center border border-white/10">
+                  <p className="text-gray-400 text-sm font-medium">Upload images from Admin Settings</p>
                 </div>
               )}
-
             </div>
           </div>
         </section>
 
-        {/* Tools Section */}
         <section id="features" className="py-24 relative z-10">
           <div className="max-w-7xl mx-auto px-6">
             <div className="text-center mb-16">
@@ -135,12 +119,21 @@ export default function Home() {
         {/* PRICING SECTION */}
         <section id="pricing" className="py-24 relative z-10 bg-black/20">
           <div className="max-w-7xl mx-auto px-6">
-            <div className="text-center mb-16">
+            <div className="text-center mb-8">
               <h2 className="text-3xl lg:text-5xl font-bold mb-6">Simple, transparent <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">pricing.</span></h2>
-              <p className="text-gray-400 max-w-2xl mx-auto">Choose the plan that fits your needs. No hidden fees.</p>
+              <p className="text-gray-400 max-w-2xl mx-auto mb-6">Choose the plan that fits your needs. No hidden fees.</p>
+              
+              {/* Payment Gateways Info */}
+              <div className="flex flex-wrap justify-center gap-4 items-center mb-10">
+                <span className="text-sm text-gray-400">We accept:</span>
+                {settings?.easy_paisa_enabled && <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-bold border border-white/20">EasyPaisa</span>}
+                {settings?.binance_enabled && <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-bold border border-white/20">Binance</span>}
+                {settings?.bank_enabled && <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-bold border border-white/20">Bank Transfer</span>}
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+              {/* 3 Months */}
               <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-blue-500/50 transition duration-300 relative">
                 <h3 className="text-xl font-bold mb-2">3 Months</h3>
                 <p className="text-gray-400 text-sm mb-6">Perfect for a quick job search.</p>
@@ -148,6 +141,7 @@ export default function Home() {
                 <Link href="/payment" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">Upgrade</Link>
               </div>
 
+              {/* 6 Months */}
               <div className="bg-gradient-to-b from-blue-900/40 to-purple-900/40 p-8 rounded-3xl border border-blue-500/50 transition duration-300 relative transform lg:-translate-y-4 shadow-[0_0_30px_rgba(59,130,246,0.2)]">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-bold px-4 py-1 rounded-full">MOST POPULAR</div>
                 <h3 className="text-xl font-bold mb-2">6 Months</h3>
@@ -156,6 +150,7 @@ export default function Home() {
                 <Link href="/payment" className="w-full flex items-center justify-center bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 rounded-xl hover:from-blue-500 hover:to-purple-500 font-bold transition shadow-lg">Upgrade</Link>
               </div>
 
+              {/* 1 Year */}
               <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-blue-500/50 transition duration-300 relative">
                 <h3 className="text-xl font-bold mb-2">1 Year</h3>
                 <p className="text-gray-400 text-sm mb-6">Long-term career growth plan.</p>
@@ -163,6 +158,7 @@ export default function Home() {
                 <Link href="/payment" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">Upgrade</Link>
               </div>
 
+              {/* 5 Years */}
               <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-blue-500/50 transition duration-300 relative">
                 <h3 className="text-xl font-bold mb-2">5 Years</h3>
                 <p className="text-gray-400 text-sm mb-6">Lifetime access for experts.</p>
@@ -170,11 +166,23 @@ export default function Home() {
                 <Link href="/payment" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">Upgrade</Link>
               </div>
             </div>
+
+            {/* Additional CVs Box */}
+            <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-blue-500/50 transition duration-300 relative max-w-md mx-auto">
+              <h3 className="text-xl font-bold mb-2">Need Extra CVs?</h3>
+              <p className="text-gray-400 text-sm mb-6">Buy extra CV downloads without a subscription.</p>
+              <div className="text-4xl font-extrabold mb-6">
+                ${settings.additional_cv_price} <span className="text-sm font-normal text-gray-400">for {settings.cvs_per_price} CVs</span>
+              </div>
+              <Link href="/payment" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">
+                Buy Extra CVs
+              </Link>
+            </div>
           </div>
         </section>
       </main>
 
-            <footer className="border-t border-white/10 py-8 text-center text-sm text-gray-500 relative z-10">
+      <footer className="border-t border-white/10 py-8 text-center text-sm text-gray-500 relative z-10">
         <p className="text-white text-lg font-bold mb-4">This project presented and designed by <span className="text-blue-400">Nexify Nova</span></p>
         
         <div className="flex flex-col items-center justify-center gap-2 mb-6 text-gray-400">
