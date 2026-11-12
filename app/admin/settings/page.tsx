@@ -1,11 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { ArrowLeft, Save, Loader2, Upload, Plus, Trash2, ArrowUp, ArrowDown, Image as ImageIcon, Link as LinkIcon, IndianRupee, Package, Phone, Mail, MapPin } from 'lucide-react';
-import Link from 'next/link';
+import { useState, useEffect, Suspense } from 'react';
+import { Save, Loader2, Upload, Plus, Trash2, ArrowUp, ArrowDown, Image as ImageIcon, Link as LinkIcon, IndianRupee, Package, Phone, Mail, MapPin } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useSearchParams } from 'next/navigation';
 
-export default function AdminSettings() {
+function SettingsContent() {
+  const searchParams = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'branding';
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
@@ -13,7 +16,7 @@ export default function AdminSettings() {
   const [settings, setSettings] = useState<any>({
     // Pricing
     additional_cv_price: 1.00,
-    cvs_per_price: 1, 
+    cvs_per_price: 5, 
     free_cv_limit: 1,
     
     // Packages
@@ -61,7 +64,6 @@ export default function AdminSettings() {
   const fetchSettings = async () => {
     const { data } = await supabase.from('app_settings').select('*').eq('id', 1).single();
     if (data) {
-      // Agar database mein contact fields nahi hain to default values rakhein
       setSettings({
         ...settings,
         ...data,
@@ -94,16 +96,13 @@ export default function AdminSettings() {
     setSettings({ ...settings, [name]: val });
   };
 
-  // --- UPLOAD FUNCTIONS ---
   const uploadFile = async (file: File, type: 'logo' | 'favicon' | 'hero') => {
     try {
       setUploading(type);
       const fileExt = file.name.split('.').pop();
       const fileName = `${type}-${Date.now()}.${fileExt}`;
-      
       const { error } = await supabase.storage.from('site-assets').upload(fileName, file, { upsert: true });
       if (error) throw error;
-      
       const { data } = supabase.storage.from('site-assets').getPublicUrl(fileName);
       return data.publicUrl;
     } catch (error: any) {
@@ -114,25 +113,22 @@ export default function AdminSettings() {
     }
   };
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (e: any) => {
     if (!e.target.files?.[0]) return;
     const url = await uploadFile(e.target.files[0], 'logo');
     if (url) setSettings({ ...settings, site_logo_url: url });
   };
 
-  const handleFaviconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFaviconUpload = async (e: any) => {
     if (!e.target.files?.[0]) return;
     const url = await uploadFile(e.target.files[0], 'favicon');
     if (url) setSettings({ ...settings, site_favicon_url: url });
   };
 
-  const handleHeroUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleHeroUpload = async (e: any) => {
     if (!e.target.files?.[0]) return;
     const url = await uploadFile(e.target.files[0], 'hero');
-    if (url) {
-      const currentImages = settings.hero_images || [];
-      setSettings({ ...settings, hero_images: [...currentImages, url] });
-    }
+    if (url) setSettings({ ...settings, hero_images: [...(settings.hero_images || []), url] });
   };
 
   const removeHeroImage = (index: number) => {
@@ -141,25 +137,17 @@ export default function AdminSettings() {
     setSettings({ ...settings, hero_images: newImages });
   };
 
-  // --- MENU FUNCTIONS ---
-  const addMenuItem = () => {
-    const newMenu = [...(settings.nav_menu || [])];
-    newMenu.push({ id: Date.now().toString(), label: 'New Link', href: '/', visible: true });
-    setSettings({ ...settings, nav_menu: newMenu });
-  };
-
+  const addMenuItem = () => setSettings({ ...settings, nav_menu: [...(settings.nav_menu || []), { id: Date.now().toString(), label: 'New Link', href: '/', visible: true }] });
   const updateMenuItem = (index: number, key: string, value: any) => {
     const newMenu = [...(settings.nav_menu || [])];
     newMenu[index] = { ...newMenu[index], [key]: value };
     setSettings({ ...settings, nav_menu: newMenu });
   };
-
   const removeMenuItem = (index: number) => {
     const newMenu = [...(settings.nav_menu || [])];
     newMenu.splice(index, 1);
     setSettings({ ...settings, nav_menu: newMenu });
   };
-
   const moveMenuItem = (index: number, direction: 'up' | 'down') => {
     if (direction === 'up' && index === 0) return;
     if (direction === 'down' && index === (settings.nav_menu?.length || 0) - 1) return;
@@ -170,80 +158,70 @@ export default function AdminSettings() {
     setSettings({ ...settings, nav_menu: newMenu });
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" size={48} /></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-blue-600" size={48} /></div>;
 
   return (
     <div className="min-h-screen bg-gray-50 p-8 font-sans pb-20">
       <div className="max-w-5xl mx-auto">
         
         <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <Link href="/admin" className="p-2 bg-white rounded-lg shadow-sm hover:bg-gray-100 transition">
-              <ArrowLeft size={20} className="text-gray-600" />
-            </Link>
-            <h1 className="text-3xl font-bold text-gray-900">Website Settings</h1>
-          </div>
+          <h1 className="text-3xl font-bold text-gray-900 capitalize">{activeTab} Settings</h1>
           <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-xl hover:bg-blue-700 font-bold transition shadow-md disabled:opacity-50">
-            {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-            {saving ? 'Saving...' : 'Save Changes'}
+            {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />} Save Changes
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          
-          {/* BRANDING */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 md:col-span-2">
-            <h2 className="text-lg font-bold mb-4 border-b pb-2 flex items-center gap-2"><ImageIcon size={20} className="text-blue-600"/> Branding (Logo & Favicon)</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div className="border p-4 rounded-xl flex flex-col items-center justify-center gap-3">
-                <p className="text-sm font-semibold text-gray-700">Website Logo</p>
-                {settings.site_logo_url ? (
-                  <img src={settings.site_logo_url} alt="Logo" className="h-12 object-contain" />
-                ) : <div className="h-12 text-xs text-gray-400">No Logo</div>}
-                <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2">
-                  {uploading === 'logo' ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-                  Upload Logo
-                  <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
-                </label>
-              </div>
-              <div className="border p-4 rounded-xl flex flex-col items-center justify-center gap-3">
-                <p className="text-sm font-semibold text-gray-700">Favicon (Tab Icon)</p>
-                {settings.site_favicon_url ? (
-                  <img src={settings.site_favicon_url} alt="Favicon" className="h-10 object-contain" />
-                ) : <div className="h-10 text-xs text-gray-400">No Icon</div>}
-                <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2">
-                  {uploading === 'favicon' ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-                  Upload Favicon
-                  <input type="file" accept="image/*" className="hidden" onChange={handleFaviconUpload} />
-                </label>
-              </div>
-            </div>
-          </div>
-
-          {/* HERO SLIDER */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 md:col-span-2">
-            <h2 className="text-lg font-bold mb-4 border-b pb-2 flex items-center gap-2"><ImageIcon size={20} className="text-purple-600"/> Hero Section Slider</h2>
-            <div className="mb-4">
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Slider Speed (ms)</label>
-              <input type="number" name="hero_slider_interval" value={settings.hero_slider_interval} onChange={handleChange} className="w-full max-w-xs px-4 py-2 rounded-lg border" />
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {(settings.hero_images || []).map((img: string, idx: number) => (
-                <div key={idx} className="relative group rounded-lg overflow-hidden border aspect-video">
-                  <img src={img} alt={`Hero ${idx}`} className="w-full h-full object-cover" />
-                  <button onClick={() => removeHeroImage(idx)} className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-md opacity-0 group-hover:opacity-100"><Trash2 size={14} /></button>
+        {/* BRANDING & HERO TAB */}
+        {activeTab === 'branding' && (
+          <div className="space-y-6">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <h2 className="text-lg font-bold mb-4 border-b pb-2 flex items-center gap-2"><ImageIcon size={20} className="text-blue-600"/> Branding (Logo & Favicon)</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="border p-4 rounded-xl flex flex-col items-center justify-center gap-3">
+                  <p className="text-sm font-semibold text-gray-700">Website Logo</p>
+                  {settings.site_logo_url ? <img src={settings.site_logo_url} alt="Logo" className="h-12 object-contain" /> : <div className="h-12 text-xs text-gray-400">No Logo</div>}
+                  <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+                    {uploading === 'logo' ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />} Upload Logo
+                    <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+                  </label>
                 </div>
-              ))}
-              <label className="border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center aspect-video cursor-pointer hover:bg-gray-50">
-                {uploading === 'hero' ? <Loader2 size={24} className="animate-spin text-blue-600" /> : <Plus size={24} className="text-gray-400" />}
-                <span className="text-xs font-semibold text-gray-500 mt-2">Add Image</span>
-                <input type="file" accept="image/*" className="hidden" onChange={handleHeroUpload} />
-              </label>
+                <div className="border p-4 rounded-xl flex flex-col items-center justify-center gap-3">
+                  <p className="text-sm font-semibold text-gray-700">Favicon (Tab Icon)</p>
+                  {settings.site_favicon_url ? <img src={settings.site_favicon_url} alt="Favicon" className="h-10 object-contain" /> : <div className="h-10 text-xs text-gray-400">No Icon</div>}
+                  <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+                    {uploading === 'favicon' ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />} Upload Favicon
+                    <input type="file" accept="image/*" className="hidden" onChange={handleFaviconUpload} />
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <h2 className="text-lg font-bold mb-4 border-b pb-2 flex items-center gap-2"><ImageIcon size={20} className="text-purple-600"/> Hero Section Slider</h2>
+              <div className="mb-4">
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Slider Speed (ms)</label>
+                <input type="number" name="hero_slider_interval" value={settings.hero_slider_interval} onChange={handleChange} className="w-full max-w-xs px-4 py-2 rounded-lg border" />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {(settings.hero_images || []).map((img: string, idx: number) => (
+                  <div key={idx} className="relative group rounded-lg overflow-hidden border aspect-video">
+                    <img src={img} alt={`Hero ${idx}`} className="w-full h-full object-cover" />
+                    <button onClick={() => removeHeroImage(idx)} className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-md opacity-0 group-hover:opacity-100"><Trash2 size={14} /></button>
+                  </div>
+                ))}
+                <label className="border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center aspect-video cursor-pointer hover:bg-gray-50">
+                  {uploading === 'hero' ? <Loader2 size={24} className="animate-spin text-blue-600" /> : <Plus size={24} className="text-gray-400" />}
+                  <span className="text-xs font-semibold text-gray-500 mt-2">Add Image</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleHeroUpload} />
+                </label>
+              </div>
             </div>
           </div>
+        )}
 
-          {/* NAVBAR MENU */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 md:col-span-2">
+        {/* NAVBAR MENU TAB */}
+        {activeTab === 'menu' && (
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <div className="flex justify-between items-center mb-4 border-b pb-2">
               <h2 className="text-lg font-bold flex items-center gap-2"><LinkIcon size={20} className="text-green-600"/> Navbar Menu Links</h2>
               <button onClick={addMenuItem} className="flex items-center gap-1 text-sm font-bold text-blue-600 hover:text-blue-800"><Plus size={16} /> Add Link</button>
@@ -263,32 +241,73 @@ export default function AdminSettings() {
               ))}
             </div>
           </div>
+        )}
 
-          {/* PRICING & PACKAGES */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 md:col-span-2">
-            <h2 className="text-lg font-bold mb-4 border-b pb-2 flex items-center gap-2"><IndianRupee size={20} className="text-orange-500"/> Pricing & Packages</h2>
-            
-            <div className="mb-6 bg-blue-50 p-4 rounded-xl border border-blue-100">
-              <h3 className="text-sm font-bold text-gray-800 mb-2">Additional CVs (For Free Users)</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div><label className="block text-xs font-semibold text-gray-600 mb-1">Price (USD)</label><input type="number" step="0.01" name="additional_cv_price" value={settings.additional_cv_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
-                <div><label className="block text-xs font-semibold text-gray-600 mb-1">How many CVs for this price?</label><input type="number" name="cvs_per_price" value={settings.cvs_per_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+        {/* PRICING TAB */}
+        {activeTab === 'pricing' && (
+          <div className="space-y-6">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <h2 className="text-lg font-bold mb-4 border-b pb-2 flex items-center gap-2"><IndianRupee size={20} className="text-orange-500"/> Pricing & Packages</h2>
+              <div className="mb-6 bg-blue-50 p-4 rounded-xl border border-blue-100">
+                <h3 className="text-sm font-bold text-gray-800 mb-2">Additional CVs (For Free Users)</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div><label className="block text-xs font-semibold text-gray-600 mb-1">Price (USD)</label><input type="number" step="0.01" name="additional_cv_price" value={settings.additional_cv_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+                  <div><label className="block text-xs font-semibold text-gray-600 mb-1">How many CVs?</label><input type="number" name="cvs_per_price" value={settings.cvs_per_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+                </div>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2"><Package size={16}/> Subscription Packages</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div><label className="block text-xs font-semibold text-gray-600 mb-1">3 Months</label><input type="number" step="0.01" name="package_3m_price" value={settings.package_3m_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+                  <div><label className="block text-xs font-semibold text-gray-600 mb-1">6 Months</label><input type="number" step="0.01" name="package_6m_price" value={settings.package_6m_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+                  <div><label className="block text-xs font-semibold text-gray-600 mb-1">1 Year</label><input type="number" step="0.01" name="package_1y_price" value={settings.package_1y_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+                  <div><label className="block text-xs font-semibold text-gray-600 mb-1">5 Years</label><input type="number" step="0.01" name="package_5y_price" value={settings.package_5y_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+                </div>
               </div>
             </div>
 
-            <div>
-              <h3 className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2"><Package size={16}/> Subscription Packages (Pricing)</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div><label className="block text-xs font-semibold text-gray-600 mb-1">3 Months</label><input type="number" step="0.01" name="package_3m_price" value={settings.package_3m_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
-                <div><label className="block text-xs font-semibold text-gray-600 mb-1">6 Months</label><input type="number" step="0.01" name="package_6m_price" value={settings.package_6m_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
-                <div><label className="block text-xs font-semibold text-gray-600 mb-1">1 Year</label><input type="number" step="0.01" name="package_1y_price" value={settings.package_1y_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
-                <div><label className="block text-xs font-semibold text-gray-600 mb-1">5 Years</label><input type="number" step="0.01" name="package_5y_price" value={settings.package_5y_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+            {/* Payment Methods Section */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <h2 className="text-lg font-bold mb-4 border-b pb-2 text-gray-500">Payment Methods</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div><label className="block text-xs font-semibold text-gray-600 mb-1">Free CVs per User</label><input type="number" name="free_cv_limit" value={settings.free_cv_limit} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+              </div>
+              <div className="space-y-4">
+                {/* EasyPaisa */}
+                <div className="p-4 border rounded-xl">
+                  <div className="flex items-center gap-2 mb-2"><input type="checkbox" name="easy_paisa_enabled" checked={settings.easy_paisa_enabled} onChange={handleChange} className="w-4 h-4"/><label className="text-sm font-bold">EasyPaisa</label></div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input type="text" name="easy_paisa_number" value={settings.easy_paisa_number} onChange={handleChange} placeholder="Account Number" className="px-2 py-1 border rounded text-sm"/>
+                    <input type="text" name="easy_paisa_name" value={settings.easy_paisa_name} onChange={handleChange} placeholder="Account Name" className="px-2 py-1 border rounded text-sm"/>
+                  </div>
+                </div>
+                {/* Binance */}
+                <div className="p-4 border rounded-xl">
+                  <div className="flex items-center gap-2 mb-2"><input type="checkbox" name="binance_enabled" checked={settings.binance_enabled} onChange={handleChange} className="w-4 h-4"/><label className="text-sm font-bold">Binance</label></div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input type="text" name="binance_id" value={settings.binance_id} onChange={handleChange} placeholder="Pay ID" className="px-2 py-1 border rounded text-sm"/>
+                    <input type="text" name="binance_name" value={settings.binance_name} onChange={handleChange} placeholder="Account Name" className="px-2 py-1 border rounded text-sm"/>
+                  </div>
+                </div>
+                {/* Bank */}
+                <div className="p-4 border rounded-xl">
+                  <div className="flex items-center gap-2 mb-2"><input type="checkbox" name="bank_enabled" checked={settings.bank_enabled} onChange={handleChange} className="w-4 h-4"/><label className="text-sm font-bold">Bank Transfer</label></div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input type="text" name="bank_account_name" value={settings.bank_account_name} onChange={handleChange} placeholder="Account Holder Name" className="px-2 py-1 border rounded text-sm"/>
+                    <input type="text" name="bank_name" value={settings.bank_name} onChange={handleChange} placeholder="Bank Name" className="px-2 py-1 border rounded text-sm"/>
+                    <input type="text" name="bank_branch" value={settings.bank_branch} onChange={handleChange} placeholder="Branch" className="px-2 py-1 border rounded text-sm"/>
+                    <input type="text" name="bank_account_number" value={settings.bank_account_number} onChange={handleChange} placeholder="Account Number" className="px-2 py-1 border rounded text-sm"/>
+                    <input type="text" name="bank_iban" value={settings.bank_iban} onChange={handleChange} placeholder="IBAN (Optional)" className="px-2 py-1 border rounded text-sm sm:col-span-2"/>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
+        )}
 
-          {/* CONTACT US INFO */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 md:col-span-2">
+        {/* CONTACT TAB */}
+        {activeTab === 'contact' && (
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <h2 className="text-lg font-bold mb-4 border-b pb-2 flex items-center gap-2"><Phone size={20} className="text-indigo-600"/> Contact Us Details</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -309,49 +328,17 @@ export default function AdminSettings() {
               </div>
             </div>
           </div>
+        )}
 
-          {/* OTHER SETTINGS (Free Limits & Payments) */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 md:col-span-2">
-            <h2 className="text-lg font-bold mb-4 border-b pb-2 text-gray-500">Free Limits & Payment Methods</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-              <div><label className="block text-xs font-semibold text-gray-600 mb-1">Free CVs per User</label><input type="number" name="free_cv_limit" value={settings.free_cv_limit} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
-            </div>
-
-            <div className="space-y-4">
-              {/* EasyPaisa */}
-              <div className="p-4 border rounded-xl">
-                <div className="flex items-center gap-2 mb-2"><input type="checkbox" name="easy_paisa_enabled" checked={settings.easy_paisa_enabled} onChange={handleChange} className="w-4 h-4"/><label className="text-sm font-bold">EasyPaisa</label></div>
-                <div className="grid grid-cols-2 gap-2">
-                  <input type="text" name="easy_paisa_number" value={settings.easy_paisa_number} onChange={handleChange} placeholder="Account Number" className="px-2 py-1 border rounded text-sm"/>
-                  <input type="text" name="easy_paisa_name" value={settings.easy_paisa_name} onChange={handleChange} placeholder="Account Name" className="px-2 py-1 border rounded text-sm"/>
-                </div>
-              </div>
-              
-              {/* Binance */}
-              <div className="p-4 border rounded-xl">
-                <div className="flex items-center gap-2 mb-2"><input type="checkbox" name="binance_enabled" checked={settings.binance_enabled} onChange={handleChange} className="w-4 h-4"/><label className="text-sm font-bold">Binance</label></div>
-                <div className="grid grid-cols-2 gap-2">
-                  <input type="text" name="binance_id" value={settings.binance_id} onChange={handleChange} placeholder="Pay ID" className="px-2 py-1 border rounded text-sm"/>
-                  <input type="text" name="binance_name" value={settings.binance_name} onChange={handleChange} placeholder="Account Name" className="px-2 py-1 border rounded text-sm"/>
-                </div>
-              </div>
-
-              {/* Bank (UPDATED FIELDS) */}
-              <div className="p-4 border rounded-xl">
-                <div className="flex items-center gap-2 mb-2"><input type="checkbox" name="bank_enabled" checked={settings.bank_enabled} onChange={handleChange} className="w-4 h-4"/><label className="text-sm font-bold">Bank Transfer</label></div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <input type="text" name="bank_account_name" value={settings.bank_account_name} onChange={handleChange} placeholder="Account Holder Name" className="px-2 py-1 border rounded text-sm"/>
-                  <input type="text" name="bank_name" value={settings.bank_name} onChange={handleChange} placeholder="Bank Name" className="px-2 py-1 border rounded text-sm"/>
-                  <input type="text" name="bank_branch" value={settings.bank_branch} onChange={handleChange} placeholder="Branch" className="px-2 py-1 border rounded text-sm"/>
-                  <input type="text" name="bank_account_number" value={settings.bank_account_number} onChange={handleChange} placeholder="Account Number" className="px-2 py-1 border rounded text-sm"/>
-                  <input type="text" name="bank_iban" value={settings.bank_iban} onChange={handleChange} placeholder="IBAN (Optional)" className="px-2 py-1 border rounded text-sm sm:col-span-2"/>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
       </div>
     </div>
+  );
+}
+
+export default function AdminSettings() {
+  return (
+    <Suspense fallback={<div className="p-10 flex justify-center"><Loader2 className="animate-spin text-blue-600" size={48} /></div>}>
+      <SettingsContent />
+    </Suspense>
   );
 }

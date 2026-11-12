@@ -65,6 +65,13 @@ export default function Home() {
           </div>
 
           <div className="flex-1 relative w-full max-w-lg lg:max-w-none">
+            {/* Badge ko slider ke bahar rakha hai taake cut na ho */}
+            <Link href="/payment" className="absolute -top-6 -right-6 bg-gradient-to-r from-yellow-400 to-orange-500 text-black w-24 h-24 rounded-full flex flex-col items-center justify-center font-bold shadow-[0_0_30px_rgba(250,204,21,0.8)] animate-bounce z-30 border-4 border-[#0B1120]">
+              <span className="text-[10px] uppercase tracking-wider">Special</span>
+              <span className="text-xl leading-none">Offer</span>
+              <span className="text-[9px] mt-1 bg-black text-white px-2 py-0.5 rounded">Buy Now</span>
+            </Link>
+
             <div className="relative rounded-3xl overflow-hidden border border-white/10 bg-white/5 backdrop-blur-xl shadow-2xl p-2 transform rotate-2 hover:rotate-0 transition-transform duration-500">
               {heroImages.length > 0 ? (
                 <div className="overflow-hidden rounded-2xl relative group" ref={emblaRef}>
@@ -116,15 +123,23 @@ export default function Home() {
           </div>
         </section>
 
-                      {/* PRICING SECTION */}
+        {/* PRICING SECTION */}
         <section id="pricing" className="py-24 relative z-10 bg-black/20">
           <div className="max-w-7xl mx-auto px-6">
             <div className="text-center mb-12">
               <h2 className="text-3xl lg:text-5xl font-bold mb-6">Simple, transparent <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">pricing.</span></h2>
-              <p className="text-gray-400 max-w-2xl mx-auto">Choose the plan that fits your needs. No hidden fees.</p>
+              <p className="text-gray-400 max-w-2xl mx-auto mb-6">Choose the plan that fits your needs. No hidden fees.</p>
+              
+              {/* Payment Gateways Info */}
+              <div className="flex flex-wrap justify-center gap-4 items-center mb-10">
+                <span className="text-sm text-gray-400">We accept:</span>
+                {settings?.easy_paisa_enabled && <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-bold border border-white/20">EasyPaisa</span>}
+                {settings?.binance_enabled && <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-bold border border-white/20">Binance</span>}
+                {settings?.bank_enabled && <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-bold border border-white/20">Bank Transfer</span>}
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
               {/* 3 Months */}
               <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-blue-500/50 transition duration-300 relative">
                 <h3 className="text-xl font-bold mb-2">3 Months</h3>
