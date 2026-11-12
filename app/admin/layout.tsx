@@ -39,7 +39,6 @@ function SidebarNavigation() {
         );
       })}
 
-      {/* Settings Sub-menu */}
       <div className="pl-4 pt-4 pb-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Settings</div>
       {subItems.map((item) => {
         return (
@@ -56,22 +55,19 @@ function SidebarNavigation() {
   );
 }
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+// Yahan humne AdminContent ko alag kiya taake use Suspense mein daal sakein
+function AdminContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    // Agar login page par hain to check na karein
     if (pathname === '/admin/login') return;
-    
-    // Check karein ke admin logged in hai ya nahi
     const isAdmin = localStorage.getItem('admin_logged_in');
     if (!isAdmin) {
       router.push('/admin/login');
     }
   }, [pathname, router]);
 
-  // Agar login page hai to direct render karein (sidebar ke baghair)
   if (pathname === '/admin/login') {
     return <>{children}</>;
   }
@@ -91,5 +87,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
       <main className="flex-1 p-8 overflow-y-auto">{children}</main>
     </div>
+  );
+}
+
+// Yeh main export hai jo Suspense use karta hai
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gray-50">Loading Admin Panel...</div>}>
+      <AdminContent>{children}</AdminContent>
+    </Suspense>
   );
 }
