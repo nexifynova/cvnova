@@ -3,8 +3,10 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, Settings, CreditCard, MessageSquare, ArrowLeft } from 'lucide-react';
+import { Suspense } from 'react';
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+// Ek chota sa component banaya taake Suspense use ho sake
+function SidebarNavigation() {
   const pathname = usePathname();
 
   const menuItems = [
@@ -15,6 +17,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   ];
 
   return (
+    <nav className="flex-1 p-4 space-y-2">
+      {menuItems.map((item) => {
+        const isActive = pathname === item.href;
+        return (
+          <Link 
+            key={item.name} 
+            href={item.href}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition ${isActive ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+          >
+            <item.icon size={20} /> {item.name}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
       <aside className="w-64 bg-[#0B1120] text-white flex flex-col border-r border-white/10">
@@ -24,20 +45,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </Link>
           <h2 className="text-xl font-bold mt-4">Admin Panel</h2>
         </div>
-        <nav className="flex-1 p-4 space-y-2">
-          {menuItems.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <Link 
-                key={item.name} 
-                href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition ${isActive ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
-              >
-                <item.icon size={20} /> {item.name}
-              </Link>
-            );
-          })}
-        </nav>
+        
+        {/* Yahan Suspense use kiya hai taake build fail na ho */}
+        <Suspense fallback={<div className="p-4 text-gray-400">Loading menu...</div>}>
+          <SidebarNavigation />
+        </Suspense>
       </aside>
 
       {/* Main Content */}
