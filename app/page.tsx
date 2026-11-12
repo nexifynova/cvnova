@@ -66,28 +66,34 @@ export default function Home() {
 
           <div className="flex-1 relative w-full max-w-lg lg:max-w-none">
             
-            {/* Naya Spinning Offer Badge */}
-            <Link href="/payment" className="absolute -top-6 -right-6 bg-gradient-to-r from-yellow-400 to-orange-500 text-black w-28 h-28 rounded-full flex flex-col items-center justify-center font-bold shadow-[0_0_30px_rgba(250,204,21,0.8)] z-30 border-4 border-[#0B1120] overflow-hidden">
-              <div className="h-24 flex flex-col items-center animate-spin-text">
-                {/* 1. Special Offer */}
-                <div className="h-full flex flex-col justify-center">
-                  <span className="text-[10px] uppercase tracking-wider">Special</span>
-                  <span className="text-xl leading-none">Offer</span>
-                </div>
-                {/* 2. Dynamic CVs Offer */}
-                <div className="h-full flex flex-col justify-center text-center px-1">
-                  <span className="text-[9px] leading-tight">Get</span>
-                  <span className="text-sm leading-none">{settings?.cvs_per_price || 5} CVs</span>
-                  <span className="text-[10px] leading-tight mt-0.5">in ${settings?.additional_cv_price || 1.11}</span>
-                </div>
-                {/* 3. Buy Now */}
-                <div className="h-full flex flex-col justify-center">
-                  <span className="text-[10px] bg-black text-white px-2 py-1 rounded">Buy Now</span>
-                </div>
-                {/* 4. Duplicate 1 for smooth loop */}
-                <div className="h-full flex flex-col justify-center">
-                  <span className="text-[10px] uppercase tracking-wider">Special</span>
-                  <span className="text-xl leading-none">Offer</span>
+                        {/* Heart Shape Spinning Offer Badge */}
+            <Link href="/payment" className="absolute -top-10 -right-4 z-30 group w-32 h-32 flex items-center justify-center cursor-pointer">
+              {/* Heart Shape Background */}
+              <div className="absolute inset-0 bg-gradient-to-br from-yellow-400 to-orange-500 rotate-45 rounded-tl-full rounded-tr-full rounded-br-full rounded-bl-full transform group-hover:scale-110 transition-transform shadow-[0_0_30px_rgba(250,204,21,0.8)]"></div>
+              
+              {/* Spinning Text Container */}
+              <div className="relative z-10 h-20 w-full flex flex-col items-center justify-center overflow-hidden text-black">
+                <div className="h-full flex flex-col items-center justify-center animate-spin-text">
+                  {/* 1. Special Offer */}
+                  <div className="h-full flex flex-col justify-center items-center">
+                    <span className="text-[10px] uppercase font-black tracking-widest leading-none">Special</span>
+                    <span className="text-lg font-black leading-none">Offer</span>
+                  </div>
+                  {/* 2. Dynamic CVs */}
+                  <div className="h-full flex flex-col justify-center items-center">
+                    <span className="text-xs font-bold leading-none">Get</span>
+                    <span className="text-lg font-black leading-none">{settings?.cvs_per_price || 5} CVs</span>
+                    <span className="text-[10px] font-bold leading-none">${settings?.additional_cv_price || 1.11}</span>
+                  </div>
+                  {/* 3. Buy Now */}
+                  <div className="h-full flex flex-col justify-center items-center">
+                    <span className="text-xs bg-black text-white px-3 py-1 rounded-full font-bold">Buy Now</span>
+                  </div>
+                  {/* 4. Duplicate for loop */}
+                  <div className="h-full flex flex-col justify-center items-center">
+                    <span className="text-[10px] uppercase font-black tracking-widest leading-none">Special</span>
+                    <span className="text-lg font-black leading-none">Offer</span>
+                  </div>
                 </div>
               </div>
             </Link>
