@@ -12,16 +12,10 @@ import Autoplay from 'embla-carousel-autoplay';
 export default function Home() {
   const [settings, setSettings] = useState<any>(null);
   
-  // Embla Carousel Setup
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true }, [Autoplay({ delay: 4000, stopOnInteraction: false })]);
   
-  const scrollPrev = useCallback(() => {
-    if (emblaApi) emblaApi.scrollPrev();
-  }, [emblaApi]);
-
-  const scrollNext = useCallback(() => {
-    if (emblaApi) emblaApi.scrollNext();
-  }, [emblaApi]);
+  const scrollPrev = useCallback(() => { if (emblaApi) emblaApi.scrollPrev(); }, [emblaApi]);
+  const scrollNext = useCallback(() => { if (emblaApi) emblaApi.scrollNext(); }, [emblaApi]);
 
   useEffect(() => {
     fetchSettings();
@@ -40,10 +34,7 @@ export default function Home() {
 
   if (!settings) return <div className="min-h-screen bg-[#0B1120]" />;
 
-  // Fallback if no images uploaded
-  const heroImages = settings.hero_images && settings.hero_images.length > 0 
-    ? settings.hero_images 
-    : [];
+  const heroImages = settings.hero_images && settings.hero_images.length > 0 ? settings.hero_images : [];
 
   return (
     <div className="min-h-screen bg-[#0B1120] text-white flex flex-col font-sans selection:bg-blue-500 selection:text-white">
@@ -73,12 +64,13 @@ export default function Home() {
             </div>
           </div>
 
-          {/* HERO CAROUSEL (FIXED) */}
+          {/* HERO CAROUSEL (SEAMLESS / NO BORDER) */}
           <div className="flex-1 relative w-full max-w-lg lg:max-w-none">
-            <div className="relative rounded-3xl overflow-hidden border border-white/10 bg-white/5 backdrop-blur-xl shadow-2xl p-2 transform rotate-2 hover:rotate-0 transition-transform duration-500">
+            {/* Yahan se border, bg, aur p-2 hata diya hai */}
+            <div className="relative overflow-hidden rounded-3xl">
               
               {heroImages.length > 0 ? (
-                <div className="overflow-hidden rounded-2xl relative group" ref={emblaRef}>
+                <div className="overflow-hidden rounded-3xl relative group" ref={emblaRef}>
                   <div className="flex">
                     {heroImages.map((img: string, index: number) => (
                       <div key={index} className="flex-[0_0_100%] min-w-0 relative aspect-[4/3]">
@@ -93,21 +85,20 @@ export default function Home() {
                     ))}
                   </div>
 
-                  {/* Slider Buttons */}
                   {heroImages.length > 1 && (
                     <>
-                      <button onClick={scrollPrev} className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition z-10">
-                        <ChevronLeft size={20} />
+                      <button onClick={scrollPrev} className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition z-10">
+                        <ChevronLeft size={24} />
                       </button>
-                      <button onClick={scrollNext} className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition z-10">
-                        <ChevronRight size={20} />
+                      <button onClick={scrollNext} className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition z-10">
+                        <ChevronRight size={24} />
                       </button>
                     </>
                   )}
                 </div>
               ) : (
-                <div className="w-full aspect-[4/3] rounded-2xl bg-gradient-to-br from-blue-900/50 to-purple-900/50 flex items-center justify-center border border-white/10">
-                  <p className="text-gray-400 text-sm font-medium">Upload images from Admin Settings</p>
+                <div className="w-full aspect-[4/3] rounded-3xl bg-gradient-to-br from-blue-900/50 to-purple-900/50 flex items-center justify-center">
+                  <p className="text-gray-400 text-sm">Upload images from Admin Settings</p>
                 </div>
               )}
 
@@ -150,7 +141,6 @@ export default function Home() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* 3 Months */}
               <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-blue-500/50 transition duration-300 relative">
                 <h3 className="text-xl font-bold mb-2">3 Months</h3>
                 <p className="text-gray-400 text-sm mb-6">Perfect for a quick job search.</p>
@@ -158,7 +148,6 @@ export default function Home() {
                 <Link href="/payment" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">Upgrade</Link>
               </div>
 
-              {/* 6 Months */}
               <div className="bg-gradient-to-b from-blue-900/40 to-purple-900/40 p-8 rounded-3xl border border-blue-500/50 transition duration-300 relative transform lg:-translate-y-4 shadow-[0_0_30px_rgba(59,130,246,0.2)]">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-bold px-4 py-1 rounded-full">MOST POPULAR</div>
                 <h3 className="text-xl font-bold mb-2">6 Months</h3>
@@ -167,7 +156,6 @@ export default function Home() {
                 <Link href="/payment" className="w-full flex items-center justify-center bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 rounded-xl hover:from-blue-500 hover:to-purple-500 font-bold transition shadow-lg">Upgrade</Link>
               </div>
 
-              {/* 1 Year */}
               <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-blue-500/50 transition duration-300 relative">
                 <h3 className="text-xl font-bold mb-2">1 Year</h3>
                 <p className="text-gray-400 text-sm mb-6">Long-term career growth plan.</p>
@@ -175,7 +163,6 @@ export default function Home() {
                 <Link href="/payment" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">Upgrade</Link>
               </div>
 
-              {/* 5 Years */}
               <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-blue-500/50 transition duration-300 relative">
                 <h3 className="text-xl font-bold mb-2">5 Years</h3>
                 <p className="text-gray-400 text-sm mb-6">Lifetime access for experts.</p>
@@ -187,8 +174,17 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="border-t border-white/10 py-8 text-center text-sm text-gray-500 relative z-10">
-        <p>© 2026 CVNova. All rights reserved.</p>
+            <footer className="border-t border-white/10 py-8 text-center text-sm text-gray-500 relative z-10">
+        <p className="text-white text-lg font-bold mb-4">This project presented and designed by <span className="text-blue-400">Nexify Nova</span></p>
+        
+        <div className="flex flex-col items-center justify-center gap-2 mb-6 text-gray-400">
+          <p>Website: <a href="https://www.nexifynova.co.uk" target="_blank" className="text-blue-400 hover:underline">www.nexifynova.co.uk</a></p>
+          <p>UK-Address: Berkeley square House, London W1J 6JD</p>
+          <p>Cell Number / WhatsApp (UK & Intl): <a href="https://wa.me/447564920084" className="text-green-400 hover:underline">+44 7564 920084</a></p>
+          <p>For Pakistan: <a href="https://wa.me/923493709850" className="text-green-400 hover:underline">+92 349 3709850</a></p>
+        </div>
+
+        <p className="text-xs text-gray-600">© 2026 CVNova. All rights reserved.</p>
       </footer>
     </div>
   );

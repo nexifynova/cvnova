@@ -33,13 +33,14 @@ export default function PaymentPage() {
     getUserAndSettings();
   }, [router]);
 
-  const handlePackageChange = (e: any) => {
+    const handlePackageChange = (e: any) => {
     const pkg = e.target.value;
     let amt = 8;
     if (pkg === '3 Months') amt = settings?.package_3m_price || 5;
     if (pkg === '6 Months') amt = settings?.package_6m_price || 8;
     if (pkg === '1 Year') amt = settings?.package_1y_price || 12;
     if (pkg === '5 Years') amt = settings?.package_5y_price || 40;
+    if (pkg === 'Additional CVs') amt = settings?.additional_cv_price || 1.11; // Naya Option
     setFormData({ ...formData, packageType: pkg, amount: amt });
   };
 
@@ -117,11 +118,13 @@ export default function PaymentPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="block text-sm font-semibold text-gray-300 mb-2">Select Package</label>
-              <select value={formData.packageType} onChange={handlePackageChange} className="w-full bg-[#0B1120] border border-white/20 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500">
+                            <select value={formData.packageType} onChange={handlePackageChange} className="w-full bg-[#0B1120] border border-white/20 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500">
                 <option value="3 Months">3 Months - ${settings?.package_3m_price}</option>
                 <option value="6 Months">6 Months - ${settings?.package_6m_price}</option>
                 <option value="1 Year">1 Year - ${settings?.package_1y_price}</option>
                 <option value="5 Years">5 Years - ${settings?.package_5y_price}</option>
+                {/* Naya Option Yahan Add Karein */}
+                <option value="Additional CVs">Buy {settings?.cvs_per_price || 5} Extra CVs - ${settings?.additional_cv_price || 1.11}</option>
               </select>
             </div>
 
