@@ -135,23 +135,34 @@ export default function Builder() {
     }
   };
 
-    const handleAction = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    let userEmail = formData.email;
-    let isLoggedIn = false;
-
-    if (user && user.email) {
-      userEmail = user.email;
-      isLoggedIn = true;
-      const limitCheck = await checkUserLimit(userEmail);
-      if (!limitCheck.allowed) {
-        alert("You have reached your free limit. Please upgrade to continue.");
-        window.location.href = '/payment';
-        return;
-      }
+      const handleAction = async () => {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user || !user.email) {
+      alert("Aap login nahi hain. Meharbani farma kar pehle login karein.");
+      window.location.href = '/login';
+      return;
     }
 
-    // 1. Pehle Document Record Save karein
+    let userEmail = user.email;
+    let isLoggedIn = true;
+
+    // Limit Check
+    const limitCheck = await checkUserLimit(userEmail);
+    
+    // Agar profile database mein nahi mili, to error dein
+    if (limitCheck.reason === 'error_fallback') {
+      alert("Aap ki profile database mein nahi mili. Meharbani farma kar dobara signup karein ya support se rabta karein.");
+      return;
+    }
+
+    if (!limitCheck.allowed) {
+      alert("You have reached your free limit. Please upgrade to continue.");
+      window.location.href = '/payment';
+      return;
+    }
+
+    // Save record
     await saveDocumentRecord({
       documentType: 'CV',
       templateName: template,
@@ -161,12 +172,7 @@ export default function Builder() {
       fullData: formData,
     });
 
-    // 2. Phir Counter Update karein
-    if (isLoggedIn) {
-      await incrementUserCount(userEmail);
-    }
-
-    // 3. Thora sa wait karein taake DB update ho jaye, phir Print karein
+    // Print dialog kholne se pehle wait
     setTimeout(() => {
       window.print();
     }, 500); 
