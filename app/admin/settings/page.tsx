@@ -14,47 +14,17 @@ function SettingsContent() {
   const [uploading, setUploading] = useState<string | null>(null);
   
   const [settings, setSettings] = useState<any>({
-    // Pricing
     additional_cv_price: 1.00,
     cvs_per_price: 5, 
     free_cv_limit: 1,
-    
-    // Packages
-    package_3m_price: 5,
-    package_6m_price: 8,
-    package_1y_price: 12,
-    package_5y_price: 40,
-    
-    // Payment - EasyPaisa
-    easy_paisa_enabled: true, 
-    easy_paisa_number: '', 
-    easy_paisa_name: '',
-    
-    // Payment - Binance
-    binance_enabled: true, 
-    binance_id: '', 
-    binance_name: '',
-    
-    // Payment - Bank
-    bank_enabled: false, 
-    bank_account_name: '', 
-    bank_name: '', 
-    bank_branch: '', 
-    bank_account_number: '', 
-    bank_iban: '',
-    
-    // Contact Us Info
-    contact_email1: 'info@nexifynova.co.uk',
-    contact_email2: 'support@nexifynova.co.uk',
-    contact_phone: '+92 (300) 123-4567',
-    contact_location: 'Karachi, Pakistan',
-
-    // CMS
-    site_logo_url: '',
-    site_favicon_url: '',
-    hero_images: [],
-    hero_slider_interval: 4000,
-    nav_menu: [],
+    package_3m_price: 5, package_6m_price: 8, package_1y_price: 12, package_5y_price: 40,
+    cvs_3m: 10, cvs_6m: 20, cvs_1y: 50, cvs_5y: 100, // Naye fields
+    easy_paisa_enabled: true, easy_paisa_number: '', easy_paisa_name: '',
+    binance_enabled: true, binance_id: '', binance_name: '',
+    bank_enabled: false, bank_account_name: '', bank_name: '', bank_branch: '', bank_account_number: '', bank_iban: '',
+    contact_email1: 'info@nexifynova.co.uk', contact_email2: 'support@nexifynova.co.uk',
+    contact_phone: '+92 (300) 123-4567', contact_location: 'Karachi, Pakistan',
+    site_logo_url: '', site_favicon_url: '', hero_images: [], hero_slider_interval: 4000, nav_menu: [],
   });
 
   useEffect(() => {
@@ -63,37 +33,21 @@ function SettingsContent() {
 
   const fetchSettings = async () => {
     const { data } = await supabase.from('app_settings').select('*').eq('id', 1).single();
-    if (data) {
-      setSettings({
-        ...settings,
-        ...data,
-        contact_email1: data.contact_email1 || 'info@nexifynova.co.uk',
-        contact_email2: data.contact_email2 || 'support@nexifynova.co.uk',
-        contact_phone: data.contact_phone || '+92 (300) 123-4567',
-        contact_location: data.contact_location || 'Karachi, Pakistan',
-      });
-    }
+    if (data) setSettings({ ...settings, ...data });
     setLoading(false);
   };
 
   const handleSave = async () => {
     setSaving(true);
-    const { error } = await supabase.from('app_settings').update({
-      ...settings,
-      updated_at: new Date().toISOString(),
-    }).eq('id', 1);
-
-    if (error) alert("Error saving settings: " + error.message);
+    const { error } = await supabase.from('app_settings').update({ ...settings, updated_at: new Date().toISOString() }).eq('id', 1);
+    if (error) alert("Error: " + error.message);
     else alert("Settings Saved Successfully!");
     setSaving(false);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
-    let val: any = value;
-    if (type === 'checkbox') val = (e.target as HTMLInputElement).checked;
-    else if (type === 'number') val = parseFloat(value) || 0;
-    setSettings({ ...settings, [name]: val });
+  const handleChange = (e: any) => {
+    const { name, value, type, checked } = e.target;
+    setSettings({ ...settings, [name]: type === 'checkbox' ? checked : (type === 'number' ? parseFloat(value) || 0 : value) });
   };
 
   const uploadFile = async (file: File, type: 'logo' | 'favicon' | 'hero') => {
@@ -103,7 +57,7 @@ function SettingsContent() {
       const fileName = `${type}-${Date.now()}.${fileExt}`;
       const { error } = await supabase.storage.from('site-assets').upload(fileName, file, { upsert: true });
       if (error) throw error;
-      const { data } = supabase.storage.from('site-assets').getPublicUrl(fileName);
+      const { data } = await supabase.storage.from('site-assets').getPublicUrl(fileName);
       return data.publicUrl;
     } catch (error: any) {
       alert("Upload error: " + error.message);
@@ -255,20 +209,45 @@ function SettingsContent() {
                   <div><label className="block text-xs font-semibold text-gray-600 mb-1">How many CVs?</label><input type="number" name="cvs_per_price" value={settings.cvs_per_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
                 </div>
               </div>
+              
               <div>
                 <h3 className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2"><Package size={16}/> Subscription Packages</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div><label className="block text-xs font-semibold text-gray-600 mb-1">3 Months</label><input type="number" step="0.01" name="package_3m_price" value={settings.package_3m_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
-                  <div><label className="block text-xs font-semibold text-gray-600 mb-1">6 Months</label><input type="number" step="0.01" name="package_6m_price" value={settings.package_6m_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
-                  <div><label className="block text-xs font-semibold text-gray-600 mb-1">1 Year</label><input type="number" step="0.01" name="package_1y_price" value={settings.package_1y_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
-                  <div><label className="block text-xs font-semibold text-gray-600 mb-1">5 Years</label><input type="number" step="0.01" name="package_5y_price" value={settings.package_5y_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* 3 Months */}
+                  <div className="border p-4 rounded-xl">
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">3 Months Price ($)</label>
+                    <input type="number" step="0.01" name="package_3m_price" value={settings.package_3m_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border mb-2" />
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">CVs Included</label>
+                    <input type="number" name="cvs_3m" value={settings.cvs_3m || 10} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" />
+                  </div>
+                  {/* 6 Months */}
+                  <div className="border p-4 rounded-xl">
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">6 Months Price ($)</label>
+                    <input type="number" step="0.01" name="package_6m_price" value={settings.package_6m_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border mb-2" />
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">CVs Included</label>
+                    <input type="number" name="cvs_6m" value={settings.cvs_6m || 20} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" />
+                  </div>
+                  {/* 1 Year */}
+                  <div className="border p-4 rounded-xl">
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">1 Year Price ($)</label>
+                    <input type="number" step="0.01" name="package_1y_price" value={settings.package_1y_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border mb-2" />
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">CVs Included</label>
+                    <input type="number" name="cvs_1y" value={settings.cvs_1y || 50} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" />
+                  </div>
+                  {/* 5 Years */}
+                  <div className="border p-4 rounded-xl">
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">5 Years Price ($)</label>
+                    <input type="number" step="0.01" name="package_5y_price" value={settings.package_5y_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border mb-2" />
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">CVs Included</label>
+                    <input type="number" name="cvs_5y" value={settings.cvs_5y || 100} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" />
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Payment Methods Section */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-              <h2 className="text-lg font-bold mb-4 border-b pb-2 text-gray-500">Payment Methods</h2>
+              <h2 className="text-lg font-bold mb-4 border-b pb-2 text-gray-500">Payment Methods & Free Limits</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 <div><label className="block text-xs font-semibold text-gray-600 mb-1">Free CVs per User</label><input type="number" name="free_cv_limit" value={settings.free_cv_limit} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
               </div>

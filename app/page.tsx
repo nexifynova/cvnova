@@ -66,35 +66,18 @@ export default function Home() {
 
           <div className="flex-1 relative w-full max-w-lg lg:max-w-none">
             
-                        {/* Heart Shape Spinning Offer Badge */}
-            <Link href="/payment" className="absolute -top-10 -right-4 z-30 group w-32 h-32 flex items-center justify-center cursor-pointer">
+            {/* Heart Shape Offer Badge */}
+            <Link href="/payment" className="absolute -top-12 -right-8 z-30 group w-40 h-40 flex items-center justify-center cursor-pointer">
               {/* Heart Shape Background */}
-              <div className="absolute inset-0 bg-gradient-to-br from-yellow-400 to-orange-500 rotate-45 rounded-tl-full rounded-tr-full rounded-br-full rounded-bl-full transform group-hover:scale-110 transition-transform shadow-[0_0_30px_rgba(250,204,21,0.8)]"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-yellow-400 to-orange-500 rotate-45 rounded-tl-full rounded-tr-full rounded-br-full rounded-bl-full transform group-hover:scale-110 transition-transform shadow-[0_0_40px_rgba(250,204,21,0.9)]"></div>
               
-              {/* Spinning Text Container */}
-              <div className="relative z-10 h-20 w-full flex flex-col items-center justify-center overflow-hidden text-black">
-                <div className="h-full flex flex-col items-center justify-center animate-spin-text">
-                  {/* 1. Special Offer */}
-                  <div className="h-full flex flex-col justify-center items-center">
-                    <span className="text-[10px] uppercase font-black tracking-widest leading-none">Special</span>
-                    <span className="text-lg font-black leading-none">Offer</span>
-                  </div>
-                  {/* 2. Dynamic CVs */}
-                  <div className="h-full flex flex-col justify-center items-center">
-                    <span className="text-xs font-bold leading-none">Get</span>
-                    <span className="text-lg font-black leading-none">{settings?.cvs_per_price || 5} CVs</span>
-                    <span className="text-[10px] font-bold leading-none">${settings?.additional_cv_price || 1.11}</span>
-                  </div>
-                  {/* 3. Buy Now */}
-                  <div className="h-full flex flex-col justify-center items-center">
-                    <span className="text-xs bg-black text-white px-3 py-1 rounded-full font-bold">Buy Now</span>
-                  </div>
-                  {/* 4. Duplicate for loop */}
-                  <div className="h-full flex flex-col justify-center items-center">
-                    <span className="text-[10px] uppercase font-black tracking-widest leading-none">Special</span>
-                    <span className="text-lg font-black leading-none">Offer</span>
-                  </div>
-                </div>
+              {/* Text Container (Static) */}
+              <div className="relative z-10 -mt-4 flex flex-col items-center justify-center text-black text-center">
+                <span className="text-[12px] uppercase font-black tracking-widest leading-none">Special</span>
+                <span className="text-xl font-black leading-none mb-1">Offer</span>
+                <span className="text-xs font-bold leading-none">Get {settings?.cvs_per_price || 5} CVs</span>
+                <span className="text-[10px] font-bold leading-none mt-1">in ${settings?.additional_cv_price || 1.11}</span>
+                <span className="text-[10px] bg-black text-white px-2 py-0.5 rounded mt-1.5">Buy Now</span>
               </div>
             </Link>
 
@@ -149,7 +132,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* PRICING SECTION (Ab sirf 4 boxes hain) */}
+        {/* PRICING SECTION */}
         <section id="pricing" className="py-24 relative z-10 bg-black/20">
           <div className="max-w-7xl mx-auto px-6">
             <div className="text-center mb-12">
@@ -166,35 +149,39 @@ export default function Home() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {/* 3 Months */}
-              <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-blue-500/50 transition duration-300 relative">
+              <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-blue-500/50 transition duration-300 relative flex flex-col">
                 <h3 className="text-xl font-bold mb-2">3 Months</h3>
-                <p className="text-gray-400 text-sm mb-6">Perfect for a quick job search.</p>
-                <div className="text-4xl font-extrabold mb-6">${settings.package_3m_price}</div>
+                <p className="text-gray-400 text-sm mb-4">Perfect for a quick job search.</p>
+                <div className="text-4xl font-extrabold mb-4">${settings.package_3m_price}</div>
+                <p className="text-sm font-semibold text-blue-400 mb-6 flex-grow">Includes {settings.cvs_3m || 10} CVs</p>
                 <Link href="/payment" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">Upgrade</Link>
               </div>
 
               {/* 6 Months */}
-              <div className="bg-gradient-to-b from-blue-900/40 to-purple-900/40 p-8 rounded-3xl border border-blue-500/50 transition duration-300 relative transform lg:-translate-y-4 shadow-[0_0_30px_rgba(59,130,246,0.2)]">
+              <div className="bg-gradient-to-b from-blue-900/40 to-purple-900/40 p-8 rounded-3xl border border-blue-500/50 transition duration-300 relative transform lg:-translate-y-4 shadow-[0_0_30px_rgba(59,130,246,0.2)] flex flex-col">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-bold px-4 py-1 rounded-full">MOST POPULAR</div>
                 <h3 className="text-xl font-bold mb-2">6 Months</h3>
-                <p className="text-blue-200 text-sm mb-6">Best value for serious professionals.</p>
-                <div className="text-4xl font-extrabold mb-6">${settings.package_6m_price}</div>
+                <p className="text-blue-200 text-sm mb-4">Best value for serious professionals.</p>
+                <div className="text-4xl font-extrabold mb-4">${settings.package_6m_price}</div>
+                <p className="text-sm font-semibold text-blue-300 mb-6 flex-grow">Includes {settings.cvs_6m || 20} CVs</p>
                 <Link href="/payment" className="w-full flex items-center justify-center bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 rounded-xl hover:from-blue-500 hover:to-purple-500 font-bold transition shadow-lg">Upgrade</Link>
               </div>
 
               {/* 1 Year */}
-              <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-blue-500/50 transition duration-300 relative">
+              <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-blue-500/50 transition duration-300 relative flex flex-col">
                 <h3 className="text-xl font-bold mb-2">1 Year</h3>
-                <p className="text-gray-400 text-sm mb-6">Long-term career growth plan.</p>
-                <div className="text-4xl font-extrabold mb-6">${settings.package_1y_price}</div>
+                <p className="text-gray-400 text-sm mb-4">Long-term career growth plan.</p>
+                <div className="text-4xl font-extrabold mb-4">${settings.package_1y_price}</div>
+                <p className="text-sm font-semibold text-blue-400 mb-6 flex-grow">Includes {settings.cvs_1y || 50} CVs</p>
                 <Link href="/payment" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">Upgrade</Link>
               </div>
 
               {/* 5 Years */}
-              <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-blue-500/50 transition duration-300 relative">
+              <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-blue-500/50 transition duration-300 relative flex flex-col">
                 <h3 className="text-xl font-bold mb-2">5 Years</h3>
-                <p className="text-gray-400 text-sm mb-6">Lifetime access for experts.</p>
-                <div className="text-4xl font-extrabold mb-6">${settings.package_5y_price}</div>
+                <p className="text-gray-400 text-sm mb-4">Lifetime access for experts.</p>
+                <div className="text-4xl font-extrabold mb-4">${settings.package_5y_price}</div>
+                <p className="text-sm font-semibold text-blue-400 mb-6 flex-grow">Includes {settings.cvs_5y || 100} CVs</p>
                 <Link href="/payment" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">Upgrade</Link>
               </div>
             </div>
