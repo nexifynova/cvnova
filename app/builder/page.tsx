@@ -117,17 +117,27 @@ export default function Builder() {
     setFormData({ ...formData, [field]: (formData[field] as any[]).filter((_, i) => i !== index) });
   };
 
-  const handleGenerateAI = async () => {
+    const handleGenerateAI = async () => {
     if (!formData.jobTitle) { alert("Please enter a Job Title first."); return; }
     setIsGenerating(true);
     try {
       const response = await fetch('/api/generate-summary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobTitle: formData.jobTitle, skills: formData.skills.join(', ') }),
+        body: JSON.stringify({ 
+          jobTitle: formData.jobTitle, 
+          experience: formData.experience, 
+          education: formData.education 
+        }),
       });
       const data = await response.json();
-      if (data.summary) setFormData({ ...formData, summary: data.summary });
+      if (data.summary) {
+        setFormData({ 
+          ...formData, 
+          summary: data.summary,
+          skills: data.skills // Skills bhi update karein
+        });
+      }
     } catch (error) {
       alert("Failed to generate AI summary.");
     } finally {

@@ -2,18 +2,22 @@ import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   try {
-    const { jobTitle, skills } = await req.json();
+    const { jobTitle, experience, education } = await req.json();
 
-    // Yahan hum OpenAI/Gemini API call karte hain, 
-    // Lekin abhi ke liye hum aik dummy summary bana rahe hain taake structure clear ho.
-    // Baad mein aap yahan apni API Key dalenge.
+    // Dummy AI logic (Aap yahan OpenAI ya Gemini ka API call laga sakte hain baad mein)
+    const expText = experience && experience.length > 0 ? `with experience as ${experience[0].role} at ${experience[0].company}` : '';
+    const eduText = education && education.length > 0 ? `holding a degree in ${education[0].degree}` : '';
     
-    const generatedText = `A highly motivated ${jobTitle} with expertise in ${skills}. Proven ability to deliver high-quality results and collaborate effectively within teams. Seeking to leverage skills to contribute to a dynamic organization.`;
+    const generatedSummary = `A highly motivated and detail-oriented ${jobTitle} ${expText} ${eduText}. Proven ability to deliver high-quality results, collaborate effectively within teams, and solve complex problems. Seeking to leverage skills and expertise to contribute to a dynamic organization.`;
+    
+    // AI se skills bhi generate karwa rahe hain
+    const generatedSkills = jobTitle.toLowerCase().includes('account') 
+      ? ['Financial Reporting', 'Data Analysis', 'Ms-Office', 'QuickBooks', 'Taxation', 'Communication']
+      : ['Project Management', 'Communication', 'Problem Solving', 'Teamwork', 'Leadership'];
 
-    // Thora delay daal rahe hain taake 'loading' effect nazar aaye
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    return NextResponse.json({ summary: generatedText });
+    return NextResponse.json({ summary: generatedSummary, skills: generatedSkills });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to generate' }, { status: 500 });
   }

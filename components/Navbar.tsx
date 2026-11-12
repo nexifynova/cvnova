@@ -52,10 +52,11 @@ export default function Navbar() {
   };
 
   // Default menu (agar database se load na ho)
-  const defaultMenu = [
+    const defaultMenu = [
     { label: 'CV Builder', href: '/builder', visible: true },
     { label: 'Cover Letter', href: '/cover-letter', visible: true },
     { label: 'Experience Letter', href: '/experience-letter', visible: true },
+    { label: 'Track Payment', href: '/track-payment', visible: true }, // Yeh naya add karein
     { label: 'Contact Us', href: '/contact', visible: true },
     { label: 'Pricing', href: '/#pricing', visible: true },
   ];

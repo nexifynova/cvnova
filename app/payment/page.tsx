@@ -1,184 +1,191 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
-import { Upload, Loader2, ArrowLeft, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import { FileText, Sparkles, ArrowRight, Mail, Briefcase, ChevronLeft, ChevronRight } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import Navbar from '@/components/Navbar';
+import useEmblaCarousel from 'embla-carousel-react';
+import Autoplay from 'embla-carousel-autoplay';
 
-export default function PaymentPage() {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [user, setUser] = useState<any>(null);
+export default function Home() {
   const [settings, setSettings] = useState<any>(null);
   
-  const [formData, setFormData] = useState({
-    packageType: '6 Months',
-    amount: 8,
-    paymentMethod: 'EasyPaisa',
-    transactionId: '',
-    slipFile: null as File | null
-  });
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true }, [Autoplay({ delay: 4000, stopOnInteraction: false })]);
+  
+  const scrollPrev = useCallback(() => { if (emblaApi) emblaApi.scrollPrev(); }, [emblaApi]);
+  const scrollNext = useCallback(() => { if (emblaApi) emblaApi.scrollNext(); }, [emblaApi]);
 
   useEffect(() => {
-    const getUserAndSettings = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.push('/login'); return; }
-      setUser(user);
+    fetchSettings();
+  }, []);
 
-      const { data } = await supabase.from('app_settings').select('*').eq('id', 1).single();
-      if (data) setSettings(data);
-    };
-    getUserAndSettings();
-  }, [router]);
-
-    const handlePackageChange = (e: any) => {
-    const pkg = e.target.value;
-    let amt = 8;
-    if (pkg === '3 Months') amt = settings?.package_3m_price || 5;
-    if (pkg === '6 Months') amt = settings?.package_6m_price || 8;
-    if (pkg === '1 Year') amt = settings?.package_1y_price || 12;
-    if (pkg === '5 Years') amt = settings?.package_5y_price || 40;
-    if (pkg === 'Additional CVs') amt = settings?.additional_cv_price || 1.11; // Naya Option
-    setFormData({ ...formData, packageType: pkg, amount: amt });
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFormData({ ...formData, slipFile: e.target.files[0] });
+  const fetchSettings = async () => {
+    const { data } = await supabase.from('app_settings').select('*').eq('id', 1).single();
+    if (data) {
+      setSettings(data);
+      if (emblaApi) {
+        const autoplay = emblaApi.plugins().autoplay;
+        if (autoplay) autoplay.options.delay = data.hero_slider_interval || 4000;
+      }
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.slipFile) { alert("Please upload payment slip"); return; }
-    setLoading(true);
+  if (!settings) return <div className="min-h-screen bg-[#0B1120]" />;
 
-    try {
-      const fileExt = formData.slipFile.name.split('.').pop();
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-      const { error: uploadError } = await supabase.storage
-        .from('payment-slips')
-        .upload(fileName, formData.slipFile);
-
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage.from('payment-slips').getPublicUrl(fileName);
-
-      const { error: dbError } = await supabase.from('payments').insert([{
-        user_id: user.id,
-        user_email: user.email,
-        package_type: formData.packageType,
-        amount: formData.amount,
-        payment_method: formData.paymentMethod,
-        transaction_id: formData.transactionId,
-        slip_url: urlData.publicUrl,
-        status: 'pending'
-      }]);
-
-      if (dbError) throw dbError;
-
-      setSuccess(true);
-    } catch (error: any) {
-      alert("Error: " + error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (success) {
-    return (
-      <div className="min-h-screen bg-[#0B1120] flex items-center justify-center text-white p-4">
-        <div className="bg-white/5 p-8 rounded-3xl border border-white/10 text-center max-w-md">
-          <CheckCircle className="text-green-500 mx-auto mb-4" size={64} />
-          <h2 className="text-2xl font-bold mb-2">Payment Submitted!</h2>
-          <p className="text-gray-400 mb-4">Aapki slip admin ko bhej di gayi hai. Approve hone par aapka account Pro ho jayega.</p>
-          <div className="bg-yellow-500/20 border border-yellow-500/30 p-4 rounded-xl mb-6 text-left">
-            <p className="text-yellow-300 text-sm font-bold flex items-center gap-2 mb-1"><Clock size={16}/> Approval Time:</p>
-            <p className="text-gray-300 text-xs">Admin aapki payment ko <b>30 minutes se 24 hours</b> ke andar approve karega. Approve hone par aapka account automatic Pro ban jayega.</p>
-          </div>
-          <Link href="/dashboard" className="inline-block bg-blue-600 px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition">Go to Dashboard</Link>
-        </div>
-      </div>
-    );
-  }
+  const heroImages = settings.hero_images && settings.hero_images.length > 0 ? settings.hero_images : [];
 
   return (
-    <div className="min-h-screen bg-[#0B1120] text-white p-6 font-sans">
-      <div className="max-w-2xl mx-auto">
-        <Link href="/#pricing" className="flex items-center gap-2 text-gray-400 hover:text-white mb-6">
-          <ArrowLeft size={20} /> Back to Pricing
-        </Link>
-        
-        <div className="bg-white/5 p-8 rounded-3xl border border-white/10">
-          <h1 className="text-3xl font-bold mb-2">Complete Your Payment</h1>
-          <p className="text-gray-400 text-sm mb-6">Payment slip upload karein aur admin approval ka intezar karein.</p>
-          
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-semibold text-gray-300 mb-2">Select Package</label>
-                            <select value={formData.packageType} onChange={handlePackageChange} className="w-full bg-[#0B1120] border border-white/20 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500">
-                <option value="3 Months">3 Months - ${settings?.package_3m_price}</option>
-                <option value="6 Months">6 Months - ${settings?.package_6m_price}</option>
-                <option value="1 Year">1 Year - ${settings?.package_1y_price}</option>
-                <option value="5 Years">5 Years - ${settings?.package_5y_price}</option>
-                {/* Naya Option Yahan Add Karein */}
-                <option value="Additional CVs">Buy {settings?.cvs_per_price || 5} Extra CVs - ${settings?.additional_cv_price || 1.11}</option>
-              </select>
-            </div>
+    <div className="min-h-screen bg-[#0B1120] text-white flex flex-col font-sans selection:bg-blue-500 selection:text-white">
+      
+      <Navbar />
 
-            <div className="bg-blue-900/20 border border-blue-500/30 p-4 rounded-xl text-sm space-y-2">
-              <p className="font-bold text-blue-300">Amount to Pay: ${formData.amount}</p>
-              {settings?.easy_paisa_enabled && (
-                <p>EasyPaisa: <span className="font-mono text-white">{settings.easy_paisa_number}</span> ({settings.easy_paisa_name})</p>
+      <main className="flex-grow relative overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-blue-600/30 blur-[120px] rounded-full pointer-events-none"></div>
+        <div className="absolute top-40 right-0 w-[400px] h-[400px] bg-purple-600/20 blur-[100px] rounded-full pointer-events-none"></div>
+
+        <section className="max-w-7xl mx-auto px-6 py-20 lg:py-32 flex flex-col lg:flex-row items-center gap-16 relative z-10">
+          <div className="flex-1 text-center lg:text-left">
+            <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 text-blue-300 px-4 py-1.5 rounded-full text-sm font-semibold mb-8 backdrop-blur-sm">
+              <Sparkles size={16} className="text-yellow-400" />
+              <span>AI-Powered Career Tools 2.0</span>
+            </div>
+            <h1 className="text-5xl lg:text-7xl font-extrabold leading-[1.1] tracking-tight">
+              Career growth <br className="hidden lg:block"/> done <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">right.</span>
+            </h1>
+            <p className="mt-6 text-lg text-gray-400 max-w-lg mx-auto lg:mx-0 leading-relaxed">
+              Create professional, ATS-friendly CVs, Cover Letters, and Experience Letters in minutes. Let our AI write your next career move.
+            </p>
+            <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+              <Link href="/builder" className="flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-full hover:from-blue-500 hover:to-purple-500 text-lg font-bold shadow-[0_0_20px_rgba(59,130,246,0.5)] transition-all transform hover:-translate-y-1">
+                Build My CV Now <ArrowRight size={20} />
+              </Link>
+            </div>
+          </div>
+
+          <div className="flex-1 relative w-full max-w-lg lg:max-w-none">
+            <div className="relative rounded-3xl overflow-hidden border border-white/10 bg-white/5 backdrop-blur-xl shadow-2xl p-2 transform rotate-2 hover:rotate-0 transition-transform duration-500">
+              {heroImages.length > 0 ? (
+                <div className="overflow-hidden rounded-2xl relative group" ref={emblaRef}>
+                  <div className="flex">
+                    {heroImages.map((img: string, index: number) => (
+                      <div key={index} className="flex-[0_0_100%] min-w-0 relative aspect-[4/3]">
+                        <Image src={img} alt={`CVNova Slide ${index + 1}`} fill className="object-cover" priority={index === 0} />
+                      </div>
+                    ))}
+                  </div>
+                  {heroImages.length > 1 && (
+                    <>
+                      <button onClick={scrollPrev} className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition z-10"><ChevronLeft size={20} /></button>
+                      <button onClick={scrollNext} className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition z-10"><ChevronRight size={20} /></button>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="w-full aspect-[4/3] rounded-2xl bg-gradient-to-br from-blue-900/50 to-purple-900/50 flex items-center justify-center border border-white/10">
+                  <p className="text-gray-400 text-sm font-medium">Upload images from Admin Settings</p>
+                </div>
               )}
-              {settings?.binance_enabled && (
-                <p>Binance ID: <span className="font-mono text-white">{settings.binance_id}</span></p>
-              )}
-              {settings?.bank_enabled && (
-                <>
-                  <p>Bank: <span className="font-mono text-white">{settings.bank_name}</span></p>
-                  <p>Account: <span className="font-mono text-white">{settings.bank_account_number}</span> ({settings.bank_account_name})</p>
-                  {settings.bank_iban && <p>IBAN: <span className="font-mono text-white">{settings.bank_iban}</span></p>}
-                </>
-              )}
+            </div>
+          </div>
+        </section>
+
+        <section id="features" className="py-24 relative z-10">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl lg:text-5xl font-bold mb-6">Everything you need <br/> to get <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">hired.</span></h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Link href="/builder" className="group bg-white/5 p-8 rounded-3xl border border-white/10 hover:bg-white/10 transition duration-300 cursor-pointer">
+                <div className="w-14 h-14 bg-blue-500/20 rounded-2xl flex items-center justify-center mb-6 border border-blue-500/30 group-hover:scale-110 transition"><FileText className="text-blue-400" size={28} /></div>
+                <h3 className="text-xl font-bold mb-3">CV Builder</h3>
+                <p className="text-gray-400 leading-relaxed">Create a professional resume with 19+ modern templates and real-time preview.</p>
+              </Link>
+              <Link href="/cover-letter" className="group bg-white/5 p-8 rounded-3xl border border-white/10 hover:bg-white/10 transition duration-300 cursor-pointer">
+                <div className="w-14 h-14 bg-green-500/20 rounded-2xl flex items-center justify-center mb-6 border border-green-500/30 group-hover:scale-110 transition"><Mail className="text-green-400" size={28} /></div>
+                <h3 className="text-xl font-bold mb-3">Cover Letter</h3>
+                <p className="text-gray-400 leading-relaxed">Stand out with a tailored cover letter that complements your CV perfectly.</p>
+              </Link>
+              <Link href="/experience-letter" className="group bg-white/5 p-8 rounded-3xl border border-white/10 hover:bg-white/10 transition duration-300 cursor-pointer">
+                <div className="w-14 h-14 bg-purple-500/20 rounded-2xl flex items-center justify-center mb-6 border border-purple-500/30 group-hover:scale-110 transition"><Briefcase className="text-purple-400" size={28} /></div>
+                <h3 className="text-xl font-bold mb-3">Experience Letter</h3>
+                <p className="text-gray-400 leading-relaxed">Generate professional experience letters for your employees or yourself.</p>
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* PRICING SECTION */}
+        <section id="pricing" className="py-24 relative z-10 bg-black/20">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl lg:text-5xl font-bold mb-6">Simple, transparent <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">pricing.</span></h2>
+              <p className="text-gray-400 max-w-2xl mx-auto">Choose the plan that fits your needs. No hidden fees.</p>
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-300 mb-2">Select Payment Method Used</label>
-              <select value={formData.paymentMethod} onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})} className="w-full bg-[#0B1120] border border-white/20 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500">
-                {settings?.easy_paisa_enabled && <option value="EasyPaisa">EasyPaisa</option>}
-                {settings?.binance_enabled && <option value="Binance">Binance</option>}
-                {settings?.bank_enabled && <option value="Bank">Bank Transfer</option>}
-              </select>
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              {/* 3 Months */}
+              <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-blue-500/50 transition duration-300 relative">
+                <h3 className="text-xl font-bold mb-2">3 Months</h3>
+                <p className="text-gray-400 text-sm mb-6">Perfect for a quick job search.</p>
+                <div className="text-4xl font-extrabold mb-6">${settings.package_3m_price}</div>
+                <Link href="/payment" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">Upgrade</Link>
+              </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-300 mb-2">Transaction ID / TID (Optional)</label>
-              <input type="text" placeholder="e.g. 123456789" value={formData.transactionId} onChange={(e) => setFormData({...formData, transactionId: e.target.value})} className="w-full bg-[#0B1120] border border-white/20 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500" />
-            </div>
+              {/* 6 Months */}
+              <div className="bg-gradient-to-b from-blue-900/40 to-purple-900/40 p-8 rounded-3xl border border-blue-500/50 transition duration-300 relative transform lg:-translate-y-4 shadow-[0_0_30px_rgba(59,130,246,0.2)]">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-bold px-4 py-1 rounded-full">MOST POPULAR</div>
+                <h3 className="text-xl font-bold mb-2">6 Months</h3>
+                <p className="text-blue-200 text-sm mb-6">Best value for serious professionals.</p>
+                <div className="text-4xl font-extrabold mb-6">${settings.package_6m_price}</div>
+                <Link href="/payment" className="w-full flex items-center justify-center bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 rounded-xl hover:from-blue-500 hover:to-purple-500 font-bold transition shadow-lg">Upgrade</Link>
+              </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-300 mb-2">Upload Payment Slip (Screenshot)</label>
-              <div className="border-2 border-dashed border-white/20 rounded-xl p-6 text-center hover:border-blue-500 transition relative">
-                <input type="file" accept="image/*" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                <Upload className="mx-auto text-gray-400 mb-2" size={32} />
-                <p className="text-sm text-gray-400">{formData.slipFile ? formData.slipFile.name : 'Click or drag to upload image'}</p>
+              {/* 1 Year */}
+              <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-blue-500/50 transition duration-300 relative">
+                <h3 className="text-xl font-bold mb-2">1 Year</h3>
+                <p className="text-gray-400 text-sm mb-6">Long-term career growth plan.</p>
+                <div className="text-4xl font-extrabold mb-6">${settings.package_1y_price}</div>
+                <Link href="/payment" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">Upgrade</Link>
+              </div>
+
+              {/* 5 Years */}
+              <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-blue-500/50 transition duration-300 relative">
+                <h3 className="text-xl font-bold mb-2">5 Years</h3>
+                <p className="text-gray-400 text-sm mb-6">Lifetime access for experts.</p>
+                <div className="text-4xl font-extrabold mb-6">${settings.package_5y_price}</div>
+                <Link href="/payment" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">Upgrade</Link>
               </div>
             </div>
 
-            <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-xl">
-              <p className="text-yellow-300 text-sm font-bold flex items-center gap-2 mb-1"><AlertCircle size={16}/> Important Note:</p>
-              <p className="text-gray-400 text-xs">Payment submit karne ke baad admin aapki slip ko <b>30 minutes se 24 hours</b> ke andar verify karega. Approve hone par aapka account automatic Pro mein convert ho jayega aur aap unlimited documents bana sakenge.</p>
+            {/* Additional CVs Box */}
+            <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-blue-500/50 transition duration-300 relative max-w-md mx-auto">
+              <h3 className="text-xl font-bold mb-2">Need Extra CVs?</h3>
+              <p className="text-gray-400 text-sm mb-6">Buy extra CV downloads without a subscription.</p>
+              <div className="text-4xl font-extrabold mb-6">
+                ${settings.additional_cv_price} <span className="text-sm font-normal text-gray-400">for {settings.cvs_per_price} CVs</span>
+              </div>
+              <Link href="/payment" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">
+                Buy Extra CVs
+              </Link>
             </div>
+          </div>
+        </section>
+      </main>
 
-            <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-xl font-bold hover:from-blue-500 hover:to-purple-500 transition disabled:opacity-50 flex items-center justify-center gap-2">
-              {loading ? <Loader2 className="animate-spin" /> : 'Submit Payment Proof'}
-            </button>
-          </form>
+      <footer className="border-t border-white/10 py-8 text-center text-sm text-gray-500 relative z-10">
+        <p className="text-white text-lg font-bold mb-4">This project presented and designed by <span className="text-blue-400">Nexify Nova</span></p>
+        
+        <div className="flex flex-col items-center justify-center gap-2 mb-6 text-gray-400">
+          <p>Website: <a href="https://www.nexifynova.co.uk" target="_blank" className="text-blue-400 hover:underline">www.nexifynova.co.uk</a></p>
+          <p>UK-Address: Berkeley square House, London W1J 6JD</p>
+          <p>Cell Number / WhatsApp (UK & Intl): <a href="https://wa.me/447564920084" className="text-green-400 hover:underline">+44 7564 920084</a></p>
+          <p>For Pakistan: <a href="https://wa.me/923493709850" className="text-green-400 hover:underline">+92 349 3709850</a></p>
         </div>
-      </div>
+
+        <p className="text-xs text-gray-600">© 2026 CVNova. All rights reserved.</p>
+      </footer>
     </div>
   );
 }
