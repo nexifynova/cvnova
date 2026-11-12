@@ -116,67 +116,61 @@ export default function Home() {
           </div>
         </section>
 
-        {/* PRICING SECTION */}
+                {/* PRICING SECTION */}
         <section id="pricing" className="py-24 relative z-10 bg-black/20">
-          <div className="max-w-7xl mx-auto px-6">
-            <div className="text-center mb-8">
+          <div className="max-w-3xl mx-auto px-6">
+            <div className="text-center mb-12">
               <h2 className="text-3xl lg:text-5xl font-bold mb-6">Simple, transparent <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">pricing.</span></h2>
-              <p className="text-gray-400 max-w-2xl mx-auto mb-6">Choose the plan that fits your needs. No hidden fees.</p>
-              
-              {/* Payment Gateways Info */}
-              <div className="flex flex-wrap justify-center gap-4 items-center mb-10">
-                <span className="text-sm text-gray-400">We accept:</span>
-                {settings?.easy_paisa_enabled && <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-bold border border-white/20">EasyPaisa</span>}
-                {settings?.binance_enabled && <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-bold border border-white/20">Binance</span>}
-                {settings?.bank_enabled && <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-bold border border-white/20">Bank Transfer</span>}
-              </div>
+              <p className="text-gray-400 max-w-2xl mx-auto">Choose the plan that fits your needs. No hidden fees.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-              {/* 3 Months */}
-              <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-blue-500/50 transition duration-300 relative">
-                <h3 className="text-xl font-bold mb-2">3 Months</h3>
-                <p className="text-gray-400 text-sm mb-6">Perfect for a quick job search.</p>
-                <div className="text-4xl font-extrabold mb-6">${settings.package_3m_price}</div>
-                <Link href="/payment" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">Upgrade</Link>
-              </div>
+            {/* Premium Dropdown Design */}
+            <div className="bg-gradient-to-b from-white/10 to-white/5 p-1 rounded-3xl border border-white/20 shadow-2xl">
+              <div className="bg-[#0B1120] p-8 rounded-[22px]">
+                
+                <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 border-b border-white/10 pb-8">
+                  <div>
+                    <h3 className="text-2xl font-bold text-white mb-1">Upgrade Your Plan</h3>
+                    <p className="text-gray-400 text-sm">Select a package below to unlock unlimited access.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {settings?.easy_paisa_enabled && <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-bold border border-white/20 text-green-400">EasyPaisa</span>}
+                    {settings?.binance_enabled && <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-bold border border-white/20 text-yellow-400">Binance</span>}
+                    {settings?.bank_enabled && <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-bold border border-white/20 text-blue-400">Bank</span>}
+                  </div>
+                </div>
 
-              {/* 6 Months */}
-              <div className="bg-gradient-to-b from-blue-900/40 to-purple-900/40 p-8 rounded-3xl border border-blue-500/50 transition duration-300 relative transform lg:-translate-y-4 shadow-[0_0_30px_rgba(59,130,246,0.2)]">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-bold px-4 py-1 rounded-full">MOST POPULAR</div>
-                <h3 className="text-xl font-bold mb-2">6 Months</h3>
-                <p className="text-blue-200 text-sm mb-6">Best value for serious professionals.</p>
-                <div className="text-4xl font-extrabold mb-6">${settings.package_6m_price}</div>
-                <Link href="/payment" className="w-full flex items-center justify-center bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 rounded-xl hover:from-blue-500 hover:to-purple-500 font-bold transition shadow-lg">Upgrade</Link>
-              </div>
+                <div className="relative">
+                  <select 
+                    onChange={(e) => {
+                      if(e.target.value) {
+                        // Yahan aap specific package select karne par payment page par le ja sakte hain
+                        window.location.href = `/payment`; 
+                      }
+                    }}
+                    defaultValue=""
+                    className="w-full appearance-none bg-black/40 border border-white/20 text-white text-lg rounded-xl px-6 py-5 outline-none focus:border-blue-500 cursor-pointer font-medium"
+                  >
+                    <option value="" disabled className="text-gray-400">Choose a package...</option>
+                    <option value="3months" className="py-2">3 Months - ${settings?.package_3m_price}</option>
+                    <option value="6months" className="py-2">6 Months - ${settings?.package_6m_price} (Most Popular)</option>
+                    <option value="1year" className="py-2">1 Year - ${settings?.package_1y_price}</option>
+                    <option value="5years" className="py-2">5 Years - ${settings?.package_5y_price}</option>
+                    <option value="additional" className="py-2 text-blue-400 font-bold">
+                      Buy {settings?.cvs_per_price || 5} Extra CVs - ${settings?.additional_cv_price || 1.11}
+                    </option>
+                  </select>
+                  <div className="absolute inset-y-0 right-6 flex items-center pointer-events-none text-gray-400">
+                    ▼
+                  </div>
+                </div>
 
-              {/* 1 Year */}
-              <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-blue-500/50 transition duration-300 relative">
-                <h3 className="text-xl font-bold mb-2">1 Year</h3>
-                <p className="text-gray-400 text-sm mb-6">Long-term career growth plan.</p>
-                <div className="text-4xl font-extrabold mb-6">${settings.package_1y_price}</div>
-                <Link href="/payment" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">Upgrade</Link>
-              </div>
+                <div className="mt-6 flex items-center justify-center gap-2 text-sm text-gray-400 bg-white/5 p-4 rounded-xl">
+                  <span className="text-green-400 font-bold">✓</span> Full Access to all 19 Templates
+                  <span className="text-green-400 font-bold ml-4">✓</span> ATS Friendly
+                </div>
 
-              {/* 5 Years */}
-              <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-blue-500/50 transition duration-300 relative">
-                <h3 className="text-xl font-bold mb-2">5 Years</h3>
-                <p className="text-gray-400 text-sm mb-6">Lifetime access for experts.</p>
-                <div className="text-4xl font-extrabold mb-6">${settings.package_5y_price}</div>
-                <Link href="/payment" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">Upgrade</Link>
               </div>
-            </div>
-
-            {/* Additional CVs Box */}
-            <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-blue-500/50 transition duration-300 relative max-w-md mx-auto">
-              <h3 className="text-xl font-bold mb-2">Need Extra CVs?</h3>
-              <p className="text-gray-400 text-sm mb-6">Buy extra CV downloads without a subscription.</p>
-              <div className="text-4xl font-extrabold mb-6">
-                ${settings.additional_cv_price} <span className="text-sm font-normal text-gray-400">for {settings.cvs_per_price} CVs</span>
-              </div>
-              <Link href="/payment" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">
-                Buy Extra CVs
-              </Link>
             </div>
           </div>
         </section>

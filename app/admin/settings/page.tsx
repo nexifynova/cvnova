@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Save, Loader2, Upload, Plus, Trash2, ArrowUp, ArrowDown, Image as ImageIcon, Link as LinkIcon, IndianRupee, Package } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Upload, Plus, Trash2, ArrowUp, ArrowDown, Image as ImageIcon, Link as LinkIcon, IndianRupee, Package, Phone, Mail, MapPin } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
@@ -13,8 +13,8 @@ export default function AdminSettings() {
   const [settings, setSettings] = useState<any>({
     // Pricing
     additional_cv_price: 1.00,
-    cvs_per_price: 1, // Naya field
-    free_cv_limit: 6,
+    cvs_per_price: 1, 
+    free_cv_limit: 1,
     
     // Packages
     package_3m_price: 5,
@@ -32,7 +32,7 @@ export default function AdminSettings() {
     binance_id: '', 
     binance_name: '',
     
-    // Payment - Bank (UPDATED)
+    // Payment - Bank
     bank_enabled: false, 
     bank_account_name: '', 
     bank_name: '', 
@@ -40,6 +40,12 @@ export default function AdminSettings() {
     bank_account_number: '', 
     bank_iban: '',
     
+    // Contact Us Info
+    contact_email1: 'info@nexifynova.co.uk',
+    contact_email2: 'support@nexifynova.co.uk',
+    contact_phone: '+92 (300) 123-4567',
+    contact_location: 'Karachi, Pakistan',
+
     // CMS
     site_logo_url: '',
     site_favicon_url: '',
@@ -54,7 +60,17 @@ export default function AdminSettings() {
 
   const fetchSettings = async () => {
     const { data } = await supabase.from('app_settings').select('*').eq('id', 1).single();
-    if (data) setSettings(data);
+    if (data) {
+      // Agar database mein contact fields nahi hain to default values rakhein
+      setSettings({
+        ...settings,
+        ...data,
+        contact_email1: data.contact_email1 || 'info@nexifynova.co.uk',
+        contact_email2: data.contact_email2 || 'support@nexifynova.co.uk',
+        contact_phone: data.contact_phone || '+92 (300) 123-4567',
+        contact_location: data.contact_location || 'Karachi, Pakistan',
+      });
+    }
     setLoading(false);
   };
 
@@ -267,6 +283,29 @@ export default function AdminSettings() {
                 <div><label className="block text-xs font-semibold text-gray-600 mb-1">6 Months</label><input type="number" step="0.01" name="package_6m_price" value={settings.package_6m_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
                 <div><label className="block text-xs font-semibold text-gray-600 mb-1">1 Year</label><input type="number" step="0.01" name="package_1y_price" value={settings.package_1y_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
                 <div><label className="block text-xs font-semibold text-gray-600 mb-1">5 Years</label><input type="number" step="0.01" name="package_5y_price" value={settings.package_5y_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+              </div>
+            </div>
+          </div>
+
+          {/* CONTACT US INFO */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 md:col-span-2">
+            <h2 className="text-lg font-bold mb-4 border-b pb-2 flex items-center gap-2"><Phone size={20} className="text-indigo-600"/> Contact Us Details</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1 flex items-center gap-1"><Mail size={14}/> Primary Email</label>
+                <input type="text" name="contact_email1" value={settings.contact_email1} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1 flex items-center gap-1"><Mail size={14}/> Secondary Email</label>
+                <input type="text" name="contact_email2" value={settings.contact_email2} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1 flex items-center gap-1"><Phone size={14}/> Phone / WhatsApp</label>
+                <input type="text" name="contact_phone" value={settings.contact_phone} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1 flex items-center gap-1"><MapPin size={14}/> Location / Address</label>
+                <input type="text" name="contact_location" value={settings.contact_location} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" />
               </div>
             </div>
           </div>
