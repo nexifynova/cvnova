@@ -3,27 +3,38 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Lock, Mail, Loader2 } from 'lucide-react';
+import { Lock, Mail, Loader2, Eye, EyeOff } from 'lucide-react';
 
 export default function AdminLogin() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
+    const cleanEmail = email.trim();
+    const cleanPassword = password.trim();
+
+    // Query ke zariye database se check karein
     const { data, error } = await supabase
       .from('admin_users')
       .select('*')
-      .eq('email', email)
-      .eq('password', password)
-      .single();
+      .eq('email', cleanEmail)
+      .eq('password', cleanPassword)
+      .maybeSingle();
 
-    if (error || !data) {
-      alert("Invalid Admin Credentials!");
+    if (error) {
+      alert(`Database Error: ${error.message}\n\nKya aapne Supabase mein admin_users table banai hai?`);
+      setLoading(false);
+      return;
+    }
+
+    if (!data) {
+      alert(`Invalid Credentials!\n\nDatabase mein yeh email/password nahi mila.\nEmail: ${cleanEmail}\nPass: ${cleanPassword}\n\nPlease Supabase Table Editor mein check karein.`);
       setLoading(false);
       return;
     }
@@ -50,7 +61,22 @@ export default function AdminLogin() {
             <label className="block text-sm font-semibold text-gray-700 mb-1">Password</label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-              <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border text-gray-900 outline-none focus:ring-2 focus:ring-blue-500" placeholder="••••••••" />
+              <input 
+                type={showPassword ? "text" : "password"} 
+                required 
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)} 
+                className="w-full pl-10 pr-12 py-3 rounded-xl border text-gray-900 outline-none focus:ring-2 focus:ring-blue-500" 
+                placeholder="••••••••" 
+              />
+              {/* Eye Icon add kar diya gaya hai */}
+              <button 
+                type="button" 
+                onClick={() => setShowPassword(!showPassword)} 
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
           </div>
           <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition flex justify-center">
