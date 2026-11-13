@@ -16,9 +16,19 @@ export default function AdminPayments() {
     fetchPayments();
   }, []);
 
-  const fetchPayments = async () => {
-    const { data } = await supabase.from('payments').select('*').order('created_at', { ascending: false });
-    if (data) setPayments(data);
+   const fetchPayments = async () => {
+    // Data fetch karein
+    const { data, error } = await supabase
+      .from('payments')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error("Error fetching payments:", error);
+      alert("Database Error: " + error.message); // Agar phir bhi masla ho to alert aayega
+    } else if (data) {
+      setPayments(data);
+    }
     setLoading(false);
   };
 
