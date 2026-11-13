@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import { FileText, LogOut, Plus, ExternalLink, Loader2, Mail, Briefcase, CreditCard, Clock, CheckCircle2, XCircle, Calendar, ShieldCheck } from 'lucide-react';
+import { FileText, LogOut, Plus, ExternalLink, Loader2, Mail, Briefcase, CreditCard, Clock, CheckCircle2, XCircle, ShieldCheck, Crown } from 'lucide-react';
 import Link from 'next/link';
 
 export default function Dashboard() {
@@ -20,7 +20,6 @@ export default function Dashboard() {
     checkUser();
   }, []);
 
-  // Timer Logic
   useEffect(() => {
     if (!profile?.subscription_expiry) return;
 
@@ -109,6 +108,10 @@ export default function Dashboard() {
             <Link href="/experience-letter" className="flex items-center gap-2 bg-purple-600 text-white px-5 py-2.5 rounded-xl hover:bg-purple-700 font-bold transition shadow-md text-sm">
               <Briefcase size={18} /> Experience Letter
             </Link>
+            {/* NAYA BUTTON: Buy Packages */}
+            <Link href="/payment" className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-yellow-500 text-white px-5 py-2.5 rounded-xl hover:from-orange-600 hover:to-yellow-600 font-bold transition shadow-lg text-sm animate-pulse">
+              <Crown size={18} /> Buy Packages
+            </Link>
           </div>
         </div>
 
@@ -143,9 +146,12 @@ export default function Dashboard() {
 
         {/* Payments History Section */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-10">
-          <div className="p-6 border-b border-gray-100 flex items-center gap-2">
-            <CreditCard className="text-blue-600" size={20} />
-            <h2 className="text-lg font-bold text-gray-900">My Payment History</h2>
+          <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CreditCard className="text-blue-600" size={20} />
+              <h2 className="text-lg font-bold text-gray-900">My Payment History</h2>
+            </div>
+            <Link href="/payment" className="text-sm font-bold text-blue-600 hover:underline">Upgrade Now</Link>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm whitespace-nowrap">
@@ -205,7 +211,6 @@ export default function Dashboard() {
                     <td className="px-6 py-4 text-gray-600">{doc.document_type}</td>
                     <td className="px-6 py-4 capitalize text-gray-600">{doc.template_name}</td>
                     <td className="px-6 py-4">
-                      {/* Yahan link update kar diya gaya hai */}
                       <Link href={`/view/${doc.id}`} target="_blank" className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium bg-blue-50 px-3 py-1.5 rounded-lg transition">
                         <ExternalLink size={14} /> View
                       </Link>
