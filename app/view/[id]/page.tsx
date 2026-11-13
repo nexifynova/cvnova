@@ -41,8 +41,7 @@ export function ViewCVClient({ id }: { id: string }) {
 
   return (
     <div className="min-h-screen bg-gray-200 font-sans">
-      
-      {/* Top Navigation Bar (Print ke waqt hide ho jayega) */}
+      {/* Top Navigation Bar */}
       <div className="bg-white shadow-sm py-4 px-6 sticky top-0 z-50 print:hidden">
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           <Link href="/dashboard" className="flex items-center gap-2 text-gray-600 hover:text-blue-600 font-medium">
@@ -72,24 +71,31 @@ export function ViewCVClient({ id }: { id: string }) {
       <div className="py-10 px-4 overflow-x-auto">
         <div id="cv-preview" className="print-area max-w-[210mm] min-h-[297mm] mx-auto bg-white shadow-2xl">
           
-           {/* YAHAN AAPNE APNE SAARE 19 TEMPLATES KA CODE PASTE KARNA HAI */}
-           {/* Bas 'currentTemplate ===' wala check rakhein. Example: */}
-           
            {currentTemplate === 'classicgray' && (
               <div className="bg-white h-full text-gray-800">
-                 {/* Aapka purana classicgray ka code yahan aayega */}
-                 <div className="p-10 text-center font-bold text-gray-500">Classic Gray Template Loaded (Paste your code here)</div>
+                <div className="flex h-full">
+                  <div className="w-[35%] bg-[#E5E7EB] p-6 flex flex-col avoid-break">
+                    {formData.photoUrl ? <img src={formData.photoUrl} alt="Profile" className="w-32 h-32 object-cover rounded-full mx-auto mb-6 border-4 border-white shadow-sm" /> : <div className="w-32 h-32 rounded-full bg-gray-300 mx-auto mb-6 border-4 border-white"></div>}
+                    <div className="w-full mb-6">
+                      <h3 className="font-bold text-gray-900 border-b border-gray-400 pb-1 mb-3 uppercase text-sm">Contact</h3>
+                      <div className="text-[11px] space-y-1">
+                        <p><strong>Address:</strong><br/>{formData.address}</p>
+                        <p className="mt-2"><strong>Phone:</strong><br/>{formData.phone}</p>
+                        <p className="mt-2"><strong>Email:</strong><br/>{formData.email}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="w-[65%] p-8 bg-white">
+                    <div className="mb-6 border-b-2 border-gray-200 pb-4 avoid-break">
+                      <h1 className="text-3xl font-bold text-gray-900 tracking-wide uppercase">{formData.fullName}</h1>
+                      <h2 className="text-lg text-[#D97706] font-semibold mt-1">{formData.jobTitle}</h2>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
-
-            {currentTemplate === 'modern' && (
-              <div className="bg-white h-full text-gray-800 p-8">
-                 {/* Aapka purana modern ka code yahan aayega */}
-                 <div className="p-10 text-center font-bold text-gray-500">Modern Template Loaded (Paste your code here)</div>
-              </div>
-            )}
-
-            {/* ... Baqi 17 templates ke blocks yahan aayenge ... */}
+            
+            {/* Yahan baqi templates ke blocks paste karein: {currentTemplate === 'modern' && (...)} */}
 
         </div>
       </div>
