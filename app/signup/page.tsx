@@ -21,12 +21,12 @@ export default function Signup() {
     }
     setLoading(true);
 
-    // Sirf Auth mein signup karein. Profile ka kaam Database Trigger khud kar raha hai.
+    // Sirf Auth mein signup karein. Profile Database Trigger khud bana dega.
     const { data, error } = await supabase.auth.signUp({
       email: formData.email,
       password: formData.password,
       options: {
-        data: { full_name: formData.fullName }, // Trigger isko utha kar profile mein daal dega
+        data: { full_name: formData.fullName }, // Trigger isko utha lega
         emailRedirectTo: `${window.location.origin}/auth/confirm`,
       }
     });
@@ -37,7 +37,6 @@ export default function Signup() {
       return;
     }
     
-    // Yahan se manually insert karne wala code hata diya gaya hai
     setIsSuccess(true);
     setLoading(false);
   };
