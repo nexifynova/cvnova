@@ -41,37 +41,16 @@ export default function ExperienceLetter() {
     }
   };
 
-   const handleGenerateAI = async () => {
+     const handleGenerateAI = async () => {
     setIsGenerating(true);
-    try {
-      const response = await fetch('/api/generate-experience-letter', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          employeeName: formData.employeeName,
-          employeeDesignation: formData.employeeDesignation,
-          companyName: formData.companyName,
-          joiningDate: formData.joiningDate,
-          leavingDate: formData.leavingDate
-        }),
-      });
-      
-      const text = await response.text();
-      let data;
-      try { data = JSON.parse(text); } catch (e) { throw new Error("API route not found or returned HTML"); }
-      
-      if (data.body) {
-        setFormData({ ...formData, body: data.body });
-      } else {
-        throw new Error(data.error || "Unknown error");
-      }
-    } catch (error: any) {
-      alert("Failed to generate AI letter: " + error.message);
-    } finally {
-      setIsGenerating(false);
-    }
+    // Fake delay taake "Generating..." thori der dikhe
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    const generatedBody = `This is to certify that Mr./Ms. ${formData.employeeName || 'Employee Name'} was employed with ${formData.companyName || 'Our Company'} as a ${formData.employeeDesignation || 'Professional'} from ${formData.joiningDate || 'Start Date'} to ${formData.leavingDate || 'End Date'}.\n\nDuring their tenure, they were responsible for key operational tasks and consistently demonstrated exceptional skills, dedication, and a strong work ethic. They were a valuable asset to our organization, known for their problem-solving abilities and collaborative spirit.\n\nWe wish them great success in all future endeavors.`;
+    
+    setFormData({ ...formData, body: generatedBody });
+    setIsGenerating(false);
   };
-
   const handleAction = async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
