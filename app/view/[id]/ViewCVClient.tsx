@@ -5,7 +5,6 @@ import { supabase } from '@/lib/supabase';
 import { Loader2, ArrowLeft, Printer, Save, LayoutTemplate } from 'lucide-react';
 import Link from 'next/link';
 
-// Yahan 'export' likhna bohot zaroori hai
 export function ViewCVClient({ id }: { id: string }) {
   const [doc, setDoc] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -72,7 +71,10 @@ export function ViewCVClient({ id }: { id: string }) {
       <div className="py-10 px-4 overflow-x-auto">
         <div id="cv-preview" className="print-area max-w-[210mm] min-h-[297mm] mx-auto bg-white shadow-2xl">
           
-           {currentTemplate === 'classicgray' && (
+          {/* YAHAN AAPKO BUILDER WALE SAARE 19 TEMPLATES PASTE KARNE HAIN */}
+          {/* Neeche maine sirf pehla template dikhaya hai, baqi aap builder se copy karke yahan daal dein (Bas 'template' ki jagah 'currentTemplate' likhein) */}
+
+          {currentTemplate === 'classicgray' && (
               <div className="bg-white h-full text-gray-800">
                 <div className="flex h-full">
                   <div className="w-[35%] bg-[#E5E7EB] p-6 flex flex-col avoid-break">
@@ -85,18 +87,91 @@ export function ViewCVClient({ id }: { id: string }) {
                         <p className="mt-2"><strong>Email:</strong><br/>{formData.email}</p>
                       </div>
                     </div>
+                    {formData.skills.some((s: any) => s) && (
+                    <div className="w-full mb-6">
+                      <h3 className="font-bold text-gray-900 border-b border-gray-400 pb-1 mb-3 uppercase text-sm">Skill Highlights</h3>
+                      <ul className="text-[11px] list-disc pl-4 space-y-1">{formData.skills.map((s: any, i: number) => s && <li key={i}>{s}</li>)}</ul>
+                    </div>
+                    )}
+                    {formData.languages.some((l: any) => l.language) && (
+                    <div className="w-full mb-6">
+                      <h3 className="font-bold text-gray-900 border-b border-gray-400 pb-1 mb-3 uppercase text-sm">Languages</h3>
+                      <ul className="text-[11px] list-disc pl-4 space-y-1">{formData.languages.map((l: any, i: number) => l.language && <li key={i}>{l.language} – {l.proficiency}</li>)}</ul>
+                    </div>
+                    )}
+                    {formData.hobbies.some((h: any) => h) && (
+                    <div className="w-full mb-6">
+                      <h3 className="font-bold text-gray-900 border-b border-gray-400 pb-1 mb-3 uppercase text-sm">Hobbies</h3>
+                      <ul className="text-[11px] list-disc pl-4 space-y-1">{formData.hobbies.map((h: any, i: number) => h && <li key={i}>{h}</li>)}</ul>
+                    </div>
+                    )}
                   </div>
                   <div className="w-[65%] p-8 bg-white">
                     <div className="mb-6 border-b-2 border-gray-200 pb-4 avoid-break">
                       <h1 className="text-3xl font-bold text-gray-900 tracking-wide uppercase">{formData.fullName}</h1>
                       <h2 className="text-lg text-[#D97706] font-semibold mt-1">{formData.jobTitle}</h2>
                     </div>
+                    {formData.summary && (
+                    <div className="mb-6 avoid-break">
+                      <h3 className="font-bold text-gray-800 text-sm mb-2 uppercase tracking-wider border-b border-gray-200 pb-1">Professional Summary</h3>
+                      <p className="text-[11px] text-gray-700 leading-relaxed text-justify">{formData.summary}</p>
+                    </div>
+                    )}
+                    {formData.experience.some((e: any) => e.role) && (
+                    <div className="mb-6">
+                      <h3 className="font-bold text-gray-800 text-sm mb-3 uppercase tracking-wider border-b border-gray-200 pb-1">Experience</h3>
+                      {formData.experience.map((e: any, i: number) => e.role && (
+                        <div key={i} className="mb-4 avoid-break">
+                          <div className="flex justify-between items-baseline mb-1"><h4 className="font-bold text-xs text-gray-900">{e.role}</h4><span className="text-[10px] text-gray-500">{e.duration}</span></div>
+                          <p className="text-[11px] text-gray-800 italic mb-1">{e.company}</p>
+                          <ul className="text-[10px] text-gray-600 list-disc pl-4 space-y-1 leading-relaxed">{e.desc.split('\n').map((line: string, idx: number) => line && <li key={idx}>{line}</li>)}</ul>
+                        </div>
+                      ))}
+                    </div>
+                    )}
+                    {formData.education.some((e: any) => e.degree) && (
+                    <div className="mb-6">
+                      <h3 className="font-bold text-gray-800 text-sm mb-3 uppercase tracking-wider border-b border-gray-200 pb-1">Education</h3>
+                      {formData.education.map((e: any, i: number) => e.degree && (
+                        <div key={i} className="mb-2 avoid-break">
+                          <div className="flex justify-between items-baseline"><h4 className="font-bold text-xs text-gray-900">{e.degree}</h4><span className="text-[10px] text-gray-500">{e.year}</span></div>
+                          <p className="text-[10px] text-gray-600">{e.school}</p>
+                        </div>
+                      ))}
+                    </div>
+                    )}
+                    {formData.certifications.some((c: any) => c.name) && (
+                    <div className="mb-6">
+                      <h3 className="font-bold text-gray-800 text-sm mb-3 uppercase tracking-wider border-b border-gray-200 pb-1">Certifications</h3>
+                      {formData.certifications.map((c: any, i: number) => c.name && (
+                        <div key={i} className="mb-2 text-[11px] flex justify-between items-center avoid-break">
+                          <div><span className="font-bold text-gray-900">{c.name}</span> {c.year && `(${c.year})`}</div>
+                          {c.fileUrl && <a href={c.fileUrl} target="_blank" className="text-blue-500 text-[10px] underline print:hidden">View Cert</a>}
+                        </div>
+                      ))}
+                    </div>
+                    )}
+                    {formData.references.some((r: any) => r.name) && (
+                    <div>
+                      <h3 className="font-bold text-gray-800 text-sm mb-3 uppercase tracking-wider border-b border-gray-200 pb-1">References</h3>
+                      <div className="text-[11px]">
+                        <p className="italic text-gray-600">References available on request</p>
+                        {formData.references.map((r: any, i: number) => r.name && (
+                          <div key={i} className="mt-2 avoid-break">
+                            <p className="font-bold text-gray-900">{r.name}</p>
+                            <p className="text-gray-600">{r.role} | {r.contact}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    )}
                   </div>
                 </div>
               </div>
             )}
-            
+
             {/* Yahan baqi templates ke blocks paste karein: {currentTemplate === 'modern' && (...)} */}
+            {/* Aap builder wale code se copy karke yahan paste karein, bas 'template' ki jagah 'currentTemplate' kar dein */}
 
         </div>
       </div>
