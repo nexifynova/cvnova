@@ -41,7 +41,7 @@ export default function CoverLetter() {
     }
   };
 
-  const handleGenerateAI = async () => {
+    const handleGenerateAI = async () => {
     setIsGenerating(true);
     try {
       const response = await fetch('/api/generate-cover-letter', {
@@ -53,12 +53,18 @@ export default function CoverLetter() {
           fullName: formData.fullName 
         }),
       });
-      const data = await response.json();
+      
+      const text = await response.text();
+      let data;
+      try { data = JSON.parse(text); } catch (e) { throw new Error("API route not found or returned HTML"); }
+      
       if (data.body) {
         setFormData({ ...formData, body: data.body });
+      } else {
+        throw new Error(data.error || "Unknown error");
       }
-    } catch (error) {
-      alert("Failed to generate AI letter.");
+    } catch (error: any) {
+      alert("Failed to generate AI letter: " + error.message);
     } finally {
       setIsGenerating(false);
     }
