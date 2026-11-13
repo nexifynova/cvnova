@@ -15,19 +15,18 @@ export default function Signup() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (formData.password !== formData.confirmPassword) {
       alert("Passwords do not match!");
       return;
     }
-
     setLoading(true);
 
-    // 1. Pehle Supabase Auth mein user banayein
+    // Sirf Auth mein signup karein. Profile database trigger khud bana dega.
     const { data, error } = await supabase.auth.signUp({
       email: formData.email,
       password: formData.password,
       options: {
+        data: { full_name: formData.fullName }, // Trigger isko utha lega
         emailRedirectTo: `${window.location.origin}/auth/confirm`,
       }
     });
@@ -37,26 +36,7 @@ export default function Signup() {
       setLoading(false);
       return;
     }
-
-    if (data.user) {
-      // 2. Phir user_profiles table mein uski profile save karein
-      const { error: profileError } = await supabase.from('user_profiles').insert([
-        { 
-          id: data.user.id, 
-          full_name: formData.fullName, 
-          email: formData.email,
-          free_cv_count: 0,
-          subscription_type: 'free'
-        }
-      ]);
-      
-      if (profileError) {
-        console.error("Profile Save Error:", profileError);
-        alert("Account ban gaya lekin profile save nahi hui. Error: " + profileError.message);
-      } else {
-        setIsSuccess(true);
-      }
-    }
+    setIsSuccess(true);
     setLoading(false);
   };
 
@@ -68,12 +48,8 @@ export default function Signup() {
           <h2 className="text-2xl font-bold text-white mb-4">Verify Your Email</h2>
           <p className="text-gray-400 mb-6 leading-relaxed">
             A confirmation link has been sent to <span className="text-white font-bold">{formData.email}</span>. 
-            Please check your inbox (and spam folder) and click the link to activate your account.
+            Please check your inbox and click the link.
           </p>
-          <div className="bg-black/30 p-4 rounded-xl mb-6">
-             <p className="text-sm text-gray-400 mb-1">Need help? Contact us:</p>
-             <p className="text-sm text-blue-400 font-mono">support@nexifynova.co.uk</p>
-          </div>
           <Link href="/login" className="inline-block bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-xl font-bold hover:from-blue-500 hover:to-purple-500 transition shadow-lg">
             Go to Login
           </Link>
@@ -87,7 +63,6 @@ export default function Signup() {
       <Link href="/" className="absolute top-6 left-6 flex items-center gap-2 text-gray-400 hover:text-white transition font-medium">
         <ArrowLeft size={20} /> Back to Home
       </Link>
-
       <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
         <div className="flex items-center gap-2 mb-6 justify-center">
           <div className="bg-gradient-to-tr from-blue-500 to-purple-600 p-2 rounded-xl"><FileText className="text-white" size={20} /></div>
@@ -98,65 +73,29 @@ export default function Signup() {
         <form onSubmit={handleSignup} className="space-y-4">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">Full Name</label>
-            <input 
-              type="text" 
-              required 
-              value={formData.fullName} 
-              onChange={(e) => setFormData({...formData, fullName: e.target.value})} 
-              className="w-full px-4 py-3 rounded-xl border text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" 
-              placeholder="John Doe"
-            />
+            <input type="text" required value={formData.fullName} onChange={(e) => setFormData({...formData, fullName: e.target.value})} className="w-full px-4 py-3 rounded-xl border text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="John Doe" />
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
-            <input 
-              type="email" 
-              required 
-              value={formData.email} 
-              onChange={(e) => setFormData({...formData, email: e.target.value})} 
-              className="w-full px-4 py-3 rounded-xl border text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" 
-              placeholder="you@example.com"
-            />
+            <input type="email" required value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full px-4 py-3 rounded-xl border text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="you@example.com" />
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">Password</label>
             <div className="relative">
-              <input 
-                type={showPassword ? "text" : "password"} 
-                required 
-                value={formData.password} 
-                onChange={(e) => setFormData({...formData, password: e.target.value})} 
-                className="w-full px-4 py-3 rounded-xl border text-gray-900 pr-12 focus:ring-2 focus:ring-blue-500 outline-none" 
-                placeholder="••••••••"
-              />
-              <button 
-                type="button" 
-                onClick={() => setShowPassword(!showPassword)} 
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-              >
+              <input type={showPassword ? "text" : "password"} required value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} className="w-full px-4 py-3 rounded-xl border text-gray-900 pr-12 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="••••••••" />
+              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">Confirm Password</label>
-            <input 
-              type={showPassword ? "text" : "password"} 
-              required 
-              value={formData.confirmPassword} 
-              onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} 
-              className="w-full px-4 py-3 rounded-xl border text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" 
-              placeholder="••••••••"
-            />
+            <input type={showPassword ? "text" : "password"} required value={formData.confirmPassword} onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} className="w-full px-4 py-3 rounded-xl border text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="••••••••" />
           </div>
           <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-bold hover:from-blue-500 hover:to-purple-500 transition disabled:opacity-50 mt-2">
             {loading ? <Loader2 className="animate-spin mx-auto" /> : 'Sign Up'}
           </button>
         </form>
-        
-        <p className="text-center text-sm text-gray-500 mt-6">
-          Already have an account? <Link href="/login" className="text-blue-600 font-bold hover:underline">Login</Link>
-        </p>
       </div>
     </div>
   );

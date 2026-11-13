@@ -205,7 +205,8 @@ export default function Dashboard() {
                     <td className="px-6 py-4 text-gray-600">{doc.document_type}</td>
                     <td className="px-6 py-4 capitalize text-gray-600">{doc.template_name}</td>
                     <td className="px-6 py-4">
-                      <Link href={`/admin/view/${doc.id}`} target="_blank" className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium bg-blue-50 px-3 py-1.5 rounded-lg transition">
+                      {/* Yahan link update kar diya gaya hai */}
+                      <Link href={`/view/${doc.id}`} target="_blank" className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium bg-blue-50 px-3 py-1.5 rounded-lg transition">
                         <ExternalLink size={14} /> View
                       </Link>
                     </td>
