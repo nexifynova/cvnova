@@ -16,8 +16,7 @@ export default function AdminPayments() {
     fetchPayments();
   }, []);
 
-   const fetchPayments = async () => {
-    // Data fetch karein
+  const fetchPayments = async () => {
     const { data, error } = await supabase
       .from('payments')
       .select('*')
@@ -25,7 +24,7 @@ export default function AdminPayments() {
 
     if (error) {
       console.error("Error fetching payments:", error);
-      alert("Database Error: " + error.message); // Agar phir bhi masla ho to alert aayega
+      alert("Database Error: " + error.message);
     } else if (data) {
       setPayments(data);
     }
@@ -38,6 +37,7 @@ export default function AdminPayments() {
     setProcessing(payment.id);
 
     try {
+      // 1. Payment ka status update karein
       const { error: payError } = await supabase
         .from('payments')
         .update({ status, approved_at: new Date().toISOString() })
@@ -45,20 +45,42 @@ export default function AdminPayments() {
 
       if (payError) throw payError;
 
+      // 2. Agar Approve kiya hai toh User ka account update karein
       if (status === 'approved') {
-        const expiryDate = new Date();
-        if (payment.package_type === '3 Months') expiryDate.setMonth(expiryDate.getMonth() + 3);
-        if (payment.package_type === '6 Months') expiryDate.setMonth(expiryDate.getMonth() + 6);
-        if (payment.package_type === '1 Year') expiryDate.setFullYear(expiryDate.getFullYear() + 1);
-        if (payment.package_type === '5 Years') expiryDate.setFullYear(expiryDate.getFullYear() + 5);
-
-        const { error: userError } = await supabase.from('user_profiles').update({
-          subscription_type: payment.package_type,
-          subscription_expiry: expiryDate.toISOString(),
-          free_cv_count: 0
-        }).eq('id', payment.user_id);
         
-        if (userError) throw userError;
+        // Agar "Additional CVs" kharide hain
+        if (payment.package_type === 'Additional CVs') {
+          const { data: settings } = await supabase.from('app_settings').select('cvs_per_price').eq('id', 1).single();
+          const cvsBought = settings?.cvs_per_price || 5;
+
+          const { data: profile } = await supabase.from('user_profiles').select('free_cv_count').eq('id', payment.user_id).single();
+          const currentUsed = profile?.free_cv_count || 0;
+          
+          // Used CVs ko kam karein taake limit barh jaye
+          const newUsedCount = Math.max(0, currentUsed - cvsBought);
+
+          const { error: userError } = await supabase.from('user_profiles').update({
+            free_cv_count: newUsedCount
+          }).eq('id', payment.user_id);
+          
+          if (userError) throw userError;
+
+        } else {
+          // Agar Normal Package (3 Months, 1 Year, etc) kharida hai
+          const expiryDate = new Date();
+          if (payment.package_type === '3 Months') expiryDate.setMonth(expiryDate.getMonth() + 3);
+          if (payment.package_type === '6 Months') expiryDate.setMonth(expiryDate.getMonth() + 6);
+          if (payment.package_type === '1 Year') expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+          if (payment.package_type === '5 Years') expiryDate.setFullYear(expiryDate.getFullYear() + 5);
+
+          const { error: userError } = await supabase.from('user_profiles').update({
+            subscription_type: payment.package_type,
+            subscription_expiry: expiryDate.toISOString(),
+            free_cv_count: 0 // Normal package mein count reset hota hai
+          }).eq('id', payment.user_id);
+          
+          if (userError) throw userError;
+        }
       }
 
       alert(`Payment ${status} successfully! User's account has been updated.`);
