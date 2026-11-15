@@ -32,8 +32,8 @@ export async function POST(req: Request) {
       "skills": ["Skill 1", "Skill 2", "Skill 3", "Skill 4", "Skill 5", "Skill 6"]
     }`;
 
-    // 🔥 YAHAN CHANGE HUA HAI: v1 endpoint aur gemini-2.5-flash model
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+    // Google ne khud error mein bataya hai ke gemini-3.8-flash use karein
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
