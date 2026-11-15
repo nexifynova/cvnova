@@ -22,7 +22,6 @@ export default function AdminLogin() {
         body: JSON.stringify({ email: email.trim(), password: password.trim() })
       });
 
-      // Response ko text format mein read karein taake HTML error handle ho sake
       const textResponse = await res.text();
       let data;
 

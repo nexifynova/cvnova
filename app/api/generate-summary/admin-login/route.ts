@@ -1,11 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Yeh GET function sirf test karne ke liye hai ke API zinda hai ya nahi
-export async function GET() {
-  return NextResponse.json({ message: "API is working perfectly!" });
-}
-
 export async function POST(req: Request) {
   try {
     const { email, password } = await req.json();
