@@ -5,7 +5,10 @@ export async function POST(req: Request) {
   try {
     const { email, password } = await req.json();
 
-    // Admin privileges use kar rahe hain securely
+    if (!process.env.SUPABASE_SERVICE_KEY) {
+       return NextResponse.json({ error: 'Server config error: SUPABASE_SERVICE_KEY missing' }, { status: 500 });
+    }
+
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_KEY!
@@ -18,21 +21,24 @@ export async function POST(req: Request) {
       .eq('password', password)
       .maybeSingle();
 
-    if (error || !data) {
-      return NextResponse.json({ error: 'Invalid Credentials' }, { status: 401 });
+    if (error) {
+      return NextResponse.json({ error: `Database Error: ${error.message}` }, { status: 500 });
     }
 
-    // Secure Cookie set karein
+    if (!data) {
+      return NextResponse.json({ error: 'Email ya Password database mein nahi mila!' }, { status: 401 });
+    }
+
     const response = NextResponse.json({ success: true });
     response.cookies.set('admin_session', 'true', { 
       httpOnly: true, 
       secure: process.env.NODE_ENV === 'production',
-      maxAge: 60 * 60 * 24, // 1 din ke liye
+      maxAge: 60 * 60 * 24,
       path: '/'
     });
 
     return response;
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: `System Error: ${error.message}` }, { status: 500 });
   }
 }
