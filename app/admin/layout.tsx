@@ -3,8 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, Settings, CreditCard, MessageSquare, ArrowLeft, Image as ImageIcon, Link as LinkIcon, IndianRupee, Phone, LogOut } from 'lucide-react';
-import { Suspense, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { Suspense } from 'react';
 
 function SidebarNavigation() {
   const pathname = usePathname();
@@ -25,9 +24,10 @@ function SidebarNavigation() {
   ];
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    localStorage.removeItem('admin_logged_in'); // Local storage se bhi clear karein
+    // API call karke secure cookie delete karein
+    await fetch('/api/admin-logout', { method: 'POST' });
     router.push('/admin/login');
+    router.refresh(); // Refresh taake middleware ko pata chale ke logout ho gaya hai
   };
 
   return (
@@ -62,7 +62,7 @@ function SidebarNavigation() {
         })}
       </div>
 
-      {/* Naya Logout Button */}
+      {/* Logout Button */}
       <div className="mt-auto pb-6 pt-4 border-t border-white/10">
         <button 
           onClick={handleLogout} 
@@ -76,16 +76,9 @@ function SidebarNavigation() {
 }
 
 function AdminContent({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const pathname = usePathname();
 
-  useEffect(() => {
-    if (pathname === '/admin/login') return;
-    const isAdmin = localStorage.getItem('admin_logged_in');
-    if (!isAdmin) {
-      router.push('/admin/login');
-    }
-  }, [pathname, router]);
+  // Ab koi localStorage ka check nahi hai. Middleware security handle kar raha hai.
 
   if (pathname === '/admin/login') {
     return <>{children}</>;

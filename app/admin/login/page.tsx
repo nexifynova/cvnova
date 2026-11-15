@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
 import { Lock, Mail, Loader2, Eye, EyeOff } from 'lucide-react';
 
 export default function AdminLogin() {
@@ -16,33 +15,19 @@ export default function AdminLogin() {
     e.preventDefault();
     setLoading(true);
 
-    const cleanEmail = email.trim();
-    const cleanPassword = password.trim();
+    const res = await fetch('/api/admin-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim(), password: password.trim() })
+    });
 
-    // Query ke zariye database se check karein
-    const { data, error } = await supabase
-      .from('admin_users')
-      .select('*')
-      .eq('email', cleanEmail)
-      .eq('password', cleanPassword)
-      .maybeSingle();
-
-    if (error) {
-      alert(`Database Error: ${error.message}\n\nKya aapne Supabase mein admin_users table banai hai?`);
+    if (res.ok) {
+      router.push('/admin');
+      router.refresh(); // Page refresh taake middleware naya cookie utha le
+    } else {
+      alert("Invalid Credentials! Check your email and password.");
       setLoading(false);
-      return;
     }
-
-    if (!data) {
-      alert(`Invalid Credentials!\n\nDatabase mein yeh email/password nahi mila.\nEmail: ${cleanEmail}\nPass: ${cleanPassword}\n\nPlease Supabase Table Editor mein check karein.`);
-      setLoading(false);
-      return;
-    }
-
-    // Session save karein
-    localStorage.setItem('admin_logged_in', 'true');
-    router.push('/admin');
-    setLoading(false);
   };
 
   return (
@@ -69,7 +54,6 @@ export default function AdminLogin() {
                 className="w-full pl-10 pr-12 py-3 rounded-xl border text-gray-900 outline-none focus:ring-2 focus:ring-blue-500" 
                 placeholder="••••••••" 
               />
-              {/* Eye Icon add kar diya gaya hai */}
               <button 
                 type="button" 
                 onClick={() => setShowPassword(!showPassword)} 
