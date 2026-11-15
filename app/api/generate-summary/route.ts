@@ -10,38 +10,28 @@ export async function POST(req: Request) {
     }
 
     const expText = experience && experience.length > 0 
-      ? `Experience: ${experience.map((e: any) => `${e.role} at ${e.company} (${e.desc})`).join(', ')}.` 
-      : 'No experience provided.';
+      ? `Experience: ${experience.map((e: any) => `${e.role} at ${e.company}`).join(', ')}.` 
+      : '';
       
     const eduText = education && education.length > 0 
       ? `Education: ${education.map((e: any) => `${e.degree} from ${e.school}`).join(', ')}.` 
-      : 'No education provided.';
+      : '';
 
-    const prompt = `You are an expert resume writer. Based on these details:
-    Job Title: ${jobTitle}
-    ${expText}
-    ${eduText}
-    
-    Task:
-    1. Write a professional summary (max 3 sentences).
-    2. Extract a list of 6 relevant skills based on the Experience and Education.
-    Return ONLY valid JSON format exactly like this: {"summary": "...", "skills": ["skill1", "skill2"]}`;
+    const prompt = `You are an expert resume writer. Write a professional summary and 6 skills for a ${jobTitle}. ${expText} ${eduText}. Return ONLY valid JSON: {"summary": "...", "skills": ["skill1", "skill2"]}`;
 
-    const modelToUse = 'gemini-3.8-flash';
-
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelToUse}:generateContent?key=${apiKey}`, {
+    // Google ka standard URL aur Model
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: "application/json" }
+        contents: [{ parts: [{ text: prompt }] }]
       })
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      return NextResponse.json({ error: `Error: ${data.error?.message || 'Unknown'}` }, { status: 500 });
+      return NextResponse.json({ error: `Google Error: ${data.error?.message || 'Unknown'}` }, { status: 500 });
     }
 
     const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -51,7 +41,7 @@ export async function POST(req: Request) {
     }
 
     let cleanText = generatedText.trim();
-    if (cleanText.startsWith('```json')) cleanText = cleanText.replace(/```json/g, '').replace(/```/g, '').trim();
+    cleanText = cleanText.replace(/```json/g, '').replace(/```/g, '').trim();
     
     const parsedData = JSON.parse(cleanText);
 
