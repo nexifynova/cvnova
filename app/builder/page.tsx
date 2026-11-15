@@ -4,7 +4,7 @@ import { useState, useRef } from 'react';
 import Image from 'next/image';
 import { Sparkles, ArrowLeft, Download, Printer, Plus, Trash2, Loader2, Camera, Upload, RefreshCw, Info } from 'lucide-react';
 import Link from 'next/link';
-import { supabase, saveDocumentRecord, checkUserLimit } from '@/lib/supabase';
+import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount } from '@/lib/supabase';
 import { downloadAsWord } from '@/lib/download-utils';
 
 const dummyData = {
@@ -151,6 +151,8 @@ export default function Builder() {
       documentType: 'CV', templateName: template, fullName: formData.fullName,
       email: user.email, phone: formData.phone, fullData: formData,
     });
+
+    await incrementUserCount(user.email); // <--- YEH NAYI LINE ADD KI GAYI HAI
 
     setTimeout(() => { window.print(); }, 500); 
   };
