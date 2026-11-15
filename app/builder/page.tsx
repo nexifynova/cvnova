@@ -152,7 +152,7 @@ export default function Builder() {
       email: user.email, phone: formData.phone, fullData: formData,
     });
 
-    await incrementUserCount(user.email); // <--- YEH NAYI LINE ADD KI GAYI HAI
+    await incrementUserCount(user.email); 
 
     setTimeout(() => { window.print(); }, 500); 
   };
@@ -183,7 +183,7 @@ export default function Builder() {
             <button onClick={resetForm} className="flex items-center gap-2 bg-white text-green-700 border px-4 py-2 rounded-lg font-bold text-sm hover:bg-green-100"><RefreshCw size={16} /> Clear</button>
           </div>
 
-          {/* Form fields (Profile, Personal, Summary, Skills, Exp, Edu, Lang, Cert, Hobbies, Refs) */}
+          {/* Form fields */}
           <h1 className="text-xl font-bold mb-4 border-b pb-2">Profile Photo (Optional)</h1>
           <div className="mb-8 flex items-center gap-4">
             <div className="w-20 h-20 rounded-full bg-gray-200 border-2 border-dashed flex items-center justify-center overflow-hidden relative">
@@ -216,7 +216,6 @@ export default function Builder() {
             </button>
           </div>
 
-          {/* Skills, Experience, Education, Languages, Certifications, Hobbies, References forms... */}
           <div className="flex justify-between items-center mb-4 border-b pb-2">
             <h1 className="text-xl font-bold">Skills</h1>
             <button onClick={() => addArrayItem('skills', '')} className="text-blue-600 text-sm font-bold flex items-center gap-1"><Plus size={16} /> Add</button>
@@ -260,6 +259,75 @@ export default function Builder() {
                 <div className="grid grid-cols-2 gap-2">
                   <input type="text" placeholder="School" value={edu.school} onChange={(e) => handleArrayChange('education', index, 'school', e.target.value)} className="px-2 py-1.5 border rounded text-sm w-full" />
                   <input type="text" placeholder="Year" value={edu.year} onChange={(e) => handleArrayChange('education', index, 'year', e.target.value)} className="px-2 py-1.5 border rounded text-sm w-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Naye Fields: Languages, Certifications, Hobbies, References */}
+          <div className="flex justify-between items-center mb-4 border-b pb-2 mt-8">
+            <h1 className="text-xl font-bold">Languages</h1>
+            <button onClick={() => addArrayItem('languages', { language: '', proficiency: '' })} className="text-blue-600 text-sm font-bold flex items-center gap-1"><Plus size={16} /> Add</button>
+          </div>
+          <div className="space-y-2 mb-8">
+            {formData.languages.map((lang: any, index: number) => (
+              <div key={index} className="flex gap-2">
+                <input type="text" placeholder="Language" value={lang.language} onChange={(e) => handleArrayChange('languages', index, 'language', e.target.value)} className="flex-1 px-3 py-2 rounded-lg border text-sm" />
+                <input type="text" placeholder="Proficiency" value={lang.proficiency} onChange={(e) => handleArrayChange('languages', index, 'proficiency', e.target.value)} className="flex-1 px-3 py-2 rounded-lg border text-sm" />
+                <button onClick={() => removeArrayItem('languages', index)} className="text-red-500 p-2"><Trash2 size={18} /></button>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex justify-between items-center mb-4 border-b pb-2">
+            <h1 className="text-xl font-bold">Certifications</h1>
+            <button onClick={() => addArrayItem('certifications', { name: '', year: '', fileUrl: '' })} className="text-blue-600 text-sm font-bold flex items-center gap-1"><Plus size={16} /> Add</button>
+          </div>
+          <div className="space-y-4 mb-8">
+            {formData.certifications.map((cert: any, index: number) => (
+              <div key={index} className="p-3 border rounded-lg bg-gray-50 relative">
+                <button onClick={() => removeArrayItem('certifications', index)} className="absolute top-2 right-2 text-red-400"><Trash2 size={16} /></button>
+                <div className="grid grid-cols-2 gap-2 mb-2 pr-6">
+                  <input type="text" placeholder="Certification Name" value={cert.name} onChange={(e) => handleArrayChange('certifications', index, 'name', e.target.value)} className="px-2 py-1.5 border rounded text-sm w-full" />
+                  <input type="text" placeholder="Year" value={cert.year} onChange={(e) => handleArrayChange('certifications', index, 'year', e.target.value)} className="px-2 py-1.5 border rounded text-sm w-full" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="cursor-pointer bg-white border px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1">
+                    {uploadingCert === index ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />} 
+                    {cert.fileUrl ? 'Change File' : 'Upload Cert'}
+                    <input type="file" className="hidden" onChange={(e) => handleCertUpload(e, index)} />
+                  </label>
+                  {cert.fileUrl && <span className="text-xs text-green-600 font-semibold">Uploaded ✓</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex justify-between items-center mb-4 border-b pb-2">
+            <h1 className="text-xl font-bold">Hobbies</h1>
+            <button onClick={() => addArrayItem('hobbies', '')} className="text-blue-600 text-sm font-bold flex items-center gap-1"><Plus size={16} /> Add</button>
+          </div>
+          <div className="space-y-2 mb-8">
+            {formData.hobbies.map((hobby: any, index: number) => (
+              <div key={index} className="flex gap-2">
+                <input type="text" value={hobby} onChange={(e) => handleArrayChange('hobbies', index, null, e.target.value)} className="flex-1 px-3 py-2 rounded-lg border text-sm" />
+                <button onClick={() => removeArrayItem('hobbies', index)} className="text-red-500 p-2"><Trash2 size={18} /></button>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex justify-between items-center mb-4 border-b pb-2">
+            <h1 className="text-xl font-bold">References</h1>
+            <button onClick={() => addArrayItem('references', { name: '', role: '', contact: '' })} className="text-blue-600 text-sm font-bold flex items-center gap-1"><Plus size={16} /> Add</button>
+          </div>
+          <div className="space-y-4 mb-8">
+            {formData.references.map((ref: any, index: number) => (
+              <div key={index} className="p-3 border rounded-lg bg-gray-50 relative">
+                <button onClick={() => removeArrayItem('references', index)} className="absolute top-2 right-2 text-red-400"><Trash2 size={16} /></button>
+                <div className="grid grid-cols-1 gap-2 pr-6">
+                  <input type="text" placeholder="Name" value={ref.name} onChange={(e) => handleArrayChange('references', index, 'name', e.target.value)} className="px-2 py-1.5 border rounded text-sm w-full" />
+                  <input type="text" placeholder="Role / Company" value={ref.role} onChange={(e) => handleArrayChange('references', index, 'role', e.target.value)} className="px-2 py-1.5 border rounded text-sm w-full" />
+                  <input type="text" placeholder="Contact (Email/Phone)" value={ref.contact} onChange={(e) => handleArrayChange('references', index, 'contact', e.target.value)} className="px-2 py-1.5 border rounded text-sm w-full" />
                 </div>
               </div>
             ))}
