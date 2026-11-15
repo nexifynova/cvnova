@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+// Yeh GET sirf test karne ke liye hai
+export async function GET() {
+  return NextResponse.json({ message: "API is working perfectly!" });
+}
+
 export async function POST(req: Request) {
   try {
     const { email, password } = await req.json();
