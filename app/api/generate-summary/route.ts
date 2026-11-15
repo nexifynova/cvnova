@@ -3,49 +3,41 @@ import { NextResponse } from 'next/server';
 export async function POST(req: Request) {
   try {
     const { jobTitle, experience, education } = await req.json();
-    const apiKey = process.env.GEMINI_API_KEY;
 
-    if (!apiKey) {
-      return NextResponse.json({ error: 'Vercel mein GEMINI_API_KEY nahi mili!' }, { status: 500 });
+    const role = jobTitle || 'Professional';
+    const latestExp = experience && experience.length > 0 ? experience[0] : null;
+    const latestEdu = education && education.length > 0 ? education[0] : null;
+
+    // Experience aur Education se skills nikalna
+    let skills = [];
+    const expDesc = latestExp?.desc?.toLowerCase() || '';
+    const expRole = latestExp?.role?.toLowerCase() || '';
+    const eduDegree = latestEdu?.degree?.toLowerCase() || '';
+
+    if (expDesc.includes('manage') || expRole.includes('manage')) skills.push('Management');
+    if (expDesc.includes('account') || expRole.includes('account')) skills.push('Accounting & Finance');
+    if (expDesc.includes('market') || expRole.includes('market')) skills.push('Marketing');
+    if (expDesc.includes('sale') || expRole.includes('sale')) skills.push('Sales');
+    if (expDesc.includes('team') || expRole.includes('team')) skills.push('Team Leadership');
+    if (expDesc.includes('data') || expDesc.includes('excel')) skills.push('Data Analysis');
+    if (expDesc.includes('customer') || expDesc.includes('client')) skills.push('Customer Service');
+    if (expDesc.includes('project')) skills.push('Project Management');
+    if (eduDegree.includes('computer') || eduDegree.includes('software')) skills.push('Software Development');
+    if (eduDegree.includes('account') || eduDegree.includes('finance')) skills.push('Financial Reporting');
+
+    if (skills.length === 0) {
+      skills = ['Communication', 'Problem Solving', 'Time Management', 'Teamwork', 'Adaptability', 'Microsoft Office'];
     }
+    skills = [...new Set(skills)].slice(0, 6);
 
-    const expText = experience && experience.length > 0 
-      ? `Experience: ${experience.map((e: any) => `${e.role} at ${e.company}`).join(', ')}.` 
-      : '';
-      
-    const eduText = education && education.length > 0 
-      ? `Education: ${education.map((e: any) => `${e.degree} from ${e.school}`).join(', ')}.` 
-      : '';
+    // Summary generate karna
+    const expText = latestExp ? `with experience as a ${latestExp.role} at ${latestExp.company}` : 'with a strong professional background';
+    const eduText = latestEdu ? `and holds a ${latestEdu.degree} from ${latestEdu.school}` : '';
+    const summary = `A highly motivated and detail-oriented ${role} ${expText}. ${eduText ? eduText + '.' : ''} Proven ability to ${skills.slice(0, 3).join(', ').toLowerCase()}. Seeking to leverage these skills to contribute to a dynamic organization.`;
 
-    const prompt = `You are an expert resume writer. Write a professional summary and 6 skills for a ${jobTitle}. ${expText} ${eduText}. Return ONLY valid JSON: {"summary": "...", "skills": ["skill1", "skill2"]}`;
+    await new Promise(resolve => setTimeout(resolve, 800));
 
-    // Google ka standard URL aur Model
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }]
-      })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      return NextResponse.json({ error: `Google Error: ${data.error?.message || 'Unknown'}` }, { status: 500 });
-    }
-
-    const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    
-    if (!generatedText) {
-      return NextResponse.json({ error: "AI ne khaali jawab diya." }, { status: 500 });
-    }
-
-    let cleanText = generatedText.trim();
-    cleanText = cleanText.replace(/```json/g, '').replace(/```/g, '').trim();
-    
-    const parsedData = JSON.parse(cleanText);
-
-    return NextResponse.json({ summary: parsedData.summary, skills: parsedData.skills });
+    return NextResponse.json({ summary, skills });
   } catch (error: any) {
     return NextResponse.json({ error: `System Error: ${error.message}` }, { status: 500 });
   }
