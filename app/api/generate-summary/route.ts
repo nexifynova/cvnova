@@ -32,8 +32,8 @@ export async function POST(req: Request) {
       "skills": ["Skill 1", "Skill 2", "Skill 3", "Skill 4", "Skill 5", "Skill 6"]
     }`;
 
-    // Yeh raha woh model jo Google ne error mein bataya hai
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+    // 🔥 YAHAN CHANGE HUA HAI: v1 endpoint aur gemini-2.5-flash model
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
