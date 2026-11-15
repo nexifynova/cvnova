@@ -108,16 +108,23 @@ export default function Builder() {
     setFormData({ ...formData, [field]: (formData[field] as any[]).filter((_, i) => i !== index) });
   };
 
-    const handleGenerateAI = async () => {
+      const handleGenerateAI = async () => {
     if (!formData.jobTitle) { alert("Please enter a Job Title first."); return; }
     setIsGenerating(true);
+    
+    // 15 second ka timeout taake button ghoomta na rahe
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
     try {
       const response = await fetch('/api/generate-summary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jobTitle: formData.jobTitle, experience: formData.experience, education: formData.education }),
+        signal: controller.signal // Timeout signal
       });
       
+      clearTimeout(timeoutId);
       const data = await response.json();
       
       if (!response.ok) {
@@ -126,11 +133,13 @@ export default function Builder() {
 
       if (data.summary) {
         setFormData({ ...formData, summary: data.summary, skills: data.skills });
-      } else {
-        alert("AI ne summary nahi bheji. Response: " + JSON.stringify(data));
       }
     } catch (error: any) {
-      alert("AI Error: " + error.message);
+      if (error.name === 'AbortError') {
+        alert("Timeout: Google API jawab nahi de rahi. Baraye meharbani apni API key aur internet check karein.");
+      } else {
+        alert("AI Error: " + error.message);
+      }
     } finally {
       setIsGenerating(false);
     }

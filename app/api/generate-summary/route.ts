@@ -23,17 +23,12 @@ export async function POST(req: Request) {
     ${eduText}
     
     Task:
-    1. Write a professional and compelling summary (max 3 sentences).
-    2. Extract and generate a list of 6-8 relevant skills specifically based on the provided Experience and Education.
+    1. Write a professional summary (max 3 sentences).
+    2. Extract a list of 6 relevant skills based on the Experience and Education.
+    Return ONLY valid JSON format exactly like this: {"summary": "...", "skills": ["skill1", "skill2"]}`;
 
-    You MUST return the response in strict JSON format exactly like this:
-    {
-      "summary": "A highly motivated...",
-      "skills": ["Skill 1", "Skill 2", "Skill 3", "Skill 4", "Skill 5", "Skill 6"]
-    }`;
-
-    // Google ne khud error mein bataya hai ke gemini-3.8-flash use karein
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`, {
+    // Yahan humne sab se stable model 'gemini-1.5-flash' aur 'v1' endpoint use kiya hai
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
