@@ -9,7 +9,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Vercel mein GEMINI_API_KEY nahi mili!' }, { status: 500 });
     }
 
-    // Experience aur Education ko text mein convert kar rahe hain taake AI parh sake
     const expText = experience && experience.length > 0 
       ? `Experience: ${experience.map((e: any) => `${e.role} at ${e.company} (${e.desc})`).join(', ')}.` 
       : 'No experience provided.';
@@ -33,8 +32,8 @@ export async function POST(req: Request) {
       "skills": ["Skill 1", "Skill 2", "Skill 3", "Skill 4", "Skill 5", "Skill 6"]
     }`;
 
-    // Model name update kiya gaya hai: gemini-1.5-flash-latest aur v1
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`, {
+    // Model name update kiya gaya hai: gemini-2.0-flash
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -55,7 +54,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "AI ne khaali jawab diya." }, { status: 500 });
     }
 
-    // Extra formatting (```json) clean karne ke liye
     let cleanText = generatedText.trim();
     if (cleanText.startsWith('```json')) cleanText = cleanText.replace(/```json/g, '').replace(/```/g, '').trim();
     
