@@ -108,7 +108,7 @@ export default function Builder() {
     setFormData({ ...formData, [field]: (formData[field] as any[]).filter((_, i) => i !== index) });
   };
 
-  const handleGenerateAI = async () => {
+    const handleGenerateAI = async () => {
     if (!formData.jobTitle) { alert("Please enter a Job Title first."); return; }
     setIsGenerating(true);
     try {
@@ -117,17 +117,24 @@ export default function Builder() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jobTitle: formData.jobTitle, experience: formData.experience, education: formData.education }),
       });
+      
       const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || "API error aya hai.");
+      }
+
       if (data.summary) {
         setFormData({ ...formData, summary: data.summary, skills: data.skills });
+      } else {
+        alert("AI ne summary nahi bheji. Response: " + JSON.stringify(data));
       }
-    } catch (error) {
-      alert("Failed to generate AI summary.");
+    } catch (error: any) {
+      alert("AI Error: " + error.message);
     } finally {
       setIsGenerating(false);
     }
   };
-
   const handleAction = async () => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user || !user.email) {
