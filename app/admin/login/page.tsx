@@ -22,13 +22,23 @@ export default function AdminLogin() {
         body: JSON.stringify({ email: email.trim(), password: password.trim() })
       });
 
-      const data = await res.json();
+      // Response ko text format mein read karein taake HTML error handle ho sake
+      const textResponse = await res.text();
+      let data;
+
+      try {
+        data = JSON.parse(textResponse);
+      } catch (parseError) {
+        alert(`Server Error: API route crash ho gaya hai ya mojood nahi hai. Status: ${res.status}`);
+        setLoading(false);
+        return;
+      }
 
       if (res.ok) {
         router.push('/admin');
         router.refresh(); 
       } else {
-        alert(`Error: ${data.error}`); // Ab asli error dikhega
+        alert(`Error: ${data.error}`);
         setLoading(false);
       }
     } catch (err: any) {

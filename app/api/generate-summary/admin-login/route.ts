@@ -5,14 +5,14 @@ export async function POST(req: Request) {
   try {
     const { email, password } = await req.json();
 
-    if (!process.env.SUPABASE_SERVICE_KEY) {
-       return NextResponse.json({ error: 'Server config error: SUPABASE_SERVICE_KEY missing' }, { status: 500 });
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseKey = process.env.SUPABASE_SERVICE_KEY || '';
+
+    if (!supabaseUrl || !supabaseKey) {
+       return NextResponse.json({ error: 'Server config error: SUPABASE URL ya KEY Vercel mein set nahi hai.' }, { status: 500 });
     }
 
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_KEY!
-    );
+    const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
 
     const { data, error } = await supabaseAdmin
       .from('admin_users')
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     }
 
     if (!data) {
-      return NextResponse.json({ error: 'Email ya Password database mein nahi mila!' }, { status: 401 });
+      return NextResponse.json({ error: 'Email ya Password galat hai!' }, { status: 401 });
     }
 
     const response = NextResponse.json({ success: true });
