@@ -9,27 +9,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Vercel mein GEMINI_API_KEY nahi mili!' }, { status: 500 });
     }
 
-    // 1. Khud check karein ke aapki API key ke liye kaunsa model chal raha hai
-    let modelToUse = 'gemini-1.5-flash'; 
-    try {
-      const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-      const listData = await listRes.json();
-      
-      if (listData.models) {
-        const validModels = listData.models
-          .filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
-          .map((m: any) => m.name.replace('models/', ''));
-          
-        if (validModels.length > 0) {
-          // Agar flash model available hai toh woh use karein, warna jo pehla mile
-          const flash = validModels.find((m: string) => m.includes('flash'));
-          modelToUse = flash || validModels[0];
-        }
-      }
-    } catch (e) {
-      console.log("Model list fetch nahi hui, default use kar rahe hain.");
-    }
-
     const expText = experience && experience.length > 0 
       ? `Experience: ${experience.map((e: any) => `${e.role} at ${e.company} (${e.desc})`).join(', ')}.` 
       : 'No experience provided.';
@@ -48,7 +27,8 @@ export async function POST(req: Request) {
     2. Extract a list of 6 relevant skills based on the Experience and Education.
     Return ONLY valid JSON format exactly like this: {"summary": "...", "skills": ["skill1", "skill2"]}`;
 
-    // 2. Jo model mila hai, us par request bhejein
+    const modelToUse = 'gemini-3.8-flash';
+
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelToUse}:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -61,7 +41,7 @@ export async function POST(req: Request) {
     const data = await response.json();
 
     if (!response.ok) {
-      return NextResponse.json({ error: `Model '${modelToUse}' Error: ${data.error?.message || 'Unknown'}` }, { status: 500 });
+      return NextResponse.json({ error: `Error: ${data.error?.message || 'Unknown'}` }, { status: 500 });
     }
 
     const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -79,4 +59,4 @@ export async function POST(req: Request) {
   } catch (error: any) {
     return NextResponse.json({ error: `System Error: ${error.message}` }, { status: 500 });
   }
-}``
+}
