@@ -9,6 +9,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Vercel mein GEMINI_API_KEY nahi mili!' }, { status: 500 });
     }
 
+    // 1. Available models ki list nikalne ki koshish karein
+    let modelToUse = 'gemini-1.5-flash'; // Default fallback
+
+    try {
+      const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+      const listData = await listRes.json();
+      
+      const validModels = listData.models
+        ?.filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
+        .map((m: any) => m.name.replace('models/', '')) || [];
+
+      // Agar list mil gayi, toh pehla valid model select karein
+      if (validModels.length > 0) {
+        modelToUse = validModels[0];
+      }
+    } catch (e) {
+      // Agar list nahi mili, toh default hi use karein
+      console.log("Model list nahi mili, default use kar rahe hain");
+    }
+
     const expText = experience && experience.length > 0 
       ? `Experience: ${experience.map((e: any) => `${e.role} at ${e.company} (${e.desc})`).join(', ')}.` 
       : 'No experience provided.';
@@ -27,8 +47,8 @@ export async function POST(req: Request) {
     2. Extract a list of 6 relevant skills based on the Experience and Education.
     Return ONLY valid JSON format exactly like this: {"summary": "...", "skills": ["skill1", "skill2"]}`;
 
-    // Yahan humne sab se stable model 'gemini-1.5-flash' aur 'v1' endpoint use kiya hai
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+    // 2. Jo model mila hai, usko use karein
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelToUse}:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -40,7 +60,7 @@ export async function POST(req: Request) {
     const data = await response.json();
 
     if (!response.ok) {
-      return NextResponse.json({ error: data.error?.message || "Gemini API se error aya" }, { status: 500 });
+      return NextResponse.json({ error: `Model '${modelToUse}' ne error diya: ${data.error?.message || 'Unknown error'}` }, { status: 500 });
     }
 
     const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
