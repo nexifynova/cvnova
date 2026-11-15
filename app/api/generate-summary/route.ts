@@ -3,22 +3,47 @@ import { NextResponse } from 'next/server';
 export async function POST(req: Request) {
   try {
     const { jobTitle, experience, education } = await req.json();
+    const apiKey = process.env.GEMINI_API_KEY;
 
-    // Dummy AI logic (Aap yahan OpenAI ya Gemini ka API call laga sakte hain baad mein)
-    const expText = experience && experience.length > 0 ? `with experience as ${experience[0].role} at ${experience[0].company}` : '';
-    const eduText = education && education.length > 0 ? `holding a degree in ${education[0].degree}` : '';
+    if (!apiKey) {
+      return NextResponse.json({ error: 'Gemini API key is missing' }, { status: 500 });
+    }
+
+    const expText = experience && experience.length > 0 ? `Experience: ${experience[0].role} at ${experience[0].company}.` : '';
+    const eduText = education && education.length > 0 ? `Education: ${education[0].degree} from ${education[0].school}.` : '';
+
+    const prompt = `You are an expert resume writer. Write a professional summary and a comma-separated list of skills for a ${jobTitle}. ${expText} ${eduText}
     
-    const generatedSummary = `A highly motivated and detail-oriented ${jobTitle} ${expText} ${eduText}. Proven ability to deliver high-quality results, collaborate effectively within teams, and solve complex problems. Seeking to leverage skills and expertise to contribute to a dynamic organization.`;
+    You MUST return the response in strict JSON format exactly like this:
+    {
+      "summary": "A highly motivated...",
+      "skills": ["Skill 1", "Skill 2", "Skill 3", "Skill 4", "Skill 5"]
+    }`;
+
+    // Google Gemini API Call
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseMimeType: "application/json" } // Force JSON response
+      })
+    });
+
+    const data = await response.json();
     
-    // AI se skills bhi generate karwa rahe hain
-    const generatedSkills = jobTitle.toLowerCase().includes('account') 
-      ? ['Financial Reporting', 'Data Analysis', 'Ms-Office', 'QuickBooks', 'Taxation', 'Communication']
-      : ['Project Management', 'Communication', 'Problem Solving', 'Teamwork', 'Leadership'];
+    // AI ka text nikalna
+    const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (!generatedText) {
+      throw new Error("AI ne koi jawab nahi diya.");
+    }
 
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    const parsedData = JSON.parse(generatedText);
 
-    return NextResponse.json({ summary: generatedSummary, skills: generatedSkills });
-  } catch (error) {
-    return NextResponse.json({ error: 'Failed to generate' }, { status: 500 });
+    return NextResponse.json({ summary: parsedData.summary, skills: parsedData.skills });
+  } catch (error: any) {
+    console.error("AI Error:", error);
+    return NextResponse.json({ error: 'Failed to generate AI summary' }, { status: 500 });
   }
 }
