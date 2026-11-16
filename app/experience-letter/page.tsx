@@ -41,16 +41,16 @@ export default function ExperienceLetter() {
     }
   };
 
-     const handleGenerateAI = async () => {
+  const handleGenerateAI = async () => {
     setIsGenerating(true);
-    // Fake delay taake "Generating..." thori der dikhe
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
     const generatedBody = `This is to certify that Mr./Ms. ${formData.employeeName || 'Employee Name'} was employed with ${formData.companyName || 'Our Company'} as a ${formData.employeeDesignation || 'Professional'} from ${formData.joiningDate || 'Start Date'} to ${formData.leavingDate || 'End Date'}.\n\nDuring their tenure, they were responsible for key operational tasks and consistently demonstrated exceptional skills, dedication, and a strong work ethic. They were a valuable asset to our organization, known for their problem-solving abilities and collaborative spirit.\n\nWe wish them great success in all future endeavors.`;
     
     setFormData({ ...formData, body: generatedBody });
     setIsGenerating(false);
   };
+
   const handleAction = async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
@@ -65,7 +65,7 @@ export default function ExperienceLetter() {
       const limitCheck = await checkUserLimit(userEmail);
       if (!limitCheck.allowed) {
         alert("You have reached your free limit. Please upgrade to continue.");
-        window.location.href = '/#pricing';
+        window.location.href = '/payment';
         setLoading(false);
         return;
       }
@@ -83,7 +83,7 @@ export default function ExperienceLetter() {
     if (isLoggedIn) await incrementUserCount(userEmail);
     
     setLoading(false);
-    downloadAsPDF('exp-preview', formData.employeeName || 'Experience-Letter'); 
+    setTimeout(() => { window.print(); }, 500);
   };
 
   return (
@@ -142,7 +142,6 @@ export default function ExperienceLetter() {
 
           <div className="flex justify-between items-center mb-4 border-b pb-2">
             <h1 className="text-xl font-bold text-gray-900">Letter Body</h1>
-            {/* AI GENERATE BUTTON */}
             <button type="button" onClick={handleGenerateAI} disabled={isGenerating} className="flex items-center gap-1.5 text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-blue-600 px-3 py-1.5 rounded-full disabled:opacity-50">
               {isGenerating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
               {isGenerating ? 'Generating...' : 'Generate with AI'}
@@ -158,108 +157,117 @@ export default function ExperienceLetter() {
             <div><label className="block text-xs font-semibold text-gray-600 mb-1">Designation</label><input type="text" name="signatoryDesignation" value={formData.signatoryDesignation} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border text-sm" /></div>
           </div>
 
-                    <div className="flex gap-2 pt-4 border-t border-gray-200">
-            <button type="button" onClick={handleAction} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-2 py-3 rounded-xl font-bold text-sm"><Printer size={18} /> Print</button>
-            <button type="button" onClick={() => downloadAsPDF('exp-preview', formData.employeeName || 'Experience-Letter')} className="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-red-700 transition"><Download size={18} /> PDF</button>
-            <button type="button" onClick={() => downloadAsWord('exp-preview', formData.employeeName || 'Experience-Letter')} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-blue-700 transition"><Download size={18} /> Word</button>
+          <div className="flex gap-2 pt-4 border-t border-gray-200">
+            <button type="button" onClick={handleAction} disabled={loading} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-gray-800 transition disabled:opacity-50">
+              {loading ? <Loader2 size={18} className="animate-spin" /> : <Printer size={18} />} Print
+            </button>
+            <button type="button" onClick={() => downloadAsPDF('exp-preview', formData.employeeName || 'Experience-Letter')} className="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-red-700 transition">
+              <Download size={18} /> PDF
+            </button>
+            <button type="button" onClick={() => downloadAsWord('exp-preview', formData.employeeName || 'Experience-Letter')} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-blue-700 transition">
+              <Download size={18} /> Word
+            </button>
           </div>
+        </div>
 
         {/* RIGHT SIDE: LIVE PREVIEW */}
-        <div id="exp-preview" className="bg-white shadow-2xl rounded-xl p-12 border border-gray-200 print:shadow-none print:border-none print:p-0 print-area h-fit min-h-[A4]">
-          
-          {/* Template 1: Modern */}
-          {template === 'modern' && (
-            <div>
-              <div className="bg-gray-900 text-white p-8 rounded-b-xl mb-8 -mt-12 -mx-12 avoid-break">
-                <h1 className="text-3xl font-bold tracking-wide">{formData.companyName}</h1>
-                <p className="text-gray-300 text-sm mt-1">{formData.companyAddress}</p>
-              </div>
-              <div className="mb-6 text-sm text-gray-700 avoid-break"><p className="font-semibold">Date: {formData.date}</p></div>
-              <div className="mb-8 avoid-break">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">TO WHOM IT MAY CONCERN</h2>
-                <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{formData.body}</div>
-              </div>
-              <div className="mt-16 text-sm text-gray-700 avoid-break">
-                <p>Sincerely,</p>
-                <div className="mt-12 pt-2 border-t border-gray-400 w-48">
-                  <p className="font-bold">{formData.signatoryName}</p>
-                  <p className="text-xs text-gray-500">{formData.signatoryDesignation}</p>
+        <div className="py-4 lg:py-8 overflow-x-auto print:p-0">
+          <div id="exp-preview" className="print-area max-w-[210mm] min-h-[297mm] mx-auto bg-white shadow-2xl p-12">
+            
+            {/* Template 1: Modern */}
+            {template === 'modern' && (
+              <div>
+                <div className="bg-gray-900 text-white p-8 rounded-b-xl mb-8 -mt-12 -mx-12 avoid-break">
+                  <h1 className="text-3xl font-bold tracking-wide">{formData.companyName}</h1>
+                  <p className="text-gray-300 text-sm mt-1">{formData.companyAddress}</p>
+                </div>
+                <div className="mb-6 text-sm text-gray-700 avoid-break"><p className="font-semibold">Date: {formData.date}</p></div>
+                <div className="mb-8 avoid-break">
+                  <h2 className="text-xl font-bold text-gray-900 mb-4">TO WHOM IT MAY CONCERN</h2>
+                  <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{formData.body}</div>
+                </div>
+                <div className="mt-16 text-sm text-gray-700 avoid-break">
+                  <p>Sincerely,</p>
+                  <div className="mt-12 pt-2 border-t border-gray-400 w-48">
+                    <p className="font-bold">{formData.signatoryName}</p>
+                    <p className="text-xs text-gray-500">{formData.signatoryDesignation}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Template 2: Classic */}
-          {template === 'classic' && (
-            <div className="font-serif">
-              <div className="text-center border-b-4 border-double border-gray-800 pb-4 mb-8 avoid-break">
-                <h1 className="text-3xl font-bold uppercase tracking-widest text-gray-900">{formData.companyName}</h1>
-                <p className="text-sm text-gray-600 mt-1">{formData.companyAddress}</p>
-              </div>
-              <div className="mb-6 text-sm text-gray-800 avoid-break"><p>{formData.date}</p></div>
-              <div className="text-center mb-8 avoid-break"><h2 className="text-lg font-bold underline text-gray-900 tracking-wider">EXPERIENCE CERTIFICATE</h2></div>
-              <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap mb-12">{formData.body}</div>
-              <div className="flex justify-between items-end mt-16 text-sm text-gray-800 avoid-break">
-                <div><p className="border-t border-gray-400 pt-1 w-40 text-center">Employee Signature</p></div>
-                <div>
-                  <p className="font-bold">{formData.signatoryName}</p>
-                  <p className="text-xs text-gray-500">{formData.signatoryDesignation}</p>
-                  <p className="border-t border-gray-400 pt-1 w-40 text-center mt-1">Authorized Signature</p>
+            {/* Template 2: Classic */}
+            {template === 'classic' && (
+              <div className="font-serif">
+                <div className="text-center border-b-4 border-double border-gray-800 pb-4 mb-8 avoid-break">
+                  <h1 className="text-3xl font-bold uppercase tracking-widest text-gray-900">{formData.companyName}</h1>
+                  <p className="text-sm text-gray-600 mt-1">{formData.companyAddress}</p>
+                </div>
+                <div className="mb-6 text-sm text-gray-800 avoid-break"><p>{formData.date}</p></div>
+                <div className="text-center mb-8 avoid-break"><h2 className="text-lg font-bold underline text-gray-900 tracking-wider">EXPERIENCE CERTIFICATE</h2></div>
+                <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap mb-12">{formData.body}</div>
+                <div className="flex justify-between items-end mt-16 text-sm text-gray-800 avoid-break">
+                  <div><p className="border-t border-gray-400 pt-1 w-40 text-center">Employee Signature</p></div>
+                  <div>
+                    <p className="font-bold">{formData.signatoryName}</p>
+                    <p className="text-xs text-gray-500">{formData.signatoryDesignation}</p>
+                    <p className="border-t border-gray-400 pt-1 w-40 text-center mt-1">Authorized Signature</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Template 3: Corporate (Naya) */}
-          {template === 'corporate' && (
-            <div className="font-sans">
-              <div className="border-l-8 border-indigo-600 pl-6 mb-8 avoid-break">
-                <h1 className="text-3xl font-bold text-gray-900">{formData.companyName}</h1>
-                <p className="text-sm text-gray-500 mt-1">{formData.companyAddress}</p>
-              </div>
-              <div className="mb-8 flex justify-between text-sm text-gray-700 avoid-break">
-                <p>Date: {formData.date}</p>
-                <p>Ref: EXP-2026</p>
-              </div>
-              <div className="mb-8 avoid-break">
-                <h2 className="text-lg font-bold text-gray-900 mb-4 uppercase tracking-wider">Experience Certificate</h2>
-                <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{formData.body}</div>
-              </div>
-              <div className="mt-16 text-sm text-gray-700 avoid-break">
-                <div className="w-48">
-                  <p className="font-bold">{formData.signatoryName}</p>
-                  <p className="text-xs text-gray-500">{formData.signatoryDesignation}</p>
+            {/* Template 3: Corporate */}
+            {template === 'corporate' && (
+              <div className="font-sans">
+                <div className="border-l-8 border-indigo-600 pl-6 mb-8 avoid-break">
+                  <h1 className="text-3xl font-bold text-gray-900">{formData.companyName}</h1>
+                  <p className="text-sm text-gray-500 mt-1">{formData.companyAddress}</p>
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* Template 4: Modern Dark (Naya) */}
-          {template === 'modernDark' && (
-            <div className="bg-slate-800 text-white p-10 rounded-xl min-h-[800px] font-sans">
-              <div className="flex justify-between items-start border-b border-slate-600 pb-6 mb-8 avoid-break">
-                <div>
-                  <h1 className="text-2xl font-bold">{formData.companyName}</h1>
-                  <p className="text-xs text-slate-400 mt-1">{formData.companyAddress}</p>
-                </div>
-                <div className="text-right text-xs text-slate-400">
+                <div className="mb-8 flex justify-between text-sm text-gray-700 avoid-break">
                   <p>Date: {formData.date}</p>
+                  <p>Ref: EXP-2026</p>
+                </div>
+                <div className="mb-8 avoid-break">
+                  <h2 className="text-lg font-bold text-gray-900 mb-4 uppercase tracking-wider">Experience Certificate</h2>
+                  <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{formData.body}</div>
+                </div>
+                <div className="mt-16 text-sm text-gray-700 avoid-break">
+                  <div className="w-48">
+                    <p className="font-bold">{formData.signatoryName}</p>
+                    <p className="text-xs text-gray-500">{formData.signatoryDesignation}</p>
+                  </div>
                 </div>
               </div>
-              <div className="mb-8 avoid-break">
-                <h2 className="text-xl font-light text-blue-400 mb-4 tracking-widest uppercase">To Whom It May Concern</h2>
-                <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">{formData.body}</div>
-              </div>
-              <div className="mt-20 text-sm text-slate-300 avoid-break">
-                <p className="mb-8">Sincerely,</p>
-                <div className="border-t border-slate-600 pt-2 w-48">
-                  <p className="font-bold text-white">{formData.signatoryName}</p>
-                  <p className="text-xs text-slate-400">{formData.signatoryDesignation}</p>
-                </div>
-              </div>
-            </div>
-          )}
+            )}
 
+            {/* Template 4: Modern Dark */}
+            {template === 'modernDark' && (
+              <div className="bg-slate-800 text-white p-10 rounded-xl min-h-[800px] font-sans">
+                <div className="flex justify-between items-start border-b border-slate-600 pb-6 mb-8 avoid-break">
+                  <div>
+                    <h1 className="text-2xl font-bold">{formData.companyName}</h1>
+                    <p className="text-xs text-slate-400 mt-1">{formData.companyAddress}</p>
+                  </div>
+                  <div className="text-right text-xs text-slate-400">
+                    <p>Date: {formData.date}</p>
+                  </div>
+                </div>
+                <div className="mb-8 avoid-break">
+                  <h2 className="text-xl font-light text-blue-400 mb-4 tracking-widest uppercase">To Whom It May Concern</h2>
+                  <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">{formData.body}</div>
+                </div>
+                <div className="mt-20 text-sm text-slate-300 avoid-break">
+                  <p className="mb-8">Sincerely,</p>
+                  <div className="border-t border-slate-600 pt-2 w-48">
+                    <p className="font-bold text-white">{formData.signatoryName}</p>
+                    <p className="text-xs text-slate-400">{formData.signatoryDesignation}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </div>
         </div>
       </main>
     </div>
