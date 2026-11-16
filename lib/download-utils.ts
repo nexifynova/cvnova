@@ -21,9 +21,8 @@ export const downloadAsWord = (elementId: string, fileName: string) => {
       li { margin-bottom: 2pt; }
       .avoid-break { page-break-inside: avoid; }
       table { border-collapse: collapse; width: 100%; }
-      /* Layout fixes for specific templates */
       .flex { display: flex; }
-      .grid { display: block; } /* Fallback for grids in Word */
+      .grid { display: block; }
     </style>
   `;
 
@@ -55,6 +54,28 @@ export const downloadAsWord = (elementId: string, fileName: string) => {
   }
 };
 
-export const downloadAsPDF = () => {
-  window.print();
+export const downloadAsPDF = async (elementId: string, fileName: string) => {
+  const element = document.getElementById(elementId);
+  if (!element) {
+    alert("Preview not found for PDF download.");
+    return;
+  }
+
+  try {
+    const html2pdf = (await import('html2pdf.js')).default;
+
+    const opt = {
+      margin:       0,
+      filename:     `${fileName}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true },
+      jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+    };
+
+    // @ts-ignore
+    html2pdf().set(opt).from(element).save();
+  } catch (error) {
+    console.error("PDF generation error:", error);
+    alert("Failed to generate PDF. Please use Print instead.");
+  }
 };

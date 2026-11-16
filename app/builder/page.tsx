@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { Sparkles, ArrowLeft, Download, Printer, Plus, Trash2, Loader2, Camera, Upload, RefreshCw, Info } from 'lucide-react';
 import Link from 'next/link';
 import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount } from '@/lib/supabase';
-import { downloadAsWord } from '@/lib/download-utils';
+import { downloadAsWord, downloadAsPDF } from '@/lib/download-utils';
 
 const dummyData = {
   fullName: 'Muhammad Ali',
@@ -170,7 +170,9 @@ export default function Builder() {
 
     await incrementUserCount(user.email); 
 
-    setTimeout(() => { window.print(); }, 500); 
+        setTimeout(() => { 
+      downloadAsPDF('cv-preview', formData.fullName || 'CV'); 
+    }, 500); 
   };
 
   return (

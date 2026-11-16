@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { ArrowLeft, Printer, Download, Loader2, RefreshCw, Info, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount } from '@/lib/supabase';
-import { downloadAsWord } from '@/lib/download-utils';
+import { downloadAsWord, downloadAsPDF } from '@/lib/download-utils';
 
 const dummyData = {
   companyName: 'Zaman Trading',
@@ -83,7 +83,7 @@ export default function ExperienceLetter() {
     if (isLoggedIn) await incrementUserCount(userEmail);
     
     setLoading(false);
-    window.print();
+    downloadAsPDF('exp-preview', formData.employeeName || 'Experience-Letter');
   };
 
   return (
