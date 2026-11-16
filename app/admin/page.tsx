@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { FileText, Mail, Briefcase, ExternalLink, Phone, Settings, Users, Trash2, Loader2, ShieldCheck, CreditCard, Search, Eye, Filter } from 'lucide-react';
+import { FileText, Mail, Briefcase, ExternalLink, Phone, Settings, Users, Trash2, Loader2, ShieldCheck, CreditCard, Search, Eye, Filter, FolderOpen } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AdminPanel() {
@@ -16,6 +16,7 @@ export default function AdminPanel() {
   // Search & Filter States
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const [docFilter, setDocFilter] = useState('All');
+  const [docSearchEmail, setDocSearchEmail] = useState(''); // New state for filtering docs by email
 
   useEffect(() => {
     fetchData();
@@ -81,12 +82,18 @@ export default function AdminPanel() {
     else alert("Password reset link sent successfully!");
   };
 
-  const filteredDocs = docFilter === 'All' ? documents : documents.filter(d => d.document_type === docFilter);
-  
+  // Filter users by name or email
   const filteredUsers = users.filter(u => 
     u.email?.toLowerCase().includes(userSearchTerm.toLowerCase()) || 
     (u.full_name && u.full_name.toLowerCase().includes(userSearchTerm.toLowerCase()))
   );
+
+  // Filter documents by type AND by user email (if clicked from users tab)
+  const filteredDocs = documents.filter(d => {
+    const matchesType = docFilter === 'All' || d.document_type === docFilter;
+    const matchesEmail = docSearchEmail ? d.email?.toLowerCase() === docSearchEmail.toLowerCase() : true;
+    return matchesType && matchesEmail;
+  });
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-blue-600" size={48} /></div>;
 
@@ -131,7 +138,7 @@ export default function AdminPanel() {
           Recent Records
         </button>
         <button 
-          onClick={() => setActiveTab('users')}
+          onClick={() => { setActiveTab('users'); setDocSearchEmail(''); }}
           className={`pb-3 px-2 font-bold text-sm transition flex items-center gap-2 ${activeTab === 'users' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-800'}`}
         >
           <Users size={16} /> Registered Users ({users.length})
@@ -141,7 +148,16 @@ export default function AdminPanel() {
       {activeTab === 'records' && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <h2 className="text-lg font-bold text-gray-900">Recent Documents</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-bold text-gray-900">
+                {docSearchEmail ? `Documents for: ${docSearchEmail}` : 'Recent Documents'}
+              </h2>
+              {docSearchEmail && (
+                <button onClick={() => setDocSearchEmail('')} className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded font-semibold hover:bg-red-100">
+                  Clear Filter
+                </button>
+              )}
+            </div>
             
             <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border">
               <Filter size={16} className="text-gray-500" />
@@ -187,7 +203,7 @@ export default function AdminPanel() {
                   </tr>
                 ))}
                 {filteredDocs.length === 0 && (
-                  <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">No records found for this filter.</td></tr>
+                  <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">No records found.</td></tr>
                 )}
               </tbody>
             </table>
@@ -238,12 +254,21 @@ export default function AdminPanel() {
                       </span>
                     </td>
                     <td className="px-6 py-4 flex gap-2">
+                      {/* Naya Button: View User Documents */}
+                      <button 
+                        onClick={() => { setActiveTab('records'); setDocSearchEmail(user.email); setDocFilter('All'); }}
+                        title="View User's Documents"
+                        className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium bg-indigo-50 px-3 py-1.5 rounded-lg transition"
+                      >
+                        <FolderOpen size={14} /> Docs
+                      </button>
+
                       <button 
                         onClick={() => handlePasswordReset(user.email)}
                         title="Manage Password (Reset Link)"
                         className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium bg-blue-50 px-3 py-1.5 rounded-lg transition"
                       >
-                        <Eye size={14} /> Reset Pass
+                        <Eye size={14} /> Reset
                       </button>
                       
                       <button 
