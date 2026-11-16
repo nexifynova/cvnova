@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { FileText, Sparkles, ArrowRight, Mail, Briefcase, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FileText, Sparkles, ArrowRight, Mail, Briefcase, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import Navbar from '@/components/Navbar';
 import useEmblaCarousel from 'embla-carousel-react';
@@ -61,6 +61,9 @@ export default function Home() {
               <Link href="/builder" className="flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-full hover:from-blue-500 hover:to-purple-500 text-lg font-bold shadow-[0_0_20px_rgba(59,130,246,0.5)] transition-all transform hover:-translate-y-1">
                 Build My CV Now <ArrowRight size={20} />
               </Link>
+              <Link href="/track-document" className="flex items-center justify-center gap-2 bg-white/10 text-white border border-white/20 px-8 py-4 rounded-full hover:bg-white/20 text-lg font-bold transition-all transform hover:-translate-y-1">
+                <Search size={20} /> Track Document
+              </Link>
             </div>
           </div>
 
@@ -68,10 +71,8 @@ export default function Home() {
             
             {/* Heart Shape Offer Badge */}
             <Link href="/payment" className="absolute -top-12 -right-8 z-30 group w-40 h-40 flex items-center justify-center cursor-pointer">
-              {/* Heart Shape Background */}
               <div className="absolute inset-0 bg-gradient-to-br from-yellow-400 to-orange-500 rotate-45 rounded-tl-full rounded-tr-full rounded-br-full rounded-bl-full transform group-hover:scale-110 transition-transform shadow-[0_0_40px_rgba(250,204,21,0.9)]"></div>
               
-              {/* Text Container (Static) */}
               <div className="relative z-10 -mt-4 flex flex-col items-center justify-center text-black text-center">
                 <span className="text-[12px] uppercase font-black tracking-widest leading-none">Special</span>
                 <span className="text-xl font-black leading-none mb-1">Offer</span>
@@ -184,6 +185,13 @@ export default function Home() {
                 <p className="text-sm font-semibold text-blue-400 mb-6 flex-grow">Includes {settings.cvs_5y || 100} CVs</p>
                 <Link href="/payment" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">Upgrade</Link>
               </div>
+            </div>
+
+            {/* Track Document Link Below Pricing */}
+            <div className="mt-16 text-center">
+              <Link href="/track-document" className="inline-flex items-center gap-2 bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 px-6 py-3 rounded-full font-semibold transition duration-300">
+                <Search size={18} className="text-blue-400" /> Already have a document? Track it here
+              </Link>
             </div>
           </div>
         </section>

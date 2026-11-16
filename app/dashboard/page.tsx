@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import { FileText, LogOut, Plus, ExternalLink, Loader2, Mail, Briefcase, CreditCard, Clock, CheckCircle2, XCircle, ShieldCheck, Crown, Search, Filter, Calendar, Edit2, X } from 'lucide-react';
+import { FileText, LogOut, Plus, ExternalLink, Loader2, Mail, Briefcase, CreditCard, Clock, CheckCircle2, XCircle, ShieldCheck, Crown, Search, Filter, Calendar, Edit2, X, Share2, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 
 export default function Dashboard() {
@@ -26,6 +26,12 @@ export default function Dashboard() {
   const [renamingDoc, setRenamingDoc] = useState<any>(null);
   const [newDocName, setNewDocName] = useState('');
   const [isRenaming, setIsRenaming] = useState(false);
+
+  // Share Code State
+  const [sharingDoc, setSharingDoc] = useState<any>(null);
+  const [shareCode, setShareCode] = useState('');
+  const [isShareable, setIsShareable] = useState(false);
+  const [isSavingShare, setIsSavingShare] = useState(false);
 
   useEffect(() => {
     checkUser();
@@ -97,7 +103,6 @@ export default function Dashboard() {
 
       if (error) throw error;
 
-      // Update local state immediately
       setDocuments(documents.map(d => d.id === renamingDoc.id ? { ...d, full_name: newDocName.trim() } : d));
       setRenamingDoc(null);
     } catch (error: any) {
@@ -107,16 +112,59 @@ export default function Dashboard() {
     }
   };
 
-  // Dynamic Limit Calculation
+  const openShareModal = (doc: any) => {
+    setSharingDoc(doc);
+    setShareCode(doc.share_code || '');
+    setIsShareable(doc.is_shareable || false);
+  };
+
+  const generateRandomCode = () => {
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    setShareCode(code);
+    setIsShareable(true);
+  };
+
+  const resetShareCode = () => {
+    setShareCode('');
+    setIsShareable(false);
+  };
+
+  const handleSaveShareCode = async () => {
+    if (!sharingDoc) return;
+    if (isShareable && shareCode && shareCode.length !== 4) {
+      alert("Share code must be exactly 4 digits.");
+      return;
+    }
+
+    setIsSavingShare(true);
+    try {
+      const { error } = await supabase
+        .from('generated_documents')
+        .update({ 
+          share_code: shareCode || null, 
+          is_shareable: isShareable 
+        })
+        .eq('id', sharingDoc.id);
+
+      if (error) throw error;
+
+      setDocuments(documents.map(d => d.id === sharingDoc.id ? { ...d, share_code: shareCode, is_shareable: isShareable } : d));
+      setSharingDoc(null);
+      alert("Share settings updated!");
+    } catch (error: any) {
+      alert("Error saving share code: " + error.message);
+    } finally {
+      setIsSavingShare(false);
+    }
+  };
+
   let currentLimit = settings?.free_cv_limit || 1;
   let limitLabel = "Free CVs";
-
   if (profile?.subscription_type === '3 Months') { currentLimit = settings?.cvs_3m || 10; limitLabel = "Package CVs"; }
   if (profile?.subscription_type === '6 Months') { currentLimit = settings?.cvs_6m || 20; limitLabel = "Package CVs"; }
   if (profile?.subscription_type === '1 Year') { currentLimit = settings?.cvs_1y || 50; limitLabel = "Package CVs"; }
   if (profile?.subscription_type === '5 Years') { currentLimit = settings?.cvs_5y || 100; limitLabel = "Package CVs"; }
 
-  // Filter Logic
   const filteredDocuments = documents.filter((doc) => {
     if (searchTerm && !doc.full_name?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
     if (filterType !== 'All' && doc.document_type !== filterType) return false;
@@ -175,7 +223,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Stats Section */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <p className="text-sm text-gray-500 mb-1 flex items-center gap-2"><FileText size={16}/> {limitLabel} Used</p>
@@ -203,7 +250,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Payments History Section */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-10">
           <div className="p-6 border-b border-gray-100 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -250,7 +296,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Documents Section */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <h2 className="text-lg font-bold text-gray-900">My Documents</h2>
@@ -317,10 +362,17 @@ export default function Dashboard() {
                       </button>
                     </td>
                     <td className="px-6 py-4 capitalize text-gray-600">{doc.template_name}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 flex gap-2">
                       <Link href={`/view/${doc.id}`} target="_blank" className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium bg-blue-50 px-3 py-1.5 rounded-lg transition">
                         <ExternalLink size={14} /> View
                       </Link>
+                      <button 
+                        onClick={() => openShareModal(doc)}
+                        className={`inline-flex items-center gap-1 font-medium px-3 py-1.5 rounded-lg transition ${doc.is_shareable && doc.share_code ? 'text-green-600 bg-green-50 hover:bg-green-100' : 'text-gray-600 bg-gray-100 hover:bg-gray-200'}`}
+                        title="Share Document"
+                      >
+                        <Share2 size={14} /> Share
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -372,6 +424,73 @@ export default function Dashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Share Code Modal */}
+      {sharingDoc && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+            <div className="flex justify-between items-center p-5 border-b border-gray-100">
+              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2"><Share2 size={18}/> Share Document</h2>
+              <button onClick={() => setSharingDoc(null)} className="text-gray-400 hover:text-gray-700">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-5">
+              <div className="mb-5">
+                <label className="block text-sm font-semibold text-gray-700 mb-1">4-Digit Share Code</label>
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    value={shareCode}
+                    onChange={(e) => setShareCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none tracking-widest text-lg font-mono" 
+                    placeholder="e.g. 1234"
+                    maxLength={4}
+                  />
+                  <button 
+                    onClick={generateRandomCode}
+                    className="px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition"
+                    title="Generate Random Code"
+                  >
+                    <RefreshCw size={18} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="mb-6 flex items-center justify-between bg-gray-50 p-3 rounded-lg border">
+                <span className="text-sm font-semibold text-gray-700">Share Permission</span>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="sr-only peer" 
+                    checked={isShareable}
+                    onChange={(e) => setIsShareable(e.target.checked)}
+                  />
+                  <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                  <span className="ml-2 text-xs font-bold text-gray-600">{isShareable ? 'ALLOWED' : 'BLOCKED'}</span>
+                </label>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <button 
+                  type="button" 
+                  onClick={resetShareCode}
+                  className="px-4 py-2 rounded-lg font-semibold text-red-600 hover:bg-red-50 transition text-sm"
+                >
+                  Reset Code
+                </button>
+                <button 
+                  onClick={handleSaveShareCode}
+                  disabled={isSavingShare}
+                  className="px-5 py-2 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-700 transition flex items-center gap-2 disabled:opacity-50 text-sm"
+                >
+                  {isSavingShare ? <Loader2 size={16} className="animate-spin" /> : 'Save Settings'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
