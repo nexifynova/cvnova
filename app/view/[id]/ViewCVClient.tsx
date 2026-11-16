@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Loader2, ArrowLeft, Printer, Save, LayoutTemplate } from 'lucide-react';
+import { Loader2, ArrowLeft, Printer, Save, LayoutTemplate, Edit } from 'lucide-react';
 import Link from 'next/link';
 
 export function ViewCVClient({ id }: { id: string }) {
@@ -38,6 +38,11 @@ export function ViewCVClient({ id }: { id: string }) {
   if (!doc) return <div className="text-center py-20 font-bold">Document Not Found</div>;
 
   const formData = doc.full_data;
+  
+  // Determine the edit link based on document type
+  let editLink = `/builder?edit=${id}`;
+  if (doc.document_type === 'Cover Letter') editLink = `/cover-letter?edit=${id}`;
+  if (doc.document_type === 'Experience Letter') editLink = `/experience-letter?edit=${id}`;
 
   return (
     <div className="min-h-screen bg-gray-200 font-sans">
@@ -48,17 +53,27 @@ export function ViewCVClient({ id }: { id: string }) {
             <ArrowLeft size={18} /> Back to Dashboard
           </Link>
           
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-gray-50 p-1.5 rounded-lg border">
-              <LayoutTemplate size={18} className="text-gray-500 ml-2" />
-              <select value={currentTemplate} onChange={(e) => setCurrentTemplate(e.target.value)} className="bg-transparent outline-none text-sm font-semibold capitalize cursor-pointer py-1 pr-4">
-                {templatesList.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            {/* Template Switcher (Only for CV) */}
+            {doc.document_type === 'CV' && (
+              <div className="flex items-center gap-2 bg-gray-50 p-1.5 rounded-lg border">
+                <LayoutTemplate size={18} className="text-gray-500 ml-2" />
+                <select value={currentTemplate} onChange={(e) => setCurrentTemplate(e.target.value)} className="bg-transparent outline-none text-sm font-semibold capitalize cursor-pointer py-1 pr-4">
+                  {templatesList.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+            )}
             
-            <button onClick={handleSaveTemplate} disabled={saving} className="flex items-center gap-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-100 transition">
-              {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Save Design
-            </button>
+            {doc.document_type === 'CV' && (
+              <button onClick={handleSaveTemplate} disabled={saving} className="flex items-center gap-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-100 transition">
+                {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Save Design
+              </button>
+            )}
+
+            {/* EDIT BUTTON (Newly Added) */}
+            <Link href={editLink} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-700 transition shadow-sm">
+              <Edit size={16} /> Edit Document
+            </Link>
 
             <button onClick={() => window.print()} className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-gray-800 transition">
               <Printer size={16} /> Print / PDF
