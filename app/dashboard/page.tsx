@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import { FileText, LogOut, Plus, ExternalLink, Loader2, Mail, Briefcase, CreditCard, Clock, CheckCircle2, XCircle, ShieldCheck, Crown, Search, Filter, Calendar } from 'lucide-react';
+import { FileText, LogOut, Plus, ExternalLink, Loader2, Mail, Briefcase, CreditCard, Clock, CheckCircle2, XCircle, ShieldCheck, Crown, Search, Filter, Calendar, Edit2, X } from 'lucide-react';
 import Link from 'next/link';
 
 export default function Dashboard() {
@@ -21,6 +21,11 @@ export default function Dashboard() {
   const [filterType, setFilterType] = useState('All');
   const [filterFromDate, setFilterFromDate] = useState('');
   const [filterToDate, setFilterToDate] = useState('');
+
+  // Rename Document State
+  const [renamingDoc, setRenamingDoc] = useState<any>(null);
+  const [newDocName, setNewDocName] = useState('');
+  const [isRenaming, setIsRenaming] = useState(false);
 
   useEffect(() => {
     checkUser();
@@ -62,7 +67,6 @@ export default function Dashboard() {
     const { data: profileData } = await supabase.from('user_profiles').select('*').eq('id', user.id).single();
     if (profileData) setProfile(profileData);
 
-    // Get App Settings for Dynamic Limits
     const { data: settingsData } = await supabase.from('app_settings').select('*').eq('id', 1).single();
     if (settingsData) setSettings(settingsData);
 
@@ -80,6 +84,29 @@ export default function Dashboard() {
     router.push('/');
   };
 
+  const handleRenameSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDocName.trim() || !renamingDoc) return;
+    setIsRenaming(true);
+
+    try {
+      const { error } = await supabase
+        .from('generated_documents')
+        .update({ full_name: newDocName.trim() })
+        .eq('id', renamingDoc.id);
+
+      if (error) throw error;
+
+      // Update local state immediately
+      setDocuments(documents.map(d => d.id === renamingDoc.id ? { ...d, full_name: newDocName.trim() } : d));
+      setRenamingDoc(null);
+    } catch (error: any) {
+      alert("Error renaming document: " + error.message);
+    } finally {
+      setIsRenaming(false);
+    }
+  };
+
   // Dynamic Limit Calculation
   let currentLimit = settings?.free_cv_limit || 1;
   let limitLabel = "Free CVs";
@@ -91,27 +118,19 @@ export default function Dashboard() {
 
   // Filter Logic
   const filteredDocuments = documents.filter((doc) => {
-    // 1. Search by Name
     if (searchTerm && !doc.full_name?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-    
-    // 2. Filter by Type
     if (filterType !== 'All' && doc.document_type !== filterType) return false;
-    
-    // 3. Filter by From Date
     if (filterFromDate) {
       const from = new Date(filterFromDate);
       const docDate = new Date(doc.created_at);
       if (docDate < from) return false;
     }
-    
-    // 4. Filter by To Date
     if (filterToDate) {
       const to = new Date(filterToDate);
-      to.setDate(to.getDate() + 1); // Include the whole day
+      to.setDate(to.getDate() + 1);
       const docDate = new Date(doc.created_at);
       if (docDate > to) return false;
     }
-    
     return true;
   });
 
@@ -124,7 +143,7 @@ export default function Dashboard() {
       <nav className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
         <Link href="/" className="flex items-center gap-2">
           <div className="bg-gradient-to-tr from-blue-500 to-purple-600 p-2 rounded-xl"><FileText className="text-white" size={20} /></div>
-          <span className="text-xl font-extrabold text-gray-900">CVNova</span>
+          <span className="text-xl font-extrabold text-gray-900">{settings?.site_name || 'CVNova'}</span>
         </Link>
         <div className="flex items-center gap-4">
           <span className="text-sm text-gray-600 hidden sm:block">Hi, {profile?.full_name || user.email}</span>
@@ -167,7 +186,6 @@ export default function Dashboard() {
             <p className="text-3xl font-bold text-gray-900 capitalize">{profile?.subscription_type || 'Free'}</p>
           </div>
           
-          {/* Expiry Timer Card */}
           <div className={`p-6 rounded-2xl shadow-sm border ${profile?.subscription_type !== 'free' && timeLeft !== 'Expired' ? 'bg-green-50 border-green-200' : 'bg-white border-gray-100'}`}>
             <p className="text-sm text-gray-500 mb-1 flex items-center gap-2"><Clock size={16}/> Subscription Expiry</p>
             {profile?.subscription_type !== 'free' && profile?.subscription_expiry ? (
@@ -237,9 +255,7 @@ export default function Dashboard() {
           <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <h2 className="text-lg font-bold text-gray-900">My Documents</h2>
             
-            {/* Filters */}
             <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-              {/* Search */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                 <input 
@@ -251,7 +267,6 @@ export default function Dashboard() {
                 />
               </div>
               
-              {/* Type Filter */}
               <div className="relative">
                 <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                 <select 
@@ -266,7 +281,6 @@ export default function Dashboard() {
                 </select>
               </div>
 
-              {/* Date Filters */}
               <div className="flex items-center gap-2 bg-white border rounded-lg px-3 py-1">
                 <Calendar size={16} className="text-gray-400" />
                 <input type="date" value={filterFromDate} onChange={(e) => setFilterFromDate(e.target.value)} className="text-sm outline-none bg-transparent" title="From Date" />
@@ -292,7 +306,16 @@ export default function Dashboard() {
                   <tr key={doc.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-gray-500">{new Date(doc.created_at).toLocaleDateString()}</td>
                     <td className="px-6 py-4 text-gray-600 font-medium">{doc.document_type}</td>
-                    <td className="px-6 py-4 text-gray-900">{doc.full_name}</td>
+                    <td className="px-6 py-4 text-gray-900 flex items-center gap-2">
+                      {doc.full_name}
+                      <button 
+                        onClick={() => { setRenamingDoc(doc); setNewDocName(doc.full_name || ''); }} 
+                        className="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-1.5 rounded transition"
+                        title="Rename Document"
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                    </td>
                     <td className="px-6 py-4 capitalize text-gray-600">{doc.template_name}</td>
                     <td className="px-6 py-4">
                       <Link href={`/view/${doc.id}`} target="_blank" className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium bg-blue-50 px-3 py-1.5 rounded-lg transition">
@@ -309,6 +332,50 @@ export default function Dashboard() {
           </div>
         </div>
       </main>
+
+      {/* Rename Modal */}
+      {renamingDoc && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+            <div className="flex justify-between items-center p-5 border-b border-gray-100">
+              <h2 className="text-lg font-bold text-gray-900">Rename Document</h2>
+              <button onClick={() => setRenamingDoc(null)} className="text-gray-400 hover:text-gray-700">
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleRenameSubmit} className="p-5">
+              <div className="mb-5">
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Document Name</label>
+                <input 
+                  type="text" 
+                  value={newDocName}
+                  onChange={(e) => setNewDocName(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" 
+                  placeholder="Enter new name"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button 
+                  type="button" 
+                  onClick={() => setRenamingDoc(null)}
+                  className="px-4 py-2 rounded-lg font-semibold text-gray-600 hover:bg-gray-100 transition"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isRenaming}
+                  className="px-4 py-2 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-700 transition flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isRenaming ? <Loader2 size={16} className="animate-spin" /> : 'Save'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
