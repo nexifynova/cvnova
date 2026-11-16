@@ -7,16 +7,16 @@ import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount } from
 import { downloadAsWord, downloadAsPDF } from '@/lib/download-utils';
 
 const dummyData = {
-  fullName: 'David Ibraham',
-  email: 'David@example.com',
-  phone: '+1 234 567 8900',
-  address: 'New York, USA',
-  companyName: 'Tech Corp',
-  companyAddress: '123 Innovation Drive, Silicon Valley, CA',
-  jobTitle: 'Senior Software Engineer',
-  hiringManager: 'Adam ',
+  fullName: 'Muhammad Ali',
+  email: 'muhammad.ali@example.com',
+  phone: '+92 300 1234567',
+  address: 'Karachi, Pakistan',
+  companyName: 'Zaman Trading',
+  companyAddress: 'Shahrah-e-Faisal, Karachi',
+  jobTitle: 'Assistant Accounts',
+  hiringManager: 'Ahmed Khan',
   date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-  body: `Dear Jane Smith,\n\nI am writing to express my strong interest in the Senior Software Engineer position at Tech Corp. With over 6 years of experience in building scalable web applications and a deep passion for clean, efficient code, I am confident in my ability to contribute effectively to your engineering team.\n\nSincerely,\nJohn Doe`
+  body: `Dear Ahmed Khan,\n\nI am writing to express my strong interest in the Assistant Accounts position at Zaman Trading. With my background in accounting and finance, I am confident in my ability to contribute effectively to your team.\n\nSincerely,\nMuhammad Ali`
 };
 
 const emptyData = {
@@ -41,15 +41,31 @@ export default function CoverLetter() {
     }
   };
 
-      const handleGenerateAI = async () => {
+  const handleGenerateAI = async () => {
     setIsGenerating(true);
-    // Fake delay taake "Generating..." thori der dikhe
-    await new Promise(resolve => setTimeout(resolve, 1500)); 
     
-    const generatedBody = `Dear Hiring Manager,\n\nI am writing to express my strong interest in the ${formData.jobTitle || 'position'} at ${formData.companyName || 'your company'}. With a proven track record of delivering high-quality results and a passion for continuous improvement, I am confident in my ability to contribute effectively to your team.\n\nThroughout my career, I have developed strong skills in problem-solving, collaboration, and strategic planning. I am eager to bring my expertise to ${formData.companyName || 'your organization'} and help drive success.\n\nThank you for considering my application. I look forward to the opportunity to discuss how I can contribute to your team.\n\nSincerely,\n${formData.fullName || 'Your Name'}`;
-    
-    setFormData({ ...formData, body: generatedBody });
-    setIsGenerating(false);
+    try {
+      const response = await fetch('/api/generate-cover-letter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          jobTitle: formData.jobTitle, 
+          companyName: formData.companyName, 
+          fullName: formData.fullName 
+        }),
+      });
+
+      const data = await response.json();
+      if (data.body) {
+        setFormData({ ...formData, body: data.body });
+      } else {
+        alert("AI se response nahi mila.");
+      }
+    } catch (error: any) {
+      alert("AI Error: " + error.message);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleAction = async () => {
@@ -65,7 +81,7 @@ export default function CoverLetter() {
       const limitCheck = await checkUserLimit(userEmail);
       if (!limitCheck.allowed) {
         alert("You have reached your free limit. Please upgrade to continue.");
-        window.location.href = '/#pricing';
+        window.location.href = '/payment';
         setLoading(false);
         return;
       }
@@ -83,7 +99,7 @@ export default function CoverLetter() {
     if (isLoggedIn) await incrementUserCount(userEmail);
 
     setLoading(false);
-    downloadAsPDF('cover-preview', formData.fullName || 'Cover-Letter');
+    setTimeout(() => { window.print(); }, 500);
   };
 
   return (
@@ -146,7 +162,6 @@ export default function CoverLetter() {
 
           <div className="flex justify-between items-center mb-4 border-b pb-2">
             <h1 className="text-xl font-bold text-gray-900">Letter Body</h1>
-            {/* AI GENERATE BUTTON */}
             <button type="button" onClick={handleGenerateAI} disabled={isGenerating} className="flex items-center gap-1.5 text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-blue-600 px-3 py-1.5 rounded-full disabled:opacity-50">
               {isGenerating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
               {isGenerating ? 'Generating...' : 'Generate with AI'}
@@ -156,90 +171,100 @@ export default function CoverLetter() {
             <textarea name="body" value={formData.body} onChange={handleChange} rows={10} className="w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 outline-none text-sm resize-y"></textarea>
           </div>
 
-                    <div className="flex gap-2 pt-4 border-t border-gray-200">
-            <button type="button" onClick={handleAction} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-2 py-3 rounded-xl font-bold text-sm"><Printer size={18} /> Print</button>
-            <button type="button" onClick={() => downloadAsPDF('cover-preview', formData.fullName || 'Cover-Letter')} className="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-red-700 transition"><Download size={18} /> PDF</button>
-            <button type="button" onClick={() => downloadAsWord('cover-preview', formData.fullName || 'Cover-Letter')} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-blue-700 transition"><Download size={18} /> Word</button>
+          {/* FIXED BUTTONS SECTION */}
+          <div className="flex gap-2 pt-4 border-t border-gray-200">
+            <button type="button" onClick={handleAction} disabled={loading} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-gray-800 transition disabled:opacity-50">
+              {loading ? <Loader2 size={18} className="animate-spin" /> : <Printer size={18} />} Print
+            </button>
+            <button type="button" onClick={() => downloadAsPDF('cover-preview', formData.fullName || 'Cover-Letter')} className="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-red-700 transition">
+              <Download size={18} /> PDF
+            </button>
+            <button type="button" onClick={() => downloadAsWord('cover-preview', formData.fullName || 'Cover-Letter')} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-blue-700 transition">
+              <Download size={18} /> Word
+            </button>
           </div>
+        </div>
 
         {/* RIGHT SIDE: LIVE PREVIEW */}
-        <div id="cover-preview" className="bg-white shadow-2xl rounded-xl p-12 border border-gray-200 print:shadow-none print:border-none print:p-0 print-area h-fit min-h-[A4]">
-          
-          {/* Template 1: Modern */}
-          {template === 'modern' && (
-            <div>
-              <div className="border-l-8 border-blue-600 pl-6 mb-8 avoid-break">
-                <h1 className="text-4xl font-black text-gray-900 uppercase tracking-tight">{formData.fullName}</h1>
-                <div className="flex flex-wrap gap-2 text-sm text-blue-600 font-medium mt-2">
-                  <span>{formData.email}</span> <span>•</span> <span>{formData.phone}</span> <span>•</span> <span>{formData.address}</span>
+        <div className="py-4 lg:py-8 overflow-x-auto print:p-0">
+          <div id="cover-preview" className="print-area max-w-[210mm] min-h-[297mm] mx-auto bg-white shadow-2xl p-12">
+            
+            {/* Template 1: Modern */}
+            {template === 'modern' && (
+              <div>
+                <div className="border-l-8 border-blue-600 pl-6 mb-8 avoid-break">
+                  <h1 className="text-4xl font-black text-gray-900 uppercase tracking-tight">{formData.fullName}</h1>
+                  <div className="flex flex-wrap gap-2 text-sm text-blue-600 font-medium mt-2">
+                    <span>{formData.email}</span> <span>•</span> <span>{formData.phone}</span> <span>•</span> <span>{formData.address}</span>
+                  </div>
                 </div>
-              </div>
-              <div className="flex justify-between items-end mb-8 border-b border-gray-200 pb-4 avoid-break">
-                <div><p className="text-sm font-bold text-gray-900">{formData.date}</p></div>
-                <div className="text-right text-sm text-gray-600">
-                  <p className="font-bold text-gray-900">{formData.hiringManager}</p>
-                  <p>{formData.companyName}</p>
-                  <p>{formData.companyAddress}</p>
+                <div className="flex justify-between items-end mb-8 border-b border-gray-200 pb-4 avoid-break">
+                  <div><p className="text-sm font-bold text-gray-900">{formData.date}</p></div>
+                  <div className="text-right text-sm text-gray-600">
+                    <p className="font-bold text-gray-900">{formData.hiringManager}</p>
+                    <p>{formData.companyName}</p>
+                    <p>{formData.companyAddress}</p>
+                  </div>
                 </div>
+                <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{formData.body}</div>
               </div>
-              <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{formData.body}</div>
-            </div>
-          )}
+            )}
 
-          {/* Template 2: Classic */}
-          {template === 'classic' && (
-            <div className="font-serif">
-              <div className="text-center mb-10 avoid-break">
-                <h1 className="text-3xl font-bold text-gray-900 mb-1">{formData.fullName}</h1>
-                <p className="text-sm text-gray-600">{formData.address} | {formData.phone} | {formData.email}</p>
-              </div>
-              <div className="mb-8 text-sm text-gray-800 avoid-break">
-                <p className="mb-4">{formData.date}</p>
-                <p className="font-bold">{formData.hiringManager}</p>
-                <p>{formData.companyName}</p>
-                <p>{formData.companyAddress}</p>
-              </div>
-              <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{formData.body}</div>
-            </div>
-          )}
-
-          {/* Template 3: Elegant (Naya) */}
-          {template === 'elegant' && (
-            <div className="font-serif p-4">
-              <div className="text-center mb-10 border-b border-gray-300 pb-6 avoid-break">
-                <h1 className="text-4xl font-normal text-gray-800 tracking-wider mb-2">{formData.fullName}</h1>
-                <div className="flex justify-center gap-4 text-xs text-gray-500 mt-4">
-                  <span>{formData.email}</span> <span>•</span> <span>{formData.phone}</span> <span>•</span> <span>{formData.address}</span>
+            {/* Template 2: Classic */}
+            {template === 'classic' && (
+              <div className="font-serif">
+                <div className="text-center mb-10 avoid-break">
+                  <h1 className="text-3xl font-bold text-gray-900 mb-1">{formData.fullName}</h1>
+                  <p className="text-sm text-gray-600">{formData.address} | {formData.phone} | {formData.email}</p>
                 </div>
-              </div>
-              <div className="mb-8 text-sm text-gray-800 avoid-break flex justify-between">
-                <div>
+                <div className="mb-8 text-sm text-gray-800 avoid-break">
                   <p className="mb-4">{formData.date}</p>
                   <p className="font-bold">{formData.hiringManager}</p>
                   <p>{formData.companyName}</p>
                   <p>{formData.companyAddress}</p>
                 </div>
+                <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{formData.body}</div>
               </div>
-              <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{formData.body}</div>
-            </div>
-          )}
+            )}
 
-          {/* Template 4: Minimal (Naya) */}
-          {template === 'minimal' && (
-            <div className="font-sans p-6">
-              <div className="mb-10 avoid-break">
-                <h1 className="text-2xl text-gray-900 font-light mb-1">{formData.fullName}</h1>
-                <p className="text-xs text-gray-500 uppercase tracking-widest">{formData.email} • {formData.phone}</p>
+            {/* Template 3: Elegant */}
+            {template === 'elegant' && (
+              <div className="font-serif p-4">
+                <div className="text-center mb-10 border-b border-gray-300 pb-6 avoid-break">
+                  <h1 className="text-4xl font-normal text-gray-800 tracking-wider mb-2">{formData.fullName}</h1>
+                  <div className="flex justify-center gap-4 text-xs text-gray-500 mt-4">
+                    <span>{formData.email}</span> <span>•</span> <span>{formData.phone}</span> <span>•</span> <span>{formData.address}</span>
+                  </div>
+                </div>
+                <div className="mb-8 text-sm text-gray-800 avoid-break flex justify-between">
+                  <div>
+                    <p className="mb-4">{formData.date}</p>
+                    <p className="font-bold">{formData.hiringManager}</p>
+                    <p>{formData.companyName}</p>
+                    <p>{formData.companyAddress}</p>
+                  </div>
+                </div>
+                <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{formData.body}</div>
               </div>
-              <div className="mb-8 text-xs text-gray-600 avoid-break">
-                <p className="mb-2">{formData.date}</p>
-                <p className="font-semibold">{formData.hiringManager}</p>
-                <p>{formData.companyName}</p>
-              </div>
-              <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{formData.body}</div>
-            </div>
-          )}
+            )}
 
+            {/* Template 4: Minimal */}
+            {template === 'minimal' && (
+              <div className="font-sans p-6">
+                <div className="mb-10 avoid-break">
+                  <h1 className="text-2xl text-gray-900 font-light mb-1">{formData.fullName}</h1>
+                  <p className="text-xs text-gray-500 uppercase tracking-widest">{formData.email} • {formData.phone}</p>
+                </div>
+                <div className="mb-8 text-xs text-gray-600 avoid-break">
+                  <p className="mb-2">{formData.date}</p>
+                  <p className="font-semibold">{formData.hiringManager}</p>
+                  <p>{formData.companyName}</p>
+                </div>
+                <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{formData.body}</div>
+              </div>
+            )}
+
+          </div>
         </div>
       </main>
     </div>
