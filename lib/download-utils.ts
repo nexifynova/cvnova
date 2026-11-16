@@ -62,20 +62,32 @@ export const downloadAsPDF = async (elementId: string, fileName: string) => {
   }
 
   try {
-    const html2pdf = (await import('html2pdf.js')).default;
+    const html2canvas = (await import('html2canvas')).default;
+    const { jsPDF } = await import('jspdf');
 
-    const opt = {
-      margin:       0,
-      filename:     `${fileName}.pdf`,
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true },
-      jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
-    };
+    // Element ka high-quality screenshot lena
+    const canvas = await html2canvas(element, { 
+      scale: 2, 
+      useCORS: true,
+      scrollY: -window.scrollY 
+    });
+    
+    const imgData = canvas.toDataURL('image/jpeg', 1.0);
+    
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'px',
+      format: 'a4'
+    });
 
-    // @ts-ignore
-    html2pdf().set(opt).from(element).save();
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+    pdf.save(`${fileName}.pdf`);
+
   } catch (error) {
     console.error("PDF generation error:", error);
-    alert("Failed to generate PDF. Please use Print instead.");
+    alert("Failed to generate PDF. Please try again.");
   }
 };
