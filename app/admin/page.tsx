@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { FileText, Mail, Briefcase, ExternalLink, Phone, Settings, Users, Trash2, Loader2, ShieldCheck, CreditCard } from 'lucide-react';
+import { FileText, Mail, Briefcase, ExternalLink, Phone, Settings, Users, Trash2, Loader2, ShieldCheck, CreditCard, Search, Key, Filter } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AdminPanel() {
@@ -12,6 +12,10 @@ export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState<'records' | 'users'>('records');
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Search & Filter States
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [docFilter, setDocFilter] = useState('All');
 
   useEffect(() => {
     fetchData();
@@ -68,6 +72,25 @@ export default function AdminPanel() {
     }
   };
 
+  const handlePasswordReset = async (email: string) => {
+    if(!confirm(`Send password reset link to ${email}?`)) return;
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/update-password`,
+    });
+
+    if (error) alert("Error: " + error.message);
+    else alert("Password reset link sent successfully!");
+  };
+
+  // Filtered Data
+  const filteredDocs = docFilter === 'All' ? documents : documents.filter(d => d.document_type === docFilter);
+  
+  const filteredUsers = users.filter(u => 
+    u.email?.toLowerCase().includes(userSearchTerm.toLowerCase()) || 
+    (u.full_name && u.full_name.toLowerCase().includes(userSearchTerm.toLowerCase()))
+  );
+
   if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-blue-600" size={48} /></div>;
 
   return (
@@ -123,7 +146,24 @@ export default function AdminPanel() {
       {/* ================= RECORDS TAB ================= */}
       {activeTab === 'records' && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-6 border-b border-gray-100"><h2 className="text-lg font-bold text-gray-900">Recent Documents</h2></div>
+          <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <h2 className="text-lg font-bold text-gray-900">Recent Documents</h2>
+            
+            {/* Document Filter Dropdown */}
+            <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border">
+              <Filter size={16} className="text-gray-500" />
+              <select 
+                value={docFilter} 
+                onChange={(e) => setDocFilter(e.target.value)}
+                className="bg-transparent text-sm font-medium outline-none cursor-pointer"
+              >
+                <option value="All">All Documents</option>
+                <option value="CV">CV Only</option>
+                <option value="Cover Letter">Cover Letters Only</option>
+                <option value="Experience Letter">Experience Letters Only</option>
+              </select>
+            </div>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm whitespace-nowrap">
               <thead className="bg-gray-50 text-gray-600">
@@ -137,7 +177,7 @@ export default function AdminPanel() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {documents.map((doc) => (
+                {filteredDocs.map((doc) => (
                   <tr key={doc.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-gray-500">{new Date(doc.created_at).toLocaleDateString()}</td>
                     <td className="px-6 py-4 font-medium text-gray-900">{doc.full_name}</td>
@@ -153,8 +193,8 @@ export default function AdminPanel() {
                     </td>
                   </tr>
                 ))}
-                {documents.length === 0 && (
-                  <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">Abhi tak koi record nahi hai.</td></tr>
+                {filteredDocs.length === 0 && (
+                  <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">No records found for this filter.</td></tr>
                 )}
               </tbody>
             </table>
@@ -165,9 +205,20 @@ export default function AdminPanel() {
       {/* ================= USERS TAB ================= */}
       {activeTab === 'users' && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+          <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <h2 className="text-lg font-bold text-gray-900">Registered Users</h2>
-            <p className="text-xs text-gray-500 flex items-center gap-1"><ShieldCheck size={14} className="text-green-500"/> Deleting a user removes all their data</p>
+            
+            {/* User Search Bar */}
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <input 
+                type="text" 
+                placeholder="Search by name or email..." 
+                value={userSearchTerm}
+                onChange={(e) => setUserSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm whitespace-nowrap">
@@ -178,22 +229,33 @@ export default function AdminPanel() {
                   <th className="px-6 py-3 font-medium">Email</th>
                   <th className="px-6 py-3 font-medium">CVs Used</th>
                   <th className="px-6 py-3 font-medium">Plan</th>
-                  <th className="px-6 py-3 font-medium">Action</th>
+                  <th className="px-6 py-3 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {users.map((user) => (
+                {filteredUsers.map((user) => (
                   <tr key={user.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-gray-500">{new Date(user.created_at).toLocaleDateString()}</td>
                     <td className="px-6 py-4 font-medium text-gray-900">{user.full_name || 'N/A'}</td>
-                    <td className="px-6 py-4 text-gray-600">{user.email}</td>
+                    <td className="px-6 py-4 text-gray-600 flex items-center gap-2">
+                      {user.email}
+                    </td>
                     <td className="px-6 py-4 font-bold text-blue-600">{user.free_cv_count || 0}</td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase ${user.subscription_type === 'free' ? 'bg-gray-100 text-gray-600' : 'bg-green-100 text-green-700'}`}>
                         {user.subscription_type || 'Free'}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 flex gap-2">
+                      {/* Password Reset Button (Instead of Eye Icon) */}
+                      <button 
+                        onClick={() => handlePasswordReset(user.email)}
+                        title="Send Password Reset Link"
+                        className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium bg-blue-50 px-3 py-1.5 rounded-lg transition"
+                      >
+                        <Key size={14} /> Reset Pass
+                      </button>
+                      
                       <button 
                         onClick={() => handleDeleteUser(user.id, user.email)}
                         disabled={deletingId === user.id}
@@ -204,8 +266,8 @@ export default function AdminPanel() {
                     </td>
                   </tr>
                 ))}
-                {users.length === 0 && (
-                  <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">No users registered yet.</td></tr>
+                {filteredUsers.length === 0 && (
+                  <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">No users found matching your search.</td></tr>
                 )}
               </tbody>
             </table>
