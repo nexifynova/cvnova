@@ -41,7 +41,7 @@ export default function CoverLetter() {
     }
   };
 
-  const handleGenerateAI = async () => {
+    const handleGenerateAI = async () => {
     setIsGenerating(true);
     
     try {
@@ -55,7 +55,13 @@ export default function CoverLetter() {
         }),
       });
 
+      // Check karein ke response ok hai ya nahi, phir JSON parse karein
+      if (!response.ok) {
+        throw new Error(`API Error: Status ${response.status}. API route mojood nahi hai.`);
+      }
+
       const data = await response.json();
+      
       if (data.body) {
         setFormData({ ...formData, body: data.body });
       } else {
