@@ -31,13 +31,12 @@ export default function AdminPayments() {
     setLoading(false);
   };
 
-  const handleAction = async (payment: any, status: 'approved' | 'rejected') => {
+   const handleAction = async (payment: any, status: 'approved' | 'rejected') => {
     if (!confirm(`Are you sure you want to ${status} this payment?`)) return;
     
     setProcessing(payment.id);
 
     try {
-      // 1. Payment ka status update karein
       const { error: payError } = await supabase
         .from('payments')
         .update({ status, approved_at: new Date().toISOString() })
@@ -45,18 +44,13 @@ export default function AdminPayments() {
 
       if (payError) throw payError;
 
-      // 2. Agar Approve kiya hai toh User ka account update karein
       if (status === 'approved') {
-        
-        // Agar "Additional CVs" kharide hain
         if (payment.package_type === 'Additional CVs') {
           const { data: settings } = await supabase.from('app_settings').select('cvs_per_price').eq('id', 1).single();
           const cvsBought = settings?.cvs_per_price || 5;
 
           const { data: profile } = await supabase.from('user_profiles').select('free_cv_count').eq('id', payment.user_id).single();
           const currentUsed = profile?.free_cv_count || 0;
-          
-          // Used CVs ko kam karein taake limit barh jaye
           const newUsedCount = Math.max(0, currentUsed - cvsBought);
 
           const { error: userError } = await supabase.from('user_profiles').update({
@@ -64,9 +58,7 @@ export default function AdminPayments() {
           }).eq('id', payment.user_id);
           
           if (userError) throw userError;
-
         } else {
-          // Agar Normal Package (3 Months, 1 Year, etc) kharida hai
           const expiryDate = new Date();
           if (payment.package_type === '3 Months') expiryDate.setMonth(expiryDate.getMonth() + 3);
           if (payment.package_type === '6 Months') expiryDate.setMonth(expiryDate.getMonth() + 6);
@@ -76,10 +68,37 @@ export default function AdminPayments() {
           const { error: userError } = await supabase.from('user_profiles').update({
             subscription_type: payment.package_type,
             subscription_expiry: expiryDate.toISOString(),
-            free_cv_count: 0 // Normal package mein count reset hota hai
+            free_cv_count: 0
           }).eq('id', payment.user_id);
           
           if (userError) throw userError;
+        }
+
+        // EMAIL BHEJNE KA CODE YAHAN HAI
+        try {
+          await fetch('/api/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: payment.user_email,
+              subject: 'Payment Approved - Welcome to CVNova Pro! 🎉',
+              html: `
+                <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+                  <h2 style="color: #2563eb;">Hello!</h2>
+                  <p>Great news! Aapki payment approve ho gayi hai.</p>
+                  <p><strong>Package:</strong> ${payment.package_type}</p>
+                  <p><strong>Amount:</strong> $${payment.amount}</p>
+                  <p>Ab aap CVNova ke saare premium features use kar sakte hain. Apne dashboard par jakar naye documents banayein!</p>
+                  <br/>
+                  <a href="https://cvnova-one.vercel.app/dashboard" style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Go to Dashboard</a>
+                  <br/><br/>
+                  <p>Thank you,<br/>Team CVNova (NexifyNova)</p>
+                </div>
+              `
+            })
+          });
+        } catch (emailError) {
+          console.error("Email bhejne mein masla aya:", emailError);
         }
       }
 
