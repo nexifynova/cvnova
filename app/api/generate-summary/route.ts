@@ -2,42 +2,19 @@ import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   try {
-    const { jobTitle, experience, education } = await req.json();
+    const { jobTitle, companyName, fullName } = await req.json();
 
-    const role = jobTitle || 'Professional';
-    const latestExp = experience && experience.length > 0 ? experience[0] : null;
-    const latestEdu = education && education.length > 0 ? education[0] : null;
+    const role = jobTitle || 'the position';
+    const company = companyName || 'your esteemed organization';
+    const name = fullName || 'Your Name';
 
-    // Experience aur Education se skills nikalna
-    let skills = [];
-    const expDesc = latestExp?.desc?.toLowerCase() || '';
-    const expRole = latestExp?.role?.toLowerCase() || '';
-    const eduDegree = latestEdu?.degree?.toLowerCase() || '';
+    // Ek professional cover letter generate karna
+    const generatedBody = `Dear Hiring Manager,\n\nI am writing to express my strong interest in the ${role} position at ${company}. With a proven track record of delivering high-quality results and a passion for continuous improvement, I am confident in my ability to contribute effectively to your team.\n\nThroughout my career, I have developed strong skills in problem-solving, collaboration, and strategic planning. I am eager to bring my expertise to ${company} and help drive success.\n\nThank you for considering my application. I look forward to the opportunity to discuss how I can contribute to your team.\n\nSincerely,\n${name}`;
 
-    if (expDesc.includes('manage') || expRole.includes('manage')) skills.push('Management');
-    if (expDesc.includes('account') || expRole.includes('account')) skills.push('Accounting & Finance');
-    if (expDesc.includes('market') || expRole.includes('market')) skills.push('Marketing');
-    if (expDesc.includes('sale') || expRole.includes('sale')) skills.push('Sales');
-    if (expDesc.includes('team') || expRole.includes('team')) skills.push('Team Leadership');
-    if (expDesc.includes('data') || expDesc.includes('excel')) skills.push('Data Analysis');
-    if (expDesc.includes('customer') || expDesc.includes('client')) skills.push('Customer Service');
-    if (expDesc.includes('project')) skills.push('Project Management');
-    if (eduDegree.includes('computer') || eduDegree.includes('software')) skills.push('Software Development');
-    if (eduDegree.includes('account') || eduDegree.includes('finance')) skills.push('Financial Reporting');
-
-    if (skills.length === 0) {
-      skills = ['Communication', 'Problem Solving', 'Time Management', 'Teamwork', 'Adaptability', 'Microsoft Office'];
-    }
-    skills = [...new Set(skills)].slice(0, 6);
-
-    // Summary generate karna
-    const expText = latestExp ? `with experience as a ${latestExp.role} at ${latestExp.company}` : 'with a strong professional background';
-    const eduText = latestEdu ? `and holds a ${latestEdu.degree} from ${latestEdu.school}` : '';
-    const summary = `A highly motivated and detail-oriented ${role} ${expText}. ${eduText ? eduText + '.' : ''} Proven ability to ${skills.slice(0, 3).join(', ').toLowerCase()}. Seeking to leverage these skills to contribute to a dynamic organization.`;
-
+    // Thora sa delay taake "Generating" feel ho
     await new Promise(resolve => setTimeout(resolve, 800));
 
-    return NextResponse.json({ summary, skills });
+    return NextResponse.json({ body: generatedBody });
   } catch (error: any) {
     return NextResponse.json({ error: `System Error: ${error.message}` }, { status: 500 });
   }
