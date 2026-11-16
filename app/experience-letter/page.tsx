@@ -7,15 +7,15 @@ import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount } from
 import { downloadAsWord } from '@/lib/download-utils';
 
 const dummyData = {
-  companyName: 'Tech Corp Solutions',
-  companyAddress: '123 Business Avenue, Karachi, Pakistan',
+  companyName: 'Zaman Trading',
+  companyAddress: 'Shahrah-e-Faisal, Karachi, Pakistan',
   date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-  employeeName: 'John Doe',
-  employeeDesignation: 'Senior Software Engineer',
+  employeeName: 'Muhammad Ali',
+  employeeDesignation: 'Assistant Accounts',
   joiningDate: 'January 15, 2020',
   leavingDate: 'October 31, 2026',
-  body: `This is to certify that Mr. John Doe was employed with Tech Corp Solutions as a Senior Software Engineer from January 15, 2020 to October 31, 2026.\n\nDuring his tenure, he was responsible for leading the frontend development team, architecting scalable web applications, and maintaining high code quality standards. He consistently demonstrated exceptional technical skills, dedication, and a strong work ethic.\n\nWe wish him great success in all his future endeavors.`,
-  signatoryName: 'Jane Smith',
+  body: `This is to certify that Mr. Muhammad Ali was employed with Zaman Trading as an Assistant Accounts from January 15, 2020 to October 31, 2026.\n\nDuring his tenure, he was responsible for managing financial records, assisting in daily accounting tasks, and maintaining high accuracy standards. He consistently demonstrated exceptional dedication and a strong work ethic.\n\nWe wish him great success in all his future endeavors.`,
+  signatoryName: 'Ahmed Khan',
   signatoryDesignation: 'Head of Human Resources',
 };
 
