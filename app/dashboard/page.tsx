@@ -160,7 +160,15 @@ export default function Dashboard() {
         })
         .eq('id', sharingDoc.id);
 
-      if (error) throw error;
+      if (error) {
+        // Handle duplicate code error (Unique Violation)
+        if (error.code === '23505') {
+          alert("This code is already in use by another user. Please generate or enter a different 4-digit code.");
+          setIsSavingShare(false);
+          return;
+        }
+        throw error;
+      }
 
       setDocuments(documents.map(d => d.id === sharingDoc.id ? { ...d, share_code: shareCode, is_shareable: isShareable } : d));
       setSharingDoc(null);
