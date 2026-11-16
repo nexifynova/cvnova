@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { FileText, Mail, Briefcase, ExternalLink, Phone, Settings, Users, Trash2, Loader2, ShieldCheck, CreditCard, Search, Key, Filter } from 'lucide-react';
+import { FileText, Mail, Briefcase, ExternalLink, Phone, Settings, Users, Trash2, Loader2, ShieldCheck, CreditCard, Search, Eye, Filter } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AdminPanel() {
@@ -23,7 +23,6 @@ export default function AdminPanel() {
 
   const fetchData = async () => {
     setLoading(true);
-    // Fetch Documents
     const { data: docData } = await supabase
       .from('generated_documents')
       .select('*')
@@ -37,7 +36,6 @@ export default function AdminPanel() {
       setStats({ totalCV: cvs, totalCover: covers, totalExp: exps });
     }
 
-    // Fetch Users
     const { data: userData } = await supabase
       .from('user_profiles')
       .select('*')
@@ -64,7 +62,7 @@ export default function AdminPanel() {
       if (!res.ok) throw new Error(data.error);
 
       alert("User deleted successfully!");
-      fetchData(); // Refresh list
+      fetchData(); 
     } catch (error: any) {
       alert("Failed to delete user: " + error.message);
     } finally {
@@ -83,7 +81,6 @@ export default function AdminPanel() {
     else alert("Password reset link sent successfully!");
   };
 
-  // Filtered Data
   const filteredDocs = docFilter === 'All' ? documents : documents.filter(d => d.document_type === docFilter);
   
   const filteredUsers = users.filter(u => 
@@ -111,7 +108,6 @@ export default function AdminPanel() {
         </div>
       </div>
       
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
           <div className="p-3 bg-blue-100 text-blue-600 rounded-xl"><FileText size={24} /></div>
@@ -127,7 +123,6 @@ export default function AdminPanel() {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-4 mb-6 border-b border-gray-200">
         <button 
           onClick={() => setActiveTab('records')}
@@ -143,13 +138,11 @@ export default function AdminPanel() {
         </button>
       </div>
 
-      {/* ================= RECORDS TAB ================= */}
       {activeTab === 'records' && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <h2 className="text-lg font-bold text-gray-900">Recent Documents</h2>
             
-            {/* Document Filter Dropdown */}
             <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border">
               <Filter size={16} className="text-gray-500" />
               <select 
@@ -202,13 +195,11 @@ export default function AdminPanel() {
         </div>
       )}
 
-      {/* ================= USERS TAB ================= */}
       {activeTab === 'users' && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <h2 className="text-lg font-bold text-gray-900">Registered Users</h2>
             
-            {/* User Search Bar */}
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
               <input 
@@ -247,13 +238,12 @@ export default function AdminPanel() {
                       </span>
                     </td>
                     <td className="px-6 py-4 flex gap-2">
-                      {/* Password Reset Button (Instead of Eye Icon) */}
                       <button 
                         onClick={() => handlePasswordReset(user.email)}
-                        title="Send Password Reset Link"
+                        title="Manage Password (Reset Link)"
                         className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium bg-blue-50 px-3 py-1.5 rounded-lg transition"
                       >
-                        <Key size={14} /> Reset Pass
+                        <Eye size={14} /> Reset Pass
                       </button>
                       
                       <button 

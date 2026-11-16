@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import { FileText, LogOut, Plus, ExternalLink, Loader2, Mail, Briefcase, CreditCard, Clock, CheckCircle2, XCircle, ShieldCheck, Crown, Search, Filter, Calendar, Edit2, X, Share2, RefreshCw } from 'lucide-react';
+import { FileText, LogOut, Plus, ExternalLink, Loader2, Mail, Briefcase, CreditCard, Clock, CheckCircle2, XCircle, ShieldCheck, Crown, Search, Filter, Calendar, Edit2, X, Share2, RefreshCw, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function Dashboard() {
@@ -88,6 +88,20 @@ export default function Dashboard() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/');
+  };
+
+  const handleDeleteDocument = async (docId: string) => {
+    if (!confirm("Are you sure you want to delete this document? This action cannot be undone.")) return;
+
+    try {
+      const { error } = await supabase.from('generated_documents').delete().eq('id', docId);
+      if (error) throw error;
+      
+      setDocuments(documents.filter(d => d.id !== docId));
+      alert("Document deleted successfully.");
+    } catch (error: any) {
+      alert("Error deleting document: " + error.message);
+    }
   };
 
   const handleRenameSubmit = async (e: React.FormEvent) => {
@@ -372,6 +386,13 @@ export default function Dashboard() {
                         title="Share Document"
                       >
                         <Share2 size={14} /> Share
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteDocument(doc.id)}
+                        className="inline-flex items-center gap-1 text-red-600 hover:text-red-800 font-medium bg-red-50 px-3 py-1.5 rounded-lg transition"
+                        title="Delete Document"
+                      >
+                        <Trash2 size={14} /> Delete
                       </button>
                     </td>
                   </tr>
