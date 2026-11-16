@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Check, X, ExternalLink, Loader2, ArrowLeft, Clock, CheckCircle2, XCircle, Search } from 'lucide-react';
+import { Check, X, ExternalLink, Loader2, ArrowLeft, Clock, CheckCircle2, XCircle, Search, RefreshCcw } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AdminPayments() {
@@ -31,20 +31,25 @@ export default function AdminPayments() {
     setLoading(false);
   };
 
-   const handleAction = async (payment: any, status: 'approved' | 'rejected') => {
-    if (!confirm(`Are you sure you want to ${status} this payment?`)) return;
+  const handleAction = async (payment: any, actionStatus: 'approved' | 'rejected') => {
+    const isReverting = (payment.status === 'approved' && actionStatus === 'rejected');
+    const confirmText = isReverting ? 'disapprove (revert)' : actionStatus;
+
+    if (!confirm(`Are you sure you want to ${confirmText} this payment?`)) return;
     
     setProcessing(payment.id);
 
     try {
+      // 1. Update Payment Status
       const { error: payError } = await supabase
         .from('payments')
-        .update({ status, approved_at: new Date().toISOString() })
+        .update({ status: actionStatus, approved_at: new Date().toISOString() })
         .eq('id', payment.id);
 
       if (payError) throw payError;
 
-      if (status === 'approved') {
+      // 2. Handle User Profile Updates
+      if (actionStatus === 'approved') {
         if (payment.package_type === 'Additional CVs') {
           const { data: settings } = await supabase.from('app_settings').select('cvs_per_price').eq('id', 1).single();
           const cvsBought = settings?.cvs_per_price || 5;
@@ -73,36 +78,68 @@ export default function AdminPayments() {
           
           if (userError) throw userError;
         }
+      } 
+      else if (isReverting) {
+        // REVERT LOGIC: Agar pehle se approved tha aur ab reject/disapprove ho raha hai
+        if (payment.package_type === 'Additional CVs') {
+          const { data: settings } = await supabase.from('app_settings').select('cvs_per_price').eq('id', 1).single();
+          const cvsBought = settings?.cvs_per_price || 5;
 
-        // EMAIL BHEJNE KA CODE YAHAN HAI
-        try {
-          await fetch('/api/send-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              to: payment.user_email,
-              subject: 'Payment Approved - Welcome to CVNova Pro! 🎉',
-              html: `
-                <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-                  <h2 style="color: #2563eb;">Hello!</h2>
-                  <p>Great news! Aapki payment approve ho gayi hai.</p>
-                  <p><strong>Package:</strong> ${payment.package_type}</p>
-                  <p><strong>Amount:</strong> $${payment.amount}</p>
-                  <p>Ab aap CVNova ke saare premium features use kar sakte hain. Apne dashboard par jakar naye documents banayein!</p>
-                  <br/>
-                  <a href="https://cvnova-one.vercel.app/dashboard" style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Go to Dashboard</a>
-                  <br/><br/>
-                  <p>Thank you,<br/>Team CVNova (NexifyNova)</p>
-                </div>
-              `
-            })
-          });
-        } catch (emailError) {
-          console.error("Email bhejne mein masla aya:", emailError);
+          const { data: profile } = await supabase.from('user_profiles').select('free_cv_count').eq('id', payment.user_id).single();
+          const currentUsed = profile?.free_cv_count || 0;
+          const newUsedCount = currentUsed + cvsBought; // Wapas add karein
+
+          await supabase.from('user_profiles').update({
+            free_cv_count: newUsedCount
+          }).eq('id', payment.user_id);
+        } else {
+          // Revert Subscription to Free
+          await supabase.from('user_profiles').update({
+            subscription_type: 'free',
+            subscription_expiry: null,
+            free_cv_count: 0
+          }).eq('id', payment.user_id);
         }
       }
 
-      alert(`Payment ${status} successfully! User's account has been updated.`);
+      // 3. Send Email Notification
+      try {
+        const emailSubject = actionStatus === 'approved' ? 'Payment Approved - Welcome to CVNova Pro! 🎉' : 'Payment Disapproved / Rejected';
+        const emailHtml = actionStatus === 'approved' 
+          ? `
+            <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+              <h2 style="color: #2563eb;">Hello!</h2>
+              <p>Great news! Aapki payment approve ho gayi hai.</p>
+              <p><strong>Package:</strong> ${payment.package_type}</p>
+              <p><strong>Amount:</strong> $${payment.amount}</p>
+              <p>Ab aap CVNova ke saare premium features use kar sakte hain.</p>
+              <br/>
+              <a href="https://cvnova-one.vercel.app/dashboard" style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Go to Dashboard</a>
+            </div>
+          ` 
+          : `
+            <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+              <h2 style="color: #dc2626;">Payment Update</h2>
+              <p>Aapki payment ko disapprove/reject kar diya gaya hai.</p>
+              <p><strong>Package:</strong> ${payment.package_type}</p>
+              <p>Agar aapko lagta hai ye ghalti se hua hai, to support se rabta karein.</p>
+            </div>
+          `;
+
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: payment.user_email,
+            subject: emailSubject,
+            html: emailHtml
+          })
+        });
+      } catch (emailError) {
+        console.error("Email bhejne mein masla aya:", emailError);
+      }
+
+      alert(`Payment successfully ${isReverting ? 'disapproved (reverted)' : actionStatus}!`);
       fetchPayments();
     } catch (error: any) {
       alert("Error: " + error.message);
@@ -130,11 +167,10 @@ export default function AdminPayments() {
           </Link>
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Payment Approvals</h1>
-            <p className="text-sm text-gray-500 mt-1">Approve user payments to upgrade their account</p>
+            <p className="text-sm text-gray-500 mt-1">Approve or disapprove user payments</p>
           </div>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white p-4 rounded-xl border shadow-sm">
             <p className="text-xs text-gray-500">Total Requests</p>
@@ -149,12 +185,11 @@ export default function AdminPayments() {
             <p className="text-2xl font-bold text-green-800">{payments.filter(p => p.status === 'approved').length}</p>
           </div>
           <div className="bg-red-50 p-4 rounded-xl border border-red-200 shadow-sm">
-            <p className="text-xs text-red-700 font-semibold">Rejected</p>
+            <p className="text-xs text-red-700 font-semibold">Rejected / Reverted</p>
             <p className="text-2xl font-bold text-red-800">{payments.filter(p => p.status === 'rejected').length}</p>
           </div>
         </div>
 
-        {/* Search & Filter */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -178,7 +213,6 @@ export default function AdminPayments() {
           </select>
         </div>
 
-        {/* Table */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -239,6 +273,14 @@ export default function AdminPayments() {
                             {processing === p.id ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />} Reject
                           </button>
                         </div>
+                      ) : p.status === 'approved' ? (
+                        <button 
+                          onClick={() => handleAction(p, 'rejected')} 
+                          disabled={processing === p.id}
+                          className="flex items-center gap-1 bg-orange-100 text-orange-700 border border-orange-200 px-3 py-2 rounded-lg hover:bg-orange-200 transition font-medium text-xs disabled:opacity-50"
+                        >
+                          {processing === p.id ? <Loader2 size={14} className="animate-spin" /> : <RefreshCcw size={14} />} Disapprove
+                        </button>
                       ) : (
                         <span className="text-xs text-gray-400 italic">Processed</span>
                       )}
