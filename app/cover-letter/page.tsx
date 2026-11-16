@@ -156,15 +156,11 @@ export default function CoverLetter() {
             <textarea name="body" value={formData.body} onChange={handleChange} rows={10} className="w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 outline-none text-sm resize-y"></textarea>
           </div>
 
-          <div className="flex gap-4 pt-4 border-t border-gray-200">
-            <button type="button" onClick={handleAction} disabled={loading} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-4 py-3 rounded-xl hover:bg-gray-800 font-bold text-sm transition disabled:opacity-50">
-              {loading ? <Loader2 size={18} className="animate-spin" /> : <Printer size={18} />} Print / PDF
-            </button>
-            <button type="button" onClick={() => downloadAsWord('cover-preview', formData.fullName || 'Cover-Letter')} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 font-bold text-sm transition">
-              <Download size={18} /> Word Download
-            </button>
+                    <div className="flex gap-2 pt-4 border-t border-gray-200">
+            <button type="button" onClick={handleAction} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-2 py-3 rounded-xl font-bold text-sm"><Printer size={18} /> Print</button>
+            <button type="button" onClick={() => downloadAsPDF('cover-preview', formData.fullName || 'Cover-Letter')} className="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-red-700 transition"><Download size={18} /> PDF</button>
+            <button type="button" onClick={() => downloadAsWord('cover-preview', formData.fullName || 'Cover-Letter')} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-blue-700 transition"><Download size={18} /> Word</button>
           </div>
-        </div>
 
         {/* RIGHT SIDE: LIVE PREVIEW */}
         <div id="cover-preview" className="bg-white shadow-2xl rounded-xl p-12 border border-gray-200 print:shadow-none print:border-none print:p-0 print-area h-fit min-h-[A4]">

@@ -344,11 +344,11 @@ export default function Builder() {
             ))}
           </div>
 
-          <div className="flex gap-4 pt-4 border-t border-gray-200">
-            <button type="button" onClick={handleAction} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-4 py-3 rounded-xl font-bold text-sm"><Printer size={18} /> Print / PDF</button>
-            <button type="button" onClick={() => downloadAsWord('cv-preview', formData.fullName || 'CV')} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-3 rounded-xl font-bold text-sm"><Download size={18} /> Word</button>
+                    <div className="flex gap-2 pt-4 border-t border-gray-200">
+            <button type="button" onClick={handleAction} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-2 py-3 rounded-xl font-bold text-sm"><Printer size={18} /> Print</button>
+            <button type="button" onClick={() => downloadAsPDF('cv-preview', formData.fullName || 'CV')} className="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-red-700 transition"><Download size={18} /> PDF</button>
+            <button type="button" onClick={() => downloadAsWord('cv-preview', formData.fullName || 'CV')} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-blue-700 transition"><Download size={18} /> Word</button>
           </div>
-        </div>
 
         {/* RIGHT SIDE: LIVE PREVIEW - SAARE 19 TEMPLATES YAHAN HAIN */}
         <div className="py-4 lg:py-8 overflow-x-auto print:p-0">
