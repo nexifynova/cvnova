@@ -7,14 +7,14 @@ import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount } from
 import { downloadAsWord } from '@/lib/download-utils';
 
 const dummyData = {
-  fullName: 'John Doe',
-  email: 'johndoe@example.com',
+  fullName: 'David Ibraham',
+  email: 'David@example.com',
   phone: '+1 234 567 8900',
   address: 'New York, USA',
   companyName: 'Tech Corp',
   companyAddress: '123 Innovation Drive, Silicon Valley, CA',
   jobTitle: 'Senior Software Engineer',
-  hiringManager: 'Jane Smith',
+  hiringManager: 'Adam ',
   date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
   body: `Dear Jane Smith,\n\nI am writing to express my strong interest in the Senior Software Engineer position at Tech Corp. With over 6 years of experience in building scalable web applications and a deep passion for clean, efficient code, I am confident in my ability to contribute effectively to your engineering team.\n\nSincerely,\nJohn Doe`
 };
