@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { Save, Loader2, Upload, Plus, Trash2, ArrowUp, ArrowDown, Image as ImageIcon, Link as LinkIcon, IndianRupee, Package, Phone, Mail, MapPin } from 'lucide-react';
+import { Save, Loader2, Upload, Plus, Trash2, ArrowUp, ArrowDown, Image as ImageIcon, Link as LinkIcon, IndianRupee, Package, Phone, Mail, MapPin, Type } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useSearchParams } from 'next/navigation';
 
@@ -14,11 +14,12 @@ function SettingsContent() {
   const [uploading, setUploading] = useState<string | null>(null);
   
   const [settings, setSettings] = useState<any>({
+    site_name: 'CVNova',
     additional_cv_price: 1.00,
     cvs_per_price: 5, 
     free_cv_limit: 1,
     package_3m_price: 5, package_6m_price: 8, package_1y_price: 12, package_5y_price: 40,
-    cvs_3m: 10, cvs_6m: 20, cvs_1y: 50, cvs_5y: 100, // Naye fields
+    cvs_3m: 10, cvs_6m: 20, cvs_1y: 50, cvs_5y: 100,
     easy_paisa_enabled: true, easy_paisa_number: '', easy_paisa_name: '',
     binance_enabled: true, binance_id: '', binance_name: '',
     bank_enabled: false, bank_account_name: '', bank_name: '', bank_branch: '', bank_account_number: '', bank_iban: '',
@@ -129,16 +130,33 @@ function SettingsContent() {
         {activeTab === 'branding' && (
           <div className="space-y-6">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-              <h2 className="text-lg font-bold mb-4 border-b pb-2 flex items-center gap-2"><ImageIcon size={20} className="text-blue-600"/> Branding (Logo & Favicon)</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <h2 className="text-lg font-bold mb-4 border-b pb-2 flex items-center gap-2"><Type size={20} className="text-blue-600"/> Website Identity</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                {/* Website Name */}
+                <div className="border p-4 rounded-xl flex flex-col items-center justify-center gap-3">
+                  <p className="text-sm font-semibold text-gray-700">Website Name</p>
+                  <input 
+                    type="text" 
+                    name="site_name" 
+                    value={settings.site_name || ''} 
+                    onChange={handleChange} 
+                    placeholder="CVNova" 
+                    className="w-full px-4 py-2 rounded-lg border text-center font-bold focus:ring-2 focus:ring-blue-500 outline-none" 
+                  />
+                </div>
+
+                {/* Logo */}
                 <div className="border p-4 rounded-xl flex flex-col items-center justify-center gap-3">
                   <p className="text-sm font-semibold text-gray-700">Website Logo</p>
-                  {settings.site_logo_url ? <img src={settings.site_logo_url} alt="Logo" className="h-12 object-contain" /> : <div className="h-12 text-xs text-gray-400">No Logo</div>}
+                  {settings.site_logo_url ? <img src={settings.site_logo_url} alt="Logo" className="h-10 object-contain" /> : <div className="h-10 text-xs text-gray-400">No Logo</div>}
                   <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2">
                     {uploading === 'logo' ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />} Upload Logo
                     <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
                   </label>
                 </div>
+
+                {/* Favicon */}
                 <div className="border p-4 rounded-xl flex flex-col items-center justify-center gap-3">
                   <p className="text-sm font-semibold text-gray-700">Favicon (Tab Icon)</p>
                   {settings.site_favicon_url ? <img src={settings.site_favicon_url} alt="Favicon" className="h-10 object-contain" /> : <div className="h-10 text-xs text-gray-400">No Icon</div>}
@@ -160,10 +178,10 @@ function SettingsContent() {
                 {(settings.hero_images || []).map((img: string, idx: number) => (
                   <div key={idx} className="relative group rounded-lg overflow-hidden border aspect-video">
                     <img src={img} alt={`Hero ${idx}`} className="w-full h-full object-cover" />
-                    <button onClick={() => removeHeroImage(idx)} className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-md opacity-0 group-hover:opacity-100"><Trash2 size={14} /></button>
+                    <button onClick={() => removeHeroImage(idx)} className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition"><Trash2 size={14} /></button>
                   </div>
                 ))}
-                <label className="border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center aspect-video cursor-pointer hover:bg-gray-50">
+                <label className="border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center aspect-video cursor-pointer hover:bg-gray-50 transition">
                   {uploading === 'hero' ? <Loader2 size={24} className="animate-spin text-blue-600" /> : <Plus size={24} className="text-gray-400" />}
                   <span className="text-xs font-semibold text-gray-500 mt-2">Add Image</span>
                   <input type="file" accept="image/*" className="hidden" onChange={handleHeroUpload} />
