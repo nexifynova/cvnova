@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import Image from 'next/image';
-import { Sparkles, ArrowLeft, Download, Printer, Plus, Trash2, Loader2, Camera, Upload, RefreshCw, Info } from 'lucide-react';
+import { Sparkles, ArrowLeft, Download, Printer, Plus, Trash2, Loader2, Camera, Upload, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount } from '@/lib/supabase';
 import { downloadAsWord, downloadAsPDF } from '@/lib/download-utils';
@@ -40,7 +40,6 @@ export default function Builder() {
   const [uploadingCert, setUploadingCert] = useState<number | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const certInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -108,23 +107,21 @@ export default function Builder() {
     setFormData({ ...formData, [field]: (formData[field] as any[]).filter((_, i) => i !== index) });
   };
 
-      const handleGenerateAI = async () => {
+  const handleGenerateAI = async () => {
     if (!formData.jobTitle) { alert("Please enter a Job Title first."); return; }
     setIsGenerating(true);
     
-    // 15 second ka timeout taake button ghoomta na rahe
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-
     try {
       const response = await fetch('/api/generate-summary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobTitle: formData.jobTitle, experience: formData.experience, education: formData.education }),
-        signal: controller.signal // Timeout signal
+        body: JSON.stringify({ 
+          jobTitle: formData.jobTitle, 
+          experience: formData.experience, 
+          education: formData.education 
+        }),
       });
       
-      clearTimeout(timeoutId);
       const data = await response.json();
       
       if (!response.ok) {
@@ -135,15 +132,12 @@ export default function Builder() {
         setFormData({ ...formData, summary: data.summary, skills: data.skills });
       }
     } catch (error: any) {
-      if (error.name === 'AbortError') {
-        alert("Timeout: Google API jawab nahi de rahi. Baraye meharbani apni API key aur internet check karein.");
-      } else {
-        alert("AI Error: " + error.message);
-      }
+      alert("AI Error: " + error.message);
     } finally {
       setIsGenerating(false);
     }
   };
+
   const handleAction = async () => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user || !user.email) {
@@ -170,8 +164,9 @@ export default function Builder() {
 
     await incrementUserCount(user.email); 
 
-        setTimeout(() => { 
-      downloadAsPDF('cv-preview', formData.fullName || 'CV'); 
+    // PDF Print Window kholne ke liye
+    setTimeout(() => { 
+      downloadAsPDF(); 
     }, 500); 
   };
 
@@ -201,7 +196,6 @@ export default function Builder() {
             <button onClick={resetForm} className="flex items-center gap-2 bg-white text-green-700 border px-4 py-2 rounded-lg font-bold text-sm hover:bg-green-100"><RefreshCw size={16} /> Clear</button>
           </div>
 
-          {/* Form fields */}
           <h1 className="text-xl font-bold mb-4 border-b pb-2">Profile Photo (Optional)</h1>
           <div className="mb-8 flex items-center gap-4">
             <div className="w-20 h-20 rounded-full bg-gray-200 border-2 border-dashed flex items-center justify-center overflow-hidden relative">
@@ -282,7 +276,6 @@ export default function Builder() {
             ))}
           </div>
 
-          {/* Naye Fields: Languages, Certifications, Hobbies, References */}
           <div className="flex justify-between items-center mb-4 border-b pb-2 mt-8">
             <h1 className="text-xl font-bold">Languages</h1>
             <button onClick={() => addArrayItem('languages', { language: '', proficiency: '' })} className="text-blue-600 text-sm font-bold flex items-center gap-1"><Plus size={16} /> Add</button>

@@ -8,7 +8,6 @@ export const downloadAsWord = (elementId: string, fileName: string) => {
     return;
   }
 
-  // Word document ke liye proper CSS
   const styles = `
     <style>
       @page { size: A4; margin: 0.5in; }
@@ -54,40 +53,7 @@ export const downloadAsWord = (elementId: string, fileName: string) => {
   }
 };
 
-export const downloadAsPDF = async (elementId: string, fileName: string) => {
-  const element = document.getElementById(elementId);
-  if (!element) {
-    alert("Preview not found for PDF download.");
-    return;
-  }
-
-  try {
-    const html2canvas = (await import('html2canvas')).default;
-    const { jsPDF } = await import('jspdf');
-
-    // Element ka high-quality screenshot lena
-    const canvas = await html2canvas(element, { 
-      scale: 2, 
-      useCORS: true,
-      scrollY: -window.scrollY 
-    });
-    
-    const imgData = canvas.toDataURL('image/jpeg', 1.0);
-    
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'px',
-      format: 'a4'
-    });
-
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-
-    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`${fileName}.pdf`);
-
-  } catch (error) {
-    console.error("PDF generation error:", error);
-    alert("Failed to generate PDF. Please try again.");
-  }
+// PDF ke liye ab window.print use hoga jo kabhi hang nahi hota
+export const downloadAsPDF = (elementId?: string, fileName?: string) => {
+  window.print();
 };
