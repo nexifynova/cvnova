@@ -23,7 +23,7 @@ export default function Navbar() {
 
     // Fetch dynamic settings for Logo & Menu
     const fetchSettings = async () => {
-      const { data } = await supabase.from('app_settings').select('site_logo_url, nav_menu').eq('id', 1).single();
+      const { data } = await supabase.from('app_settings').select('site_logo_url, site_name, nav_menu').eq('id', 1).single();
       if (data) setSettings(data);
     };
     fetchSettings();
@@ -52,11 +52,12 @@ export default function Navbar() {
   };
 
   // Default menu (agar database se load na ho)
-    const defaultMenu = [
+  const defaultMenu = [
     { label: 'CV Builder', href: '/builder', visible: true },
     { label: 'Cover Letter', href: '/cover-letter', visible: true },
     { label: 'Experience Letter', href: '/experience-letter', visible: true },
-    { label: 'Track Payment', href: '/track-payment', visible: true }, // Yeh naya add karein
+    { label: 'Track Document', href: '/track-document', visible: true }, // Added Track Document
+    { label: 'Track Payment', href: '/track-payment', visible: true },
     { label: 'Contact Us', href: '/contact', visible: true },
     { label: 'Pricing', href: '/#pricing', visible: true },
   ];
@@ -72,14 +73,14 @@ export default function Navbar() {
       <Link href="/" className="flex items-center gap-2">
         {settings?.site_logo_url ? (
           <div className="h-10 w-auto relative">
-            <img src={settings.site_logo_url} alt="CVNova Logo" className="h-10 w-auto object-contain" />
+            <img src={settings.site_logo_url} alt={settings.site_name || "CVNova Logo"} className="h-10 w-auto object-contain" />
           </div>
         ) : (
           <>
             <div className="bg-gradient-to-tr from-blue-500 to-purple-600 p-2 rounded-xl">
               <FileText className="text-white" size={20} />
             </div>
-            <span className="text-2xl font-extrabold tracking-tight text-white">CVNova</span>
+            <span className="text-2xl font-extrabold tracking-tight text-white">{settings?.site_name || 'CVNova'}</span>
           </>
         )}
       </Link>
