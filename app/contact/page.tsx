@@ -18,24 +18,25 @@ export default function ContactUs() {
     fetchSettings();
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    const { error } = await supabase.from('contact_messages').insert([{
-      name: formData.name,
-      email: formData.email,
-      message: formData.message
-    }]);
+  // Form submit handler ko is tarah update karein
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
+  
+  const res = await fetch('/api/send-support-message', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(formData)
+  });
 
-    if (error) {
-      alert("Failed to send message: " + error.message);
-    } else {
-      alert("Message sent successfully! We will get back to you soon.");
-      setFormData({ name: '', email: '', message: '' });
-    }
-    setLoading(false);
-  };
+  if (res.ok) {
+    alert("Message sent successfully! We will get back to you soon.");
+    setFormData({ name: '', email: '', message: '' });
+  } else {
+    alert("Failed to send message. Please try again.");
+  }
+  setLoading(false);
+};
 
   return (
     <div className="min-h-screen bg-[#0B1120] text-white font-sans">

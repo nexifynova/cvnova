@@ -65,17 +65,22 @@ export default function Dashboard() {
     if (!user) { router.push('/login'); return; }
     setUser(user);
 
+    // Fetch User Profile
     const { data: profileData } = await supabase.from('user_profiles').select('*').eq('id', user.id).single();
     if (profileData) setProfile(profileData);
 
+    // Fetch Settings
     const { data: settingsData } = await supabase.from('app_settings').select('*').eq('id', 1).single();
     if (settingsData) setSettings(settingsData);
 
+    // Fetch Documents
     const { data: docs } = await supabase.from('generated_documents').select('*').eq('email', user.email).order('created_at', { ascending: false });
     if (docs) setDocuments(docs);
 
-    const { data: pays } = await supabase.from('payments').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+    // Fetch Payments (Approved ones to calculate total packages)
+    const { data: pays } = await supabase.from('payments').select('*').eq('user_id', user.id).eq('status', 'approved').order('created_at', { ascending: false });
     if (pays) setPayments(pays);
+    
     setLoading(false);
   };
 
@@ -90,7 +95,7 @@ export default function Dashboard() {
       const { error } = await supabase.from('generated_documents').delete().eq('id', docId);
       if (error) throw error;
       
-      // Wapas limit kam karein (Restore usage)
+      // Restore usage count (Minus 1)
       const newCount = Math.max(0, currentUsed - 1);
       await supabase.from('user_profiles').update({ free_cv_count: newCount }).eq('id', user.id);
 
@@ -206,8 +211,12 @@ export default function Dashboard() {
     }
   };
 
-  // Use total_allowed_cvs (dynamic from database) instead of hardcoded values
+  // Calculate current limit from database
   const currentLimit = profile?.total_allowed_cvs || settings?.free_cv_limit || 1;
+
+  // Calculate all unique subscription types for Account Type Display
+  const uniquePackages = [...new Set(payments.map(p => p.package_type))].filter(p => p !== 'Additional CVs');
+  const accountTypeDisplay = uniquePackages.length > 0 ? uniquePackages.join(', ') : (profile?.subscription_type || 'Free');
 
   const filteredDocuments = documents.filter((doc) => {
     if (searchTerm && !doc.full_name?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
@@ -224,7 +233,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
-      {/* ... Navbar ... */}
       <nav className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
         <Link href="/" className="flex items-center gap-2">
           <div className="bg-gradient-to-tr from-blue-500 to-purple-600 p-2 rounded-xl"><FileText className="text-white" size={20} /></div>
@@ -238,7 +246,6 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      {/* ... Main Dashboard Content ... */}
       <main className="max-w-6xl mx-auto px-4 py-10">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
@@ -253,7 +260,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <p className="text-sm text-gray-500 mb-1 flex items-center gap-2"><FileText size={16}/> CVs Used</p>
@@ -261,8 +267,9 @@ export default function Dashboard() {
           </div>
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <p className="text-sm text-gray-500 mb-1 flex items-center gap-2"><ShieldCheck size={16}/> Account Type</p>
-            <p className="text-3xl font-bold text-gray-900 capitalize">{profile?.subscription_type || 'Free'}</p>
+            <p className="text-2xl font-bold text-gray-900 capitalize">{accountTypeDisplay}</p>
           </div>
+          
           <div className={`p-6 rounded-2xl shadow-sm border ${profile?.subscription_type !== 'free' && timeLeft !== 'Expired' ? 'bg-green-50 border-green-200' : 'bg-white border-gray-100'}`}>
             <p className="text-sm text-gray-500 mb-1 flex items-center gap-2"><Clock size={16}/> Subscription Expiry</p>
             {profile?.subscription_type !== 'free' && profile?.subscription_expiry ? (
@@ -274,7 +281,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Payment History */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-10">
           <div className="p-6 border-b border-gray-100 flex items-center justify-between">
             <div className="flex items-center gap-2"><CreditCard className="text-blue-600" size={20} /><h2 className="text-lg font-bold text-gray-900">My Payment History</h2></div>
@@ -302,7 +308,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Documents Table */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <h2 className="text-lg font-bold text-gray-900">My Documents</h2>

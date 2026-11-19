@@ -17,111 +17,59 @@ export default function AdminPayments() {
   }, []);
 
   const fetchPayments = async () => {
-    const { data, error } = await supabase
-      .from('payments')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error("Error fetching payments:", error);
-      alert("Database Error: " + error.message);
-    } else if (data) {
-      setPayments(data);
-    }
+    const { data, error } = await supabase.from('payments').select('*').order('created_at', { ascending: false });
+    if (error) alert("Database Error: " + error.message);
+    else if (data) setPayments(data);
     setLoading(false);
   };
 
   const handleAction = async (payment: any, actionStatus: 'approved' | 'rejected') => {
-    const isReverting = (payment.status === 'approved' && actionStatus === 'rejected');
-    const confirmText = isReverting ? 'disapprove (revert)' : actionStatus;
-
-    if (!confirm(`Are you sure you want to ${confirmText} this payment?`)) return;
-    
+    if (!confirm(`Are you sure you want to ${actionStatus} this payment?`)) return;
     setProcessing(payment.id);
 
     try {
-      // 1. Update Payment Status
-      const { error: payError } = await supabase
-        .from('payments')
-        .update({ status: actionStatus, approved_at: new Date().toISOString() })
-        .eq('id', payment.id);
-
+      const { error: payError } = await supabase.from('payments').update({ status: actionStatus, approved_at: new Date().toISOString() }).eq('id', payment.id);
       if (payError) throw payError;
 
-      // 2. Handle User Profile Updates
       if (actionStatus === 'approved') {
-        // Get current profile to ADD new package limits
         const { data: currentProfile } = await supabase.from('user_profiles').select('*').eq('id', payment.user_id).single();
         
-        if (payment.package_type === 'Additional CVs') {
-          const { data: settings } = await supabase.from('app_settings').select('cvs_per_price').eq('id', 1).single();
-          const cvsBought = settings?.cvs_per_price || 5;
+        // Calculate new limits
+        let monthsToAdd = 0;
+        let cvsToAdd = 0;
+        if (payment.package_type === '3 Months') { monthsToAdd = 3; cvsToAdd = 10; }
+        if (payment.package_type === '6 Months') { monthsToAdd = 6; cvsToAdd = 20; }
+        if (payment.package_type === '1 Year') { monthsToAdd = 12; cvsToAdd = 50; }
+        if (payment.package_type === '5 Years') { monthsToAdd = 60; cvsToAdd = 100; }
+        if (payment.package_type === 'Additional CVs') { cvsToAdd = 5; } // Default extra CVs
 
-          const currentTotal = currentProfile?.total_allowed_cvs || 1;
-          const newTotal = currentTotal + cvsBought;
+        const currentTotalCVs = currentProfile?.total_allowed_cvs || 1;
+        const newTotalCVs = currentTotalCVs + cvsToAdd;
 
-          await supabase.from('user_profiles').update({ total_allowed_cvs: newTotal }).eq('id', payment.user_id);
-        } else {
-          // Subscription Package Addition Logic
-          let monthsToAdd = 0;
-          let cvsToAdd = 0;
-          if (payment.package_type === '3 Months') { monthsToAdd = 3; cvsToAdd = 10; }
-          if (payment.package_type === '6 Months') { monthsToAdd = 6; cvsToAdd = 20; }
-          if (payment.package_type === '1 Year') { monthsToAdd = 12; cvsToAdd = 50; }
-          if (payment.package_type === '5 Years') { monthsToAdd = 60; cvsToAdd = 100; }
-
-          // Base Date calculation (Agar active plan hai to us par add karein)
-          let baseDate = new Date();
-          if (currentProfile?.subscription_expiry && new Date(currentProfile.subscription_expiry) > new Date()) {
-             baseDate = new Date(currentProfile.subscription_expiry);
-          }
-          baseDate.setMonth(baseDate.getMonth() + monthsToAdd);
-
-          const newTotalCVs = (currentProfile?.total_allowed_cvs || 0) + cvsToAdd;
-
-          const { error: userError } = await supabase.from('user_profiles').update({
-            subscription_type: payment.package_type, // Latest package name
-            subscription_expiry: baseDate.toISOString(),
-            total_allowed_cvs: newTotalCVs
-          }).eq('id', payment.user_id);
-          
-          if (userError) throw userError;
+        // Calculate longest expiry date
+        let newExpiryDate = new Date();
+        if (currentProfile?.subscription_expiry && new Date(currentProfile.subscription_expiry) > new Date()) {
+          newExpiryDate = new Date(currentProfile.subscription_expiry);
         }
-      } 
-      else if (isReverting) {
-        // REVERT LOGIC: 
-        if (payment.package_type === 'Additional CVs') {
-          const { data: settings } = await supabase.from('app_settings').select('cvs_per_price').eq('id', 1).single();
-          const cvsBought = settings?.cvs_per_price || 5;
-          const { data: profile } = await supabase.from('user_profiles').select('total_allowed_cvs').eq('id', payment.user_id).single();
-          const currentTotal = profile?.total_allowed_cvs || 1;
-          const newTotal = Math.max(1, currentTotal - cvsBought); // Ensure it doesn't go below 1
-          await supabase.from('user_profiles').update({ total_allowed_cvs: newTotal }).eq('id', payment.user_id);
-        } else {
-          // Revert to Free
-          await supabase.from('user_profiles').update({
-            subscription_type: 'free',
-            subscription_expiry: null,
-            total_allowed_cvs: 1 // Default free limit
-          }).eq('id', payment.user_id);
+        
+        // If the new package is longer, we set the new expiry based on the current date + new package months
+        const newPackageExpiry = new Date();
+        newPackageExpiry.setMonth(newPackageExpiry.getMonth() + monthsToAdd);
+        
+        // Pick the longer date
+        if (newPackageExpiry > newExpiryDate) {
+          newExpiryDate = newPackageExpiry;
         }
+
+        // Update Profile
+        await supabase.from('user_profiles').update({
+          subscription_type: payment.package_type === 'Additional CVs' ? currentProfile.subscription_type : payment.package_type,
+          subscription_expiry: payment.package_type === 'Additional CVs' ? currentProfile.subscription_expiry : newExpiryDate.toISOString(),
+          total_allowed_cvs: newTotalCVs
+        }).eq('id', payment.user_id);
       }
 
-      // 3. Send Email
-      try {
-        const emailSubject = actionStatus === 'approved' ? 'Payment Approved - Welcome to CVNova Pro! 🎉' : 'Payment Disapproved / Rejected';
-        const emailHtml = actionStatus === 'approved' 
-          ? `<div style="font-family: Arial; padding: 20px;"><h2 style="color: #2563eb;">Payment Approved!</h2><p>Aapki payment approve ho gayi hai.</p><p><strong>Package:</strong> ${payment.package_type}</p><p><a href="https://cvnova-one.vercel.app/dashboard">Go to Dashboard</a></p></div>` 
-          : `<div style="font-family: Arial; padding: 20px;"><h2 style="color: #dc2626;">Payment Rejected</h2><p>Aapki payment reject kar di gayi hai.</p></div>`;
-
-        await fetch('/api/send-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ to: payment.user_email, subject: emailSubject, html: emailHtml })
-        });
-      } catch (e) { console.error(e); }
-
-      alert(`Payment successfully ${isReverting ? 'reverted' : actionStatus}!`);
+      alert(`Payment successfully ${actionStatus}!`);
       fetchPayments();
     } catch (error: any) {
       alert("Error: " + error.message);
@@ -145,20 +93,16 @@ export default function AdminPayments() {
           <Link href="/admin" className="p-2 bg-white rounded-lg shadow-sm hover:bg-gray-100 transition"><ArrowLeft size={20} /></Link>
           <div><h1 className="text-3xl font-bold text-gray-900">Payment Approvals</h1><p className="text-sm text-gray-500 mt-1">Approve or disapprove user payments</p></div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white p-4 rounded-xl border shadow-sm"><p className="text-xs text-gray-500">Total Requests</p><p className="text-2xl font-bold text-gray-900">{payments.length}</p></div>
-          <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200 shadow-sm"><p className="text-xs text-yellow-700 font-semibold">Pending</p><p className="text-2xl font-bold text-yellow-800">{payments.filter(p => p.status === 'pending').length}</p></div>
-          <div className="bg-green-50 p-4 rounded-xl border border-green-200 shadow-sm"><p className="text-xs text-green-700 font-semibold">Approved</p><p className="text-2xl font-bold text-green-800">{payments.filter(p => p.status === 'approved').length}</p></div>
-          <div className="bg-red-50 p-4 rounded-xl border border-red-200 shadow-sm"><p className="text-xs text-red-700 font-semibold">Rejected / Reverted</p><p className="text-2xl font-bold text-red-800">{payments.filter(p => p.status === 'rejected').length}</p></div>
-        </div>
+        
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input type="text" placeholder="Search by email or transaction ID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-blue-500 bg-white" /></div>
           <select value={filter} onChange={(e) => setFilter(e.target.value)} className="px-4 py-3 rounded-xl border border-gray-200 outline-none bg-white font-medium"><option value="all">All Status</option><option value="pending">Pending Only</option><option value="approved">Approved Only</option><option value="rejected">Rejected Only</option></select>
         </div>
+
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-gray-50 text-gray-600"><tr><th className="px-6 py-4 font-medium">Date</th><th className="px-6 py-4 font-medium">User Email</th><th className="px-6 py-4 font-medium">Package</th><th className="px-6 py-4 font-medium">Amount</th><th className="px-6 py-4 font-medium">Method</th><th className="px-6 py-4 font-medium">TID</th><th className="px-6 py-4 font-medium">Slip</th><th className="px-6 py-4 font-medium">Status</th><th className="px-6 py-4 font-medium">Actions</th></tr></thead>
+              <thead className="bg-gray-50 text-gray-600"><tr><th className="px-6 py-4 font-medium">Date</th><th className="px-6 py-4 font-medium">User Email</th><th className="px-6 py-4 font-medium">Package</th><th className="px-6 py-4 font-medium">Amount</th><th className="px-6 py-4 font-medium">Status</th><th className="px-6 py-4 font-medium">Actions</th></tr></thead>
               <tbody className="divide-y divide-gray-100">
                 {filteredPayments.map((p) => (
                   <tr key={p.id} className="hover:bg-gray-50">
@@ -166,20 +110,15 @@ export default function AdminPayments() {
                     <td className="px-6 py-4 font-medium text-gray-900">{p.user_email}</td>
                     <td className="px-6 py-4 text-blue-600 font-semibold whitespace-nowrap">{p.package_type}</td>
                     <td className="px-6 py-4 font-bold text-gray-900">${p.amount}</td>
-                    <td className="px-6 py-4 text-gray-700">{p.payment_method}</td>
-                    <td className="px-6 py-4 text-gray-600 font-mono text-xs">{p.transaction_id || 'N/A'}</td>
-                    <td className="px-6 py-4"><a href={p.slip_url} target="_blank" rel="noreferrer" className="text-blue-600 flex items-center gap-1 hover:underline font-medium">View <ExternalLink size={14} /></a></td>
                     <td className="px-6 py-4"><span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 w-fit ${p.status === 'approved' ? 'bg-green-100 text-green-700' : p.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>{p.status === 'approved' && <CheckCircle2 size={12}/>}{p.status === 'rejected' && <XCircle size={12}/>}{p.status === 'pending' && <Clock size={12}/>}{p.status.toUpperCase()}</span></td>
                     <td className="px-6 py-4">
                       {p.status === 'pending' ? (
                         <div className="flex gap-2"><button onClick={() => handleAction(p, 'approved')} disabled={processing === p.id} className="flex items-center gap-1 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition font-medium text-xs disabled:opacity-50">{processing === p.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Approve</button><button onClick={() => handleAction(p, 'rejected')} disabled={processing === p.id} className="flex items-center gap-1 bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition font-medium text-xs disabled:opacity-50">{processing === p.id ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />} Reject</button></div>
-                      ) : p.status === 'approved' ? (
-                        <button onClick={() => handleAction(p, 'rejected')} disabled={processing === p.id} className="flex items-center gap-1 bg-orange-100 text-orange-700 border border-orange-200 px-3 py-2 rounded-lg hover:bg-orange-200 transition font-medium text-xs disabled:opacity-50">{processing === p.id ? <Loader2 size={14} className="animate-spin" /> : <RefreshCcw size={14} />} Disapprove</button>
                       ) : (<span className="text-xs text-gray-400 italic">Processed</span>)}
                     </td>
                   </tr>
                 ))}
-                {filteredPayments.length === 0 && (<tr><td colSpan={9} className="px-6 py-10 text-center text-gray-500">No payments found matching your criteria.</td></tr>)}
+                {filteredPayments.length === 0 && (<tr><td colSpan={6} className="px-6 py-10 text-center text-gray-500">No payments found.</td></tr>)}
               </tbody>
             </table>
           </div>
