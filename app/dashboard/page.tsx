@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import { FileText, LogOut, Plus, ExternalLink, Loader2, Mail, Briefcase, CreditCard, Clock, CheckCircle2, XCircle, ShieldCheck, Crown, Search, Filter, Calendar, Edit2, X, Share2, RefreshCw, Trash2 } from 'lucide-react';
+import { FileText, LogOut, Plus, ExternalLink, Loader2, Mail, Briefcase, CreditCard, Clock, CheckCircle2, XCircle, ShieldCheck, Crown, Search, Filter, Calendar, Edit2, X, Share2, RefreshCw, Trash2, Send } from 'lucide-react';
 import Link from 'next/link';
 
 export default function Dashboard() {
@@ -22,16 +22,19 @@ export default function Dashboard() {
   const [filterFromDate, setFilterFromDate] = useState('');
   const [filterToDate, setFilterToDate] = useState('');
 
-  // Rename Document State
+  // Modals State
   const [renamingDoc, setRenamingDoc] = useState<any>(null);
   const [newDocName, setNewDocName] = useState('');
   const [isRenaming, setIsRenaming] = useState(false);
 
-  // Share Code State
   const [sharingDoc, setSharingDoc] = useState<any>(null);
   const [shareCode, setShareCode] = useState('');
   const [isShareable, setIsShareable] = useState(false);
   const [isSavingShare, setIsSavingShare] = useState(false);
+
+  const [emailingDoc, setEmailingDoc] = useState<any>(null);
+  const [emailTo, setEmailTo] = useState('');
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   useEffect(() => {
     checkUser();
@@ -39,12 +42,10 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!profile?.subscription_expiry) return;
-
     const interval = setInterval(() => {
       const expiry = new Date(profile.subscription_expiry).getTime();
       const now = new Date().getTime();
       const distance = expiry - now;
-
       if (distance < 0) {
         setTimeLeft('Expired');
         clearInterval(interval);
@@ -56,18 +57,12 @@ export default function Dashboard() {
         setTimeLeft(`${days}d ${hours}h ${minutes}m ${seconds}s`);
       }
     }, 1000);
-
     return () => clearInterval(interval);
   }, [profile]);
 
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      router.push('/login');
-      return;
-    }
-    
+    if (!user) { router.push('/login'); return; }
     setUser(user);
 
     const { data: profileData } = await supabase.from('user_profiles').select('*').eq('id', user.id).single();
@@ -81,7 +76,6 @@ export default function Dashboard() {
 
     const { data: pays } = await supabase.from('payments').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
     if (pays) setPayments(pays);
-    
     setLoading(false);
   };
 
@@ -90,15 +84,19 @@ export default function Dashboard() {
     router.push('/');
   };
 
-  const handleDeleteDocument = async (docId: string) => {
-    if (!confirm("Are you sure you want to delete this document? This action cannot be undone.")) return;
-
+  const handleDeleteDocument = async (docId: string, currentUsed: number) => {
+    if (!confirm("Are you sure you want to delete this document? Your usage limit will be restored.")) return;
     try {
       const { error } = await supabase.from('generated_documents').delete().eq('id', docId);
       if (error) throw error;
       
+      // Wapas limit kam karein (Restore usage)
+      const newCount = Math.max(0, currentUsed - 1);
+      await supabase.from('user_profiles').update({ free_cv_count: newCount }).eq('id', user.id);
+
       setDocuments(documents.filter(d => d.id !== docId));
-      alert("Document deleted successfully.");
+      setProfile({ ...profile, free_cv_count: newCount });
+      alert("Document deleted and usage restored.");
     } catch (error: any) {
       alert("Error deleting document: " + error.message);
     }
@@ -108,15 +106,9 @@ export default function Dashboard() {
     e.preventDefault();
     if (!newDocName.trim() || !renamingDoc) return;
     setIsRenaming(true);
-
     try {
-      const { error } = await supabase
-        .from('generated_documents')
-        .update({ full_name: newDocName.trim() })
-        .eq('id', renamingDoc.id);
-
+      const { error } = await supabase.from('generated_documents').update({ full_name: newDocName.trim() }).eq('id', renamingDoc.id);
       if (error) throw error;
-
       setDocuments(documents.map(d => d.id === renamingDoc.id ? { ...d, full_name: newDocName.trim() } : d));
       setRenamingDoc(null);
     } catch (error: any) {
@@ -149,19 +141,10 @@ export default function Dashboard() {
       alert("Share code must be exactly 4 digits.");
       return;
     }
-
     setIsSavingShare(true);
     try {
-      const { error } = await supabase
-        .from('generated_documents')
-        .update({ 
-          share_code: shareCode || null, 
-          is_shareable: isShareable 
-        })
-        .eq('id', sharingDoc.id);
-
+      const { error } = await supabase.from('generated_documents').update({ share_code: shareCode || null, is_shareable: isShareable }).eq('id', sharingDoc.id);
       if (error) {
-        // Handle duplicate code error (Unique Violation)
         if (error.code === '23505') {
           alert("This code is already in use by another user. Please generate or enter a different 4-digit code.");
           setIsSavingShare(false);
@@ -169,7 +152,6 @@ export default function Dashboard() {
         }
         throw error;
       }
-
       setDocuments(documents.map(d => d.id === sharingDoc.id ? { ...d, share_code: shareCode, is_shareable: isShareable } : d));
       setSharingDoc(null);
       alert("Share settings updated!");
@@ -180,36 +162,69 @@ export default function Dashboard() {
     }
   };
 
-  let currentLimit = settings?.free_cv_limit || 1;
-  let limitLabel = "Free CVs";
-  if (profile?.subscription_type === '3 Months') { currentLimit = settings?.cvs_3m || 10; limitLabel = "Package CVs"; }
-  if (profile?.subscription_type === '6 Months') { currentLimit = settings?.cvs_6m || 20; limitLabel = "Package CVs"; }
-  if (profile?.subscription_type === '1 Year') { currentLimit = settings?.cvs_1y || 50; limitLabel = "Package CVs"; }
-  if (profile?.subscription_type === '5 Years') { currentLimit = settings?.cvs_5y || 100; limitLabel = "Package CVs"; }
+  const handleEmailDocument = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!emailTo || !emailingDoc) return;
+    setIsSendingEmail(true);
+
+    try {
+      const viewLink = `${window.location.origin}/view/${emailingDoc.id}`;
+      
+      const htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+          <h2 style="color: #2563eb;">Document Shared with You</h2>
+          <p>Hello,</p>
+          <p><strong>${user.user_metadata?.full_name || profile?.full_name || 'A CVNova User'}</strong> has shared a document with you via CVNova.</p>
+          <p><strong>Document Name:</strong> ${emailingDoc.full_name}</p>
+          <p><strong>Document Type:</strong> ${emailingDoc.document_type}</p>
+          <br/>
+          <a href="${viewLink}" style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">View Document</a>
+          <br/><br/>
+          <p style="color: #64748b; font-size: 12px;">This is an automated email from CVNova.</p>
+        </div>
+      `;
+
+      const res = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: emailTo,
+          subject: `${user.user_metadata?.full_name || profile?.full_name || 'User'} shared a document with you`,
+          html: htmlContent
+        })
+      });
+
+      if (!res.ok) throw new Error('Failed to send email');
+      
+      alert("Document emailed successfully!");
+      setEmailingDoc(null);
+      setEmailTo('');
+    } catch (error: any) {
+      alert("Error sending email: " + error.message);
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
+  // Use total_allowed_cvs (dynamic from database) instead of hardcoded values
+  const currentLimit = profile?.total_allowed_cvs || settings?.free_cv_limit || 1;
 
   const filteredDocuments = documents.filter((doc) => {
     if (searchTerm && !doc.full_name?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
     if (filterType !== 'All' && doc.document_type !== filterType) return false;
-    if (filterFromDate) {
-      const from = new Date(filterFromDate);
-      const docDate = new Date(doc.created_at);
-      if (docDate < from) return false;
-    }
+    if (filterFromDate && new Date(doc.created_at) < new Date(filterFromDate)) return false;
     if (filterToDate) {
-      const to = new Date(filterToDate);
-      to.setDate(to.getDate() + 1);
-      const docDate = new Date(doc.created_at);
-      if (docDate > to) return false;
+      const to = new Date(filterToDate); to.setDate(to.getDate() + 1);
+      if (new Date(doc.created_at) > to) return false;
     }
     return true;
   });
 
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="animate-spin text-blue-600" size={48} /></div>;
-  }
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="animate-spin text-blue-600" size={48} /></div>;
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
+      {/* ... Navbar ... */}
       <nav className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
         <Link href="/" className="flex items-center gap-2">
           <div className="bg-gradient-to-tr from-blue-500 to-purple-600 p-2 rounded-xl"><FileText className="text-white" size={20} /></div>
@@ -223,6 +238,7 @@ export default function Dashboard() {
         </div>
       </nav>
 
+      {/* ... Main Dashboard Content ... */}
       <main className="max-w-6xl mx-auto px-4 py-10">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
@@ -230,66 +246,43 @@ export default function Dashboard() {
             <p className="text-gray-500 mt-1">Manage your generated documents and payments</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link href="/builder" className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl hover:bg-blue-700 font-bold transition shadow-md text-sm">
-              <Plus size={18} /> New CV
-            </Link>
-            <Link href="/cover-letter" className="flex items-center gap-2 bg-green-600 text-white px-5 py-2.5 rounded-xl hover:bg-green-700 font-bold transition shadow-md text-sm">
-              <Mail size={18} /> Cover Letter
-            </Link>
-            <Link href="/experience-letter" className="flex items-center gap-2 bg-purple-600 text-white px-5 py-2.5 rounded-xl hover:bg-purple-700 font-bold transition shadow-md text-sm">
-              <Briefcase size={18} /> Experience Letter
-            </Link>
-            <Link href="/payment" className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-yellow-500 text-white px-5 py-2.5 rounded-xl hover:from-orange-600 hover:to-yellow-600 font-bold transition shadow-lg text-sm animate-pulse">
-              <Crown size={18} /> Buy Packages
-            </Link>
+            <Link href="/builder" className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl hover:bg-blue-700 font-bold transition shadow-md text-sm"><Plus size={18} /> New CV</Link>
+            <Link href="/cover-letter" className="flex items-center gap-2 bg-green-600 text-white px-5 py-2.5 rounded-xl hover:bg-green-700 font-bold transition shadow-md text-sm"><Mail size={18} /> Cover Letter</Link>
+            <Link href="/experience-letter" className="flex items-center gap-2 bg-purple-600 text-white px-5 py-2.5 rounded-xl hover:bg-purple-700 font-bold transition shadow-md text-sm"><Briefcase size={18} /> Experience Letter</Link>
+            <Link href="/payment" className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-yellow-500 text-white px-5 py-2.5 rounded-xl hover:from-orange-600 hover:to-yellow-600 font-bold transition shadow-lg text-sm animate-pulse"><Crown size={18} /> Buy Packages</Link>
           </div>
         </div>
 
+        {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <p className="text-sm text-gray-500 mb-1 flex items-center gap-2"><FileText size={16}/> {limitLabel} Used</p>
+            <p className="text-sm text-gray-500 mb-1 flex items-center gap-2"><FileText size={16}/> CVs Used</p>
             <p className="text-3xl font-bold text-gray-900">{profile?.free_cv_count || 0} / {currentLimit}</p>
           </div>
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <p className="text-sm text-gray-500 mb-1 flex items-center gap-2"><ShieldCheck size={16}/> Account Type</p>
             <p className="text-3xl font-bold text-gray-900 capitalize">{profile?.subscription_type || 'Free'}</p>
           </div>
-          
           <div className={`p-6 rounded-2xl shadow-sm border ${profile?.subscription_type !== 'free' && timeLeft !== 'Expired' ? 'bg-green-50 border-green-200' : 'bg-white border-gray-100'}`}>
             <p className="text-sm text-gray-500 mb-1 flex items-center gap-2"><Clock size={16}/> Subscription Expiry</p>
             {profile?.subscription_type !== 'free' && profile?.subscription_expiry ? (
               <div>
-                <p className={`text-2xl font-bold ${timeLeft === 'Expired' ? 'text-red-600' : 'text-green-700'}`}>
-                  {timeLeft === 'Expired' ? 'Expired' : timeLeft}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Expires on: {new Date(profile.subscription_expiry).toLocaleDateString()}
-                </p>
+                <p className={`text-2xl font-bold ${timeLeft === 'Expired' ? 'text-red-600' : 'text-green-700'}`}>{timeLeft === 'Expired' ? 'Expired' : timeLeft}</p>
+                <p className="text-xs text-gray-500 mt-1">Expires on: {new Date(profile.subscription_expiry).toLocaleDateString()}</p>
               </div>
-            ) : (
-              <p className="text-xl font-bold text-gray-400 mt-2">No Active Plan</p>
-            )}
+            ) : <p className="text-xl font-bold text-gray-400 mt-2">No Active Plan</p>}
           </div>
         </div>
 
+        {/* Payment History */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-10">
           <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CreditCard className="text-blue-600" size={20} />
-              <h2 className="text-lg font-bold text-gray-900">My Payment History</h2>
-            </div>
+            <div className="flex items-center gap-2"><CreditCard className="text-blue-600" size={20} /><h2 className="text-lg font-bold text-gray-900">My Payment History</h2></div>
             <Link href="/payment" className="text-sm font-bold text-blue-600 hover:underline">Upgrade Now</Link>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="bg-gray-50 text-gray-600">
-                <tr>
-                  <th className="px-6 py-3 font-medium">Date</th>
-                  <th className="px-6 py-3 font-medium">Package</th>
-                  <th className="px-6 py-3 font-medium">Amount</th>
-                  <th className="px-6 py-3 font-medium">Status</th>
-                </tr>
-              </thead>
+              <thead className="bg-gray-50 text-gray-600"><tr><th className="px-6 py-3 font-medium">Date</th><th className="px-6 py-3 font-medium">Package</th><th className="px-6 py-3 font-medium">Amount</th><th className="px-6 py-3 font-medium">Status</th></tr></thead>
               <tbody className="divide-y divide-gray-100">
                 {payments.map((p) => (
                   <tr key={p.id} className="hover:bg-gray-50">
@@ -297,77 +290,31 @@ export default function Dashboard() {
                     <td className="px-6 py-4 font-medium text-gray-900">{p.package_type}</td>
                     <td className="px-6 py-4 font-bold text-gray-900">${p.amount}</td>
                     <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 w-fit ${
-                        p.status === 'approved' ? 'bg-green-100 text-green-700' : 
-                        p.status === 'rejected' ? 'bg-red-100 text-red-700' : 
-                        'bg-yellow-100 text-yellow-700'
-                      }`}>
-                        {p.status === 'approved' && <CheckCircle2 size={12}/>}
-                        {p.status === 'rejected' && <XCircle size={12}/>}
-                        {p.status === 'pending' && <Clock size={12}/>}
-                        {p.status.toUpperCase()}
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 w-fit ${p.status === 'approved' ? 'bg-green-100 text-green-700' : p.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                        {p.status === 'approved' && <CheckCircle2 size={12}/>}{p.status === 'rejected' && <XCircle size={12}/>}{p.status === 'pending' && <Clock size={12}/>}{p.status.toUpperCase()}
                       </span>
                     </td>
                   </tr>
                 ))}
-                {payments.length === 0 && (
-                  <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">No payments made yet.</td></tr>
-                )}
+                {payments.length === 0 && (<tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">No payments made yet.</td></tr>)}
               </tbody>
             </table>
           </div>
         </div>
 
+        {/* Documents Table */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <h2 className="text-lg font-bold text-gray-900">My Documents</h2>
-            
             <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                <input 
-                  type="text" 
-                  placeholder="Search by name..." 
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 pr-4 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-48"
-                />
-              </div>
-              
-              <div className="relative">
-                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                <select 
-                  value={filterType}
-                  onChange={(e) => setFilterType(e.target.value)}
-                  className="pl-9 pr-8 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white cursor-pointer"
-                >
-                  <option value="All">All Types</option>
-                  <option value="CV">CV</option>
-                  <option value="Cover Letter">Cover Letter</option>
-                  <option value="Experience Letter">Experience Letter</option>
-                </select>
-              </div>
-
-              <div className="flex items-center gap-2 bg-white border rounded-lg px-3 py-1">
-                <Calendar size={16} className="text-gray-400" />
-                <input type="date" value={filterFromDate} onChange={(e) => setFilterFromDate(e.target.value)} className="text-sm outline-none bg-transparent" title="From Date" />
-                <span className="text-gray-400">-</span>
-                <input type="date" value={filterToDate} onChange={(e) => setFilterToDate(e.target.value)} className="text-sm outline-none bg-transparent" title="To Date" />
-              </div>
+              <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} /><input type="text" placeholder="Search by name..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 pr-4 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-48" /></div>
+              <div className="relative"><Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} /><select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="pl-9 pr-8 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white cursor-pointer"><option value="All">All Types</option><option value="CV">CV</option><option value="Cover Letter">Cover Letter</option><option value="Experience Letter">Experience Letter</option></select></div>
+              <div className="flex items-center gap-2 bg-white border rounded-lg px-3 py-1"><Calendar size={16} className="text-gray-400" /><input type="date" value={filterFromDate} onChange={(e) => setFilterFromDate(e.target.value)} className="text-sm outline-none bg-transparent" title="From Date" /><span className="text-gray-400">-</span><input type="date" value={filterToDate} onChange={(e) => setFilterToDate(e.target.value)} className="text-sm outline-none bg-transparent" title="To Date" /></div>
             </div>
           </div>
-
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="bg-gray-50 text-gray-600">
-                <tr>
-                  <th className="px-6 py-3 font-medium">Date</th>
-                  <th className="px-6 py-3 font-medium">Document Type</th>
-                  <th className="px-6 py-3 font-medium">Name</th>
-                  <th className="px-6 py-3 font-medium">Template</th>
-                  <th className="px-6 py-3 font-medium">Action</th>
-                </tr>
-              </thead>
+              <thead className="bg-gray-50 text-gray-600"><tr><th className="px-6 py-3 font-medium">Date</th><th className="px-6 py-3 font-medium">Document Type</th><th className="px-6 py-3 font-medium">Name</th><th className="px-6 py-3 font-medium">Template</th><th className="px-6 py-3 font-medium">Action</th></tr></thead>
               <tbody className="divide-y divide-gray-100">
                 {filteredDocuments.map((doc) => (
                   <tr key={doc.id} className="hover:bg-gray-50">
@@ -375,39 +322,18 @@ export default function Dashboard() {
                     <td className="px-6 py-4 text-gray-600 font-medium">{doc.document_type}</td>
                     <td className="px-6 py-4 text-gray-900 flex items-center gap-2">
                       {doc.full_name}
-                      <button 
-                        onClick={() => { setRenamingDoc(doc); setNewDocName(doc.full_name || ''); }} 
-                        className="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-1.5 rounded transition"
-                        title="Rename Document"
-                      >
-                        <Edit2 size={14} />
-                      </button>
+                      <button onClick={() => { setRenamingDoc(doc); setNewDocName(doc.full_name || ''); }} className="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-1.5 rounded transition" title="Rename Document"><Edit2 size={14} /></button>
                     </td>
                     <td className="px-6 py-4 capitalize text-gray-600">{doc.template_name}</td>
                     <td className="px-6 py-4 flex gap-2">
-                      <Link href={`/view/${doc.id}`} target="_blank" className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium bg-blue-50 px-3 py-1.5 rounded-lg transition">
-                        <ExternalLink size={14} /> View
-                      </Link>
-                      <button 
-                        onClick={() => openShareModal(doc)}
-                        className={`inline-flex items-center gap-1 font-medium px-3 py-1.5 rounded-lg transition ${doc.is_shareable && doc.share_code ? 'text-green-600 bg-green-50 hover:bg-green-100' : 'text-gray-600 bg-gray-100 hover:bg-gray-200'}`}
-                        title="Share Document"
-                      >
-                        <Share2 size={14} /> Share
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteDocument(doc.id)}
-                        className="inline-flex items-center gap-1 text-red-600 hover:text-red-800 font-medium bg-red-50 px-3 py-1.5 rounded-lg transition"
-                        title="Delete Document"
-                      >
-                        <Trash2 size={14} /> Delete
-                      </button>
+                      <Link href={`/view/${doc.id}`} target="_blank" className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium bg-blue-50 px-3 py-1.5 rounded-lg transition"><ExternalLink size={14} /> View</Link>
+                      <button onClick={() => openShareModal(doc)} className={`inline-flex items-center gap-1 font-medium px-3 py-1.5 rounded-lg transition ${doc.is_shareable && doc.share_code ? 'text-green-600 bg-green-50 hover:bg-green-100' : 'text-gray-600 bg-gray-100 hover:bg-gray-200'}`} title="Share Document"><Share2 size={14} /> Share</button>
+                      <button onClick={() => { setEmailingDoc(doc); setEmailTo(''); }} className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-800 font-medium bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg transition" title="Email Document"><Mail size={14} /> Email</button>
+                      <button onClick={() => handleDeleteDocument(doc.id, profile?.free_cv_count || 0)} className="inline-flex items-center gap-1 text-red-600 hover:text-red-800 font-medium bg-red-50 px-3 py-1.5 rounded-lg transition" title="Delete Document"><Trash2 size={14} /> Delete</button>
                     </td>
                   </tr>
                 ))}
-                {filteredDocuments.length === 0 && (
-                  <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">No documents found matching your criteria.</td></tr>
-                )}
+                {filteredDocuments.length === 0 && (<tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">No documents found matching your criteria.</td></tr>)}
               </tbody>
             </table>
           </div>
@@ -418,40 +344,10 @@ export default function Dashboard() {
       {renamingDoc && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-            <div className="flex justify-between items-center p-5 border-b border-gray-100">
-              <h2 className="text-lg font-bold text-gray-900">Rename Document</h2>
-              <button onClick={() => setRenamingDoc(null)} className="text-gray-400 hover:text-gray-700">
-                <X size={20} />
-              </button>
-            </div>
+            <div className="flex justify-between items-center p-5 border-b border-gray-100"><h2 className="text-lg font-bold text-gray-900">Rename Document</h2><button onClick={() => setRenamingDoc(null)} className="text-gray-400 hover:text-gray-700"><X size={20} /></button></div>
             <form onSubmit={handleRenameSubmit} className="p-5">
-              <div className="mb-5">
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Document Name</label>
-                <input 
-                  type="text" 
-                  value={newDocName}
-                  onChange={(e) => setNewDocName(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" 
-                  placeholder="Enter new name"
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <button 
-                  type="button" 
-                  onClick={() => setRenamingDoc(null)}
-                  className="px-4 py-2 rounded-lg font-semibold text-gray-600 hover:bg-gray-100 transition"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  disabled={isRenaming}
-                  className="px-4 py-2 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-700 transition flex items-center gap-2 disabled:opacity-50"
-                >
-                  {isRenaming ? <Loader2 size={16} className="animate-spin" /> : 'Save'}
-                </button>
-              </div>
+              <div className="mb-5"><label className="block text-sm font-semibold text-gray-700 mb-1">Document Name</label><input type="text" value={newDocName} onChange={(e) => setNewDocName(e.target.value)} required className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Enter new name" /></div>
+              <div className="flex justify-end gap-2"><button type="button" onClick={() => setRenamingDoc(null)} className="px-4 py-2 rounded-lg font-semibold text-gray-600 hover:bg-gray-100 transition">Cancel</button><button type="submit" disabled={isRenaming} className="px-4 py-2 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-700 transition flex items-center gap-2 disabled:opacity-50">{isRenaming ? <Loader2 size={16} className="animate-spin" /> : 'Save'}</button></div>
             </form>
           </div>
         </div>
@@ -461,65 +357,25 @@ export default function Dashboard() {
       {sharingDoc && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-            <div className="flex justify-between items-center p-5 border-b border-gray-100">
-              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2"><Share2 size={18}/> Share Document</h2>
-              <button onClick={() => setSharingDoc(null)} className="text-gray-400 hover:text-gray-700">
-                <X size={20} />
-              </button>
-            </div>
+            <div className="flex justify-between items-center p-5 border-b border-gray-100"><h2 className="text-lg font-bold text-gray-900 flex items-center gap-2"><Share2 size={18}/> Share Document</h2><button onClick={() => setSharingDoc(null)} className="text-gray-400 hover:text-gray-700"><X size={20} /></button></div>
             <div className="p-5">
-              <div className="mb-5">
-                <label className="block text-sm font-semibold text-gray-700 mb-1">4-Digit Share Code</label>
-                <div className="flex gap-2">
-                  <input 
-                    type="text" 
-                    value={shareCode}
-                    onChange={(e) => setShareCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none tracking-widest text-lg font-mono" 
-                    placeholder="e.g. 1234"
-                    maxLength={4}
-                  />
-                  <button 
-                    onClick={generateRandomCode}
-                    className="px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition"
-                    title="Generate Random Code"
-                  >
-                    <RefreshCw size={18} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="mb-6 flex items-center justify-between bg-gray-50 p-3 rounded-lg border">
-                <span className="text-sm font-semibold text-gray-700">Share Permission</span>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    className="sr-only peer" 
-                    checked={isShareable}
-                    onChange={(e) => setIsShareable(e.target.checked)}
-                  />
-                  <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
-                  <span className="ml-2 text-xs font-bold text-gray-600">{isShareable ? 'ALLOWED' : 'BLOCKED'}</span>
-                </label>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <button 
-                  type="button" 
-                  onClick={resetShareCode}
-                  className="px-4 py-2 rounded-lg font-semibold text-red-600 hover:bg-red-50 transition text-sm"
-                >
-                  Reset Code
-                </button>
-                <button 
-                  onClick={handleSaveShareCode}
-                  disabled={isSavingShare}
-                  className="px-5 py-2 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-700 transition flex items-center gap-2 disabled:opacity-50 text-sm"
-                >
-                  {isSavingShare ? <Loader2 size={16} className="animate-spin" /> : 'Save Settings'}
-                </button>
-              </div>
+              <div className="mb-5"><label className="block text-sm font-semibold text-gray-700 mb-1">4-Digit Share Code</label><div className="flex gap-2"><input type="text" value={shareCode} onChange={(e) => setShareCode(e.target.value.replace(/\D/g, '').slice(0, 4))} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none tracking-widest text-lg font-mono" placeholder="e.g. 1234" maxLength={4} /><button onClick={generateRandomCode} className="px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition" title="Generate Random Code"><RefreshCw size={18} /></button></div></div>
+              <div className="mb-6 flex items-center justify-between bg-gray-50 p-3 rounded-lg border"><span className="text-sm font-semibold text-gray-700">Share Permission</span><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" className="sr-only peer" checked={isShareable} onChange={(e) => setIsShareable(e.target.checked)} /><div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div><span className="ml-2 text-xs font-bold text-gray-600">{isShareable ? 'ALLOWED' : 'BLOCKED'}</span></label></div>
+              <div className="flex justify-between items-center"><button type="button" onClick={resetShareCode} className="px-4 py-2 rounded-lg font-semibold text-red-600 hover:bg-red-50 transition text-sm">Reset Code</button><button onClick={handleSaveShareCode} disabled={isSavingShare} className="px-5 py-2 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-700 transition flex items-center gap-2 disabled:opacity-50 text-sm">{isSavingShare ? <Loader2 size={16} className="animate-spin" /> : 'Save Settings'}</button></div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Email Modal */}
+      {emailingDoc && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+            <div className="flex justify-between items-center p-5 border-b border-gray-100"><h2 className="text-lg font-bold text-gray-900 flex items-center gap-2"><Mail size={18} className="text-purple-600"/> Email Document</h2><button onClick={() => setEmailingDoc(null)} className="text-gray-400 hover:text-gray-700"><X size={20} /></button></div>
+            <form onSubmit={handleEmailDocument} className="p-5">
+              <div className="mb-5"><label className="block text-sm font-semibold text-gray-700 mb-1">Recipient Email Address</label><input type="email" value={emailTo} onChange={(e) => setEmailTo(e.target.value)} required className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" placeholder="recipient@example.com" /></div>
+              <div className="flex justify-end gap-2"><button type="button" onClick={() => setEmailingDoc(null)} className="px-4 py-2 rounded-lg font-semibold text-gray-600 hover:bg-gray-100 transition">Cancel</button><button type="submit" disabled={isSendingEmail} className="px-4 py-2 rounded-lg font-bold text-white bg-purple-600 hover:bg-purple-700 transition flex items-center gap-2 disabled:opacity-50">{isSendingEmail ? <Loader2 size={16} className="animate-spin" /> : <><Send size={16}/> Send Email</>}</button></div>
+            </form>
           </div>
         </div>
       )}
