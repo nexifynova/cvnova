@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import { FileText, Loader2, ArrowLeft, Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { FileText, Loader2, ArrowLeft, Eye, EyeOff, CheckCircle, Mail } from 'lucide-react';
 
 export default function Signup() {
   const router = useRouter();
@@ -13,7 +13,6 @@ export default function Signup() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [formData, setFormData] = useState({ fullName: '', email: '', password: '', confirmPassword: '' });
 
-  // ...
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.password !== formData.confirmPassword) {
@@ -22,6 +21,7 @@ export default function Signup() {
     }
     setLoading(true);
 
+    // 1. Sign up in Supabase Auth (Supabase bhejega Verify Email)
     const { data, error } = await supabase.auth.signUp({
       email: formData.email,
       password: formData.password,
@@ -32,44 +32,68 @@ export default function Signup() {
     });
 
     if (error) {
-      alert("Signup Failed: " + error.message);
+      alert(error.message);
       setLoading(false);
       return;
     }
     
-    // Welcome Email bhejne ki koshish
+    // 2. Send Professional Welcome Email via Resend API
     try {
-      const emailRes = await fetch('/api/send-email', {
+      await fetch('/api/send-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: formData.email,
-          subject: 'Welcome to CVNova! 🚀',
-          html: `<h2>Welcome, ${formData.fullName}!</h2><p>Thank you for signing up. Please verify your email address to start using CVNova.</p>`
+          subject: 'Welcome to CVNova! 🚀 Let\'s build your career',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+              <div style="text-align: center; margin-bottom: 20px;">
+                <h1 style="color: #2563eb; margin: 0;">CVNova</h1>
+                <p style="color: #64748b; font-size: 14px;">by NexifyNova</p>
+              </div>
+              <h2 style="color: #333;">Welcome, ${formData.fullName}! 🎉</h2>
+              <p style="color: #475569; line-height: 1.6;">
+                Thank you for creating an account with CVNova. We are thrilled to have you on board!
+              </p>
+              <p style="color: #475569; line-height: 1.6;">
+                You can now create professional, ATS-friendly CVs, Cover Letters, and Experience Letters in minutes using our AI-powered tools.
+              </p>
+              <div style="background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                <p style="margin: 0; font-weight: bold; color: #333;">Next Steps:</p>
+                <ol style="margin: 10px 0 0 0; padding-left: 20px; color: #475569;">
+                  <li>Verify your email address (Check your inbox for the confirmation link).</li>
+                  <li>Log in to your dashboard.</li>
+                  <li>Start building your first CV!</li>
+                </ol>
+              </div>
+              <div style="text-align: center; margin-top: 30px;">
+                <a href="${window.location.origin}/login" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Go to Dashboard</a>
+              </div>
+              <p style="color: #94a3b8; font-size: 12px; margin-top: 40px; text-align: center;">
+                If you have any questions, reply to this email or contact us at <a href="mailto:support@nexifynova.co.uk">support@nexifynova.co.uk</a>
+              </p>
+            </div>
+          `
         })
       });
-
-      if (!emailRes.ok) {
-        console.warn("Welcome email failed to send. Check Resend API.");
-      }
-    } catch (err) {
-      console.error("Welcome email error:", err);
+    } catch (emailError) {
+      console.error("Welcome email failed to send", emailError);
     }
     
     setIsSuccess(true);
     setLoading(false);
   };
 
-// ... baqi code waisa hi rahega
   if (isSuccess) {
     return (
       <div className="min-h-screen bg-[#0B1120] flex items-center justify-center px-4 relative">
         <div className="bg-white/5 border border-white/10 p-10 rounded-3xl max-w-md w-full text-center shadow-2xl backdrop-blur-sm">
-          <CheckCircle className="text-green-500 mx-auto mb-6" size={64} />
-          <h2 className="text-2xl font-bold text-white mb-4">Verify Your Email</h2>
+          <Mail className="text-blue-500 mx-auto mb-6" size={64} />
+          <h2 className="text-2xl font-bold text-white mb-4">Check Your Email</h2>
           <p className="text-gray-400 mb-6 leading-relaxed">
-            A confirmation link has been sent to <span className="text-white font-bold">{formData.email}</span>. 
-            Please check your inbox and click the link to activate your account.
+            We have sent a <strong className="text-white">Verification Link</strong> to <span className="text-white font-bold">{formData.email}</span>.
+            <br/><br/>
+            Please check your inbox (and spam folder) and click that link to activate your account. You will also receive a separate Welcome Email.
           </p>
           <Link href="/login" className="inline-block bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-xl font-bold hover:from-blue-500 hover:to-purple-500 transition shadow-lg">
             Go to Login

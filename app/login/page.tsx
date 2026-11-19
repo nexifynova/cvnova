@@ -4,19 +4,22 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import { FileText, Loader2, ArrowLeft, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { FileText, Loader2, ArrowLeft, Eye, EyeOff, AlertCircle, RefreshCw } from 'lucide-react';
 
 export default function Login() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [errorMsg, setErrorMsg] = useState('');
+  const [showResendBtn, setShowResendBtn] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg('');
+    setShowResendBtn(false);
 
     const { error } = await supabase.auth.signInWithPassword({
       email: formData.email,
@@ -26,6 +29,7 @@ export default function Login() {
     if (error) {
       if (error.message.includes('Email not confirmed')) {
         setErrorMsg("Aapne abhi tak apni email confirm nahi ki. Meharbani farma kar apni email inbox (ya spam folder) check karein aur 'Confirm Email' wale link par click karein.");
+        setShowResendBtn(true);
       } else if (error.message.includes('Invalid login credentials')) {
         setErrorMsg("Ghalat email ya password. Agar password bhool gaye hain to neeche 'Forgot Password?' par click karein.");
       } else {
@@ -37,6 +41,23 @@ export default function Login() {
 
     router.push('/dashboard');
     setLoading(false);
+  };
+
+  const handleResendVerification = async () => {
+    setResending(true);
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: formData.email,
+      options: { emailRedirectTo: `${window.location.origin}/auth/confirm` }
+    });
+
+    if (error) {
+      alert("Error: " + error.message);
+    } else {
+      alert("Verification email sent again! Please check your inbox.");
+      setShowResendBtn(false);
+    }
+    setResending(false);
   };
 
   return (
@@ -53,9 +74,20 @@ export default function Login() {
         <h1 className="text-2xl font-bold text-gray-900 mb-6 text-center">Welcome Back</h1>
         
         {errorMsg && (
-          <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl mb-4 text-sm flex items-start gap-2">
-            <AlertCircle size={18} className="shrink-0 mt-0.5" />
-            <p>{errorMsg}</p>
+          <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl mb-4 text-sm flex flex-col gap-2">
+            <div className="flex items-start gap-2">
+              <AlertCircle size={18} className="shrink-0 mt-0.5" />
+              <p>{errorMsg}</p>
+            </div>
+            {showResendBtn && (
+              <button 
+                onClick={handleResendVerification} 
+                disabled={resending}
+                className="self-start flex items-center gap-1 bg-red-100 hover:bg-red-200 text-red-800 px-3 py-1.5 rounded-lg text-xs font-bold transition disabled:opacity-50 mt-1"
+              >
+                {resending ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} Resend Verification Email
+              </button>
+            )}
           </div>
         )}
 
