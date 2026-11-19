@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Loader2, Mail, Trash2, Reply, X, Send } from 'lucide-react';
+import { Loader2, Mail, Trash2, Reply, X, Send, CheckCircle2 } from 'lucide-react';
 
 export default function AdminMessages() {
   const [messages, setMessages] = useState<any[]>([]);
@@ -25,6 +25,13 @@ export default function AdminMessages() {
     setLoading(false);
   };
 
+  const markAsRead = async (id: string) => {
+    // Update local state for instant UI feedback
+    setMessages(messages.map(m => m.id === id ? { ...m, is_read: true } : m));
+    // Update database
+    await supabase.from('contact_messages').update({ is_read: true }).eq('id', id);
+  };
+
   const deleteMessage = async (id: string) => {
     if(!confirm("Delete this message?")) return;
     await supabase.from('contact_messages').delete().eq('id', id);
@@ -36,6 +43,9 @@ export default function AdminMessages() {
     setReplySubject(`Re: Inquiry from ${msg.name}`);
     setReplyBody(`Hi ${msg.name},\n\nThank you for reaching out to CVNova. \n\n(Write your reply here...)\n\nBest regards,\nCVNova Support Team`);
     setIsReplyModalOpen(true);
+    
+    // Mark as read when opened for reply
+    if (!msg.is_read) markAsRead(msg.id);
   };
 
   const handleSendReply = async (e: React.FormEvent) => {
@@ -81,11 +91,14 @@ export default function AdminMessages() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Contact Messages</h1>
+      <h1 className="text-3xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+        Support Messages
+      </h1>
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <table className="w-full text-left text-sm">
           <thead className="bg-gray-50 text-gray-600">
             <tr>
+              <th className="px-6 py-4">Status</th>
               <th className="px-6 py-4">Date</th>
               <th className="px-6 py-4">Name</th>
               <th className="px-6 py-4">Email</th>
@@ -95,22 +108,33 @@ export default function AdminMessages() {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {messages.map((msg) => (
-              <tr key={msg.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 text-gray-500">{new Date(msg.created_at).toLocaleDateString()}</td>
-                <td className="px-6 py-4 font-medium text-gray-900">{msg.name}</td>
+              <tr 
+                key={msg.id} 
+                className={`transition-colors ${msg.is_read ? 'hover:bg-gray-50 bg-white' : 'bg-blue-50/30 hover:bg-blue-50/50'}`}
+                onClick={() => { if(!msg.is_read) markAsRead(msg.id); }}
+              >
+                <td className="px-6 py-4">
+                  {msg.is_read ? (
+                    <CheckCircle2 className="text-gray-300" size={18} />
+                  ) : (
+                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" title="Unread Message"></div>
+                  )}
+                </td>
+                <td className="px-6 py-4 text-gray-500 whitespace-nowrap">{new Date(msg.created_at).toLocaleDateString()}</td>
+                <td className={`px-6 py-4 ${msg.is_read ? 'font-medium text-gray-700' : 'font-bold text-gray-900'}`}>{msg.name}</td>
                 <td className="px-6 py-4 text-gray-600">{msg.email}</td>
-                <td className="px-6 py-4 text-gray-700">{msg.message}</td>
+                <td className={`px-6 py-4 max-w-xs truncate ${msg.is_read ? 'text-gray-500' : 'text-gray-900 font-medium'}`}>{msg.message}</td>
                 <td className="px-6 py-4">
                   <div className="flex items-center justify-center gap-2">
                     <button 
-                      onClick={() => openReplyModal(msg)} 
+                      onClick={(e) => { e.stopPropagation(); openReplyModal(msg); }} 
                       className="text-blue-600 hover:text-blue-800 p-2 bg-blue-50 hover:bg-blue-100 rounded-lg transition"
                       title="Reply via Email"
                     >
                       <Reply size={16} />
                     </button>
                     <button 
-                      onClick={() => deleteMessage(msg.id)} 
+                      onClick={(e) => { e.stopPropagation(); deleteMessage(msg.id); }} 
                       className="text-red-500 hover:text-red-700 p-2 bg-red-50 hover:bg-red-100 rounded-lg transition"
                       title="Delete"
                     >
@@ -121,7 +145,7 @@ export default function AdminMessages() {
               </tr>
             ))}
             {messages.length === 0 && (
-              <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">No messages found.</td></tr>
+              <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">No messages found.</td></tr>
             )}
           </tbody>
         </table>
