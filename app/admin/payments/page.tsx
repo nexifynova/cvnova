@@ -17,59 +17,93 @@ export default function AdminPayments() {
   }, []);
 
   const fetchPayments = async () => {
-    const { data, error } = await supabase.from('payments').select('*').order('created_at', { ascending: false });
-    if (error) alert("Database Error: " + error.message);
-    else if (data) setPayments(data);
+    const { data, error } = await supabase
+      .from('payments')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error("Error fetching payments:", error);
+      alert("Database Error: " + error.message);
+    } else if (data) {
+      setPayments(data);
+    }
     setLoading(false);
   };
 
   const handleAction = async (payment: any, actionStatus: 'approved' | 'rejected') => {
-    if (!confirm(`Are you sure you want to ${actionStatus} this payment?`)) return;
+    const isReverting = (payment.status === 'approved' && actionStatus === 'rejected');
+    const confirmText = isReverting ? 'disapprove (revert)' : actionStatus;
+
+    if (!confirm(`Are you sure you want to ${confirmText} this payment?`)) return;
+    
     setProcessing(payment.id);
 
     try {
-      const { error: payError } = await supabase.from('payments').update({ status: actionStatus, approved_at: new Date().toISOString() }).eq('id', payment.id);
+      // 1. Update Payment Status
+      const { error: payError } = await supabase
+        .from('payments')
+        .update({ status: actionStatus, approved_at: new Date().toISOString() })
+        .eq('id', payment.id);
+
       if (payError) throw payError;
 
+      // 2. Handle User Profile Updates
       if (actionStatus === 'approved') {
         const { data: currentProfile } = await supabase.from('user_profiles').select('*').eq('id', payment.user_id).single();
         
-        // Calculate new limits
-        let monthsToAdd = 0;
-        let cvsToAdd = 0;
-        if (payment.package_type === '3 Months') { monthsToAdd = 3; cvsToAdd = 10; }
-        if (payment.package_type === '6 Months') { monthsToAdd = 6; cvsToAdd = 20; }
-        if (payment.package_type === '1 Year') { monthsToAdd = 12; cvsToAdd = 50; }
-        if (payment.package_type === '5 Years') { monthsToAdd = 60; cvsToAdd = 100; }
-        if (payment.package_type === 'Additional CVs') { cvsToAdd = 5; } // Default extra CVs
+        if (payment.package_type === 'Additional CVs') {
+          const { data: settings } = await supabase.from('app_settings').select('cvs_per_price').eq('id', 1).single();
+          const cvsBought = settings?.cvs_per_price || 5;
+          const currentTotal = currentProfile?.total_allowed_cvs || 1;
+          
+          await supabase.from('user_profiles').update({ total_allowed_cvs: currentTotal + cvsBought }).eq('id', payment.user_id);
+        } else {
+          // Calculate New Package CVs and Expiry
+          let monthsToAdd = 0;
+          let cvsToAdd = 0;
+          if (payment.package_type === '3 Months') { monthsToAdd = 3; cvsToAdd = 25; }
+          if (payment.package_type === '6 Months') { monthsToAdd = 6; cvsToAdd = 45; }
+          if (payment.package_type === '1 Year') { monthsToAdd = 12; cvsToAdd = 60; }
+          if (payment.package_type === '5 Years') { monthsToAdd = 60; cvsToAdd = 250; }
 
-        const currentTotalCVs = currentProfile?.total_allowed_cvs || 1;
-        const newTotalCVs = currentTotalCVs + cvsToAdd;
+          // Expiry Date Calculation (Pick the longest one)
+          let newExpiryDate = new Date();
+          if (currentProfile?.subscription_expiry && new Date(currentProfile.subscription_expiry) > new Date()) {
+            newExpiryDate = new Date(currentProfile.subscription_expiry);
+          }
+          const newPackageExpiry = new Date();
+          newPackageExpiry.setMonth(newPackageExpiry.getMonth() + monthsToAdd);
+          if (newPackageExpiry > newExpiryDate) newExpiryDate = newPackageExpiry;
 
-        // Calculate longest expiry date
-        let newExpiryDate = new Date();
-        if (currentProfile?.subscription_expiry && new Date(currentProfile.subscription_expiry) > new Date()) {
-          newExpiryDate = new Date(currentProfile.subscription_expiry);
+          // Total CVs Addition
+          const newTotalCVs = (currentProfile?.total_allowed_cvs || 0) + cvsToAdd;
+
+          await supabase.from('user_profiles').update({
+            subscription_type: payment.package_type,
+            subscription_expiry: newExpiryDate.toISOString(),
+            total_allowed_cvs: newTotalCVs
+          }).eq('id', payment.user_id);
         }
-        
-        // If the new package is longer, we set the new expiry based on the current date + new package months
-        const newPackageExpiry = new Date();
-        newPackageExpiry.setMonth(newPackageExpiry.getMonth() + monthsToAdd);
-        
-        // Pick the longer date
-        if (newPackageExpiry > newExpiryDate) {
-          newExpiryDate = newPackageExpiry;
+      } 
+      else if (isReverting) {
+        // Disapprove Logic (Minus CVs)
+        if (payment.package_type === 'Additional CVs') {
+          const { data: settings } = await supabase.from('app_settings').select('cvs_per_price').eq('id', 1).single();
+          const cvsBought = settings?.cvs_per_price || 5;
+          const currentTotal = currentProfile?.total_allowed_cvs || 1;
+          await supabase.from('user_profiles').update({ total_allowed_cvs: Math.max(1, currentTotal - cvsBought) }).eq('id', payment.user_id);
+        } else {
+          // Revert to Free
+          await supabase.from('user_profiles').update({
+            subscription_type: 'free',
+            subscription_expiry: null,
+            total_allowed_cvs: 10 // Default free limit
+          }).eq('id', payment.user_id);
         }
-
-        // Update Profile
-        await supabase.from('user_profiles').update({
-          subscription_type: payment.package_type === 'Additional CVs' ? currentProfile.subscription_type : payment.package_type,
-          subscription_expiry: payment.package_type === 'Additional CVs' ? currentProfile.subscription_expiry : newExpiryDate.toISOString(),
-          total_allowed_cvs: newTotalCVs
-        }).eq('id', payment.user_id);
       }
 
-      alert(`Payment successfully ${actionStatus}!`);
+      alert(`Payment successfully ${isReverting ? 'reverted' : actionStatus}!`);
       fetchPayments();
     } catch (error: any) {
       alert("Error: " + error.message);
