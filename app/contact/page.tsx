@@ -19,7 +19,7 @@ export default function ContactUs() {
   }, []);
 
   // Form submit handler ko is tarah update karein
-  const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     

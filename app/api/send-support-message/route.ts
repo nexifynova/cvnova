@@ -12,7 +12,10 @@ export async function POST(req: Request) {
 
     // 1. Admin Panel ke liye Database mein save karein
     const { error: dbError } = await supabaseAdmin.from('contact_messages').insert([{
-      name, email, message, is_read: false
+      name, 
+      email, 
+      message, 
+      is_read: false
     }]);
 
     if (dbError) throw new Error("Database error: " + dbError.message);
@@ -24,7 +27,19 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         to: 'support@nexifynova.co.uk',
         subject: `New Support Message from ${name}`,
-        html: `<h3>New Message</h3><p><b>From:</b> ${name} (${email})</p><p><b>Message:</b> ${message}</p>`
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+            <h2 style="color: #2563eb;">New Support Message</h2>
+            <p><b>From:</b> ${name}</p>
+            <p><b>Email:</b> <a href="mailto:${email}">${email}</a></p>
+            <div style="background-color: #f8fafc; padding: 15px; border-left: 4px solid #2563eb; margin-top: 15px;">
+              <p style="margin: 0;"><b>Message:</b></p>
+              <p style="margin-top: 5px;">${message}</p>
+            </div>
+            <br/>
+            <p style="color: #64748b; font-size: 12px;">You can also view and reply to this message directly from your <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://cvnova-one.vercel.app'}/admin/messages">Admin Panel</a>.</p>
+          </div>
+        `
       })
     });
 

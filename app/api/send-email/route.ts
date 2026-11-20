@@ -12,10 +12,10 @@ export async function POST(req: Request) {
 
     const resend = new Resend(apiKey);
 
-    // YAHAN CHANGE HUA HAI: Aapke verified domain ka email use kiya gaya hai
     const data = await resend.emails.send({
-      from: 'CVNova <noreply@nexifynova.co.uk>', 
+      from: 'CVNova Support <support@nexifynova.co.uk>', // Yahan Support ka naam add kiya
       to: [to],
+      reply_to: 'support@nexifynova.co.uk', // YEH SABSE ZAROORI HAI (Spam se bachne ke liye)
       subject: subject,
       html: html,
     });
