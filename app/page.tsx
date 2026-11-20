@@ -154,7 +154,7 @@ export default function Home() {
                 <h3 className="text-xl font-bold mb-2">3 Months</h3>
                 <p className="text-gray-400 text-sm mb-4">Perfect for a quick job search.</p>
                 <div className="text-4xl font-extrabold mb-4">${settings.package_3m_price}</div>
-                <p className="text-sm font-semibold text-blue-400 mb-6 flex-grow">Includes {settings.cvs_3m || 10} CVs</p>
+                <p className="text-sm font-semibold text-blue-400 mb-6 flex-grow">Includes {settings.cvs_3m || 25} CVs</p>
                 <Link href="/payment" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">Upgrade</Link>
               </div>
 
@@ -164,7 +164,7 @@ export default function Home() {
                 <h3 className="text-xl font-bold mb-2">6 Months</h3>
                 <p className="text-blue-200 text-sm mb-4">Best value for serious professionals.</p>
                 <div className="text-4xl font-extrabold mb-4">${settings.package_6m_price}</div>
-                <p className="text-sm font-semibold text-blue-300 mb-6 flex-grow">Includes {settings.cvs_6m || 20} CVs</p>
+                <p className="text-sm font-semibold text-blue-300 mb-6 flex-grow">Includes {settings.cvs_6m || 45} CVs</p>
                 <Link href="/payment" className="w-full flex items-center justify-center bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 rounded-xl hover:from-blue-500 hover:to-purple-500 font-bold transition shadow-lg">Upgrade</Link>
               </div>
 
@@ -173,7 +173,7 @@ export default function Home() {
                 <h3 className="text-xl font-bold mb-2">1 Year</h3>
                 <p className="text-gray-400 text-sm mb-4">Long-term career growth plan.</p>
                 <div className="text-4xl font-extrabold mb-4">${settings.package_1y_price}</div>
-                <p className="text-sm font-semibold text-blue-400 mb-6 flex-grow">Includes {settings.cvs_1y || 50} CVs</p>
+                <p className="text-sm font-semibold text-blue-400 mb-6 flex-grow">Includes {settings.cvs_1y || 60} CVs</p>
                 <Link href="/payment" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">Upgrade</Link>
               </div>
 
@@ -182,7 +182,7 @@ export default function Home() {
                 <h3 className="text-xl font-bold mb-2">5 Years</h3>
                 <p className="text-gray-400 text-sm mb-4">Lifetime access for experts.</p>
                 <div className="text-4xl font-extrabold mb-4">${settings.package_5y_price}</div>
-                <p className="text-sm font-semibold text-blue-400 mb-6 flex-grow">Includes {settings.cvs_5y || 100} CVs</p>
+                <p className="text-sm font-semibold text-blue-400 mb-6 flex-grow">Includes {settings.cvs_5y || 250} CVs</p>
                 <Link href="/payment" className="w-full flex items-center justify-center bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/20 font-bold transition">Upgrade</Link>
               </div>
             </div>

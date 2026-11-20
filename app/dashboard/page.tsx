@@ -59,19 +59,15 @@ export default function Dashboard() {
     if (!user) { router.push('/login'); return; }
     setUser(user);
 
-    // Fetch User Profile
     const { data: profileData } = await supabase.from('user_profiles').select('*').eq('id', user.id).single();
     if (profileData) setProfile(profileData);
 
-    // Fetch Settings (Admin ki limit ke liye)
     const { data: settingsData } = await supabase.from('app_settings').select('*').eq('id', 1).single();
     if (settingsData) setSettings(settingsData);
 
-    // Fetch Documents
     const { data: docs } = await supabase.from('generated_documents').select('*').eq('email', user.email).order('created_at', { ascending: false });
     if (docs) setDocuments(docs);
 
-    // Fetch Payments (Approved ones to calculate total packages)
     const { data: pays } = await supabase.from('payments').select('*').eq('user_id', user.id).eq('status', 'approved').order('created_at', { ascending: false });
     if (pays) setPayments(pays);
     
@@ -148,15 +144,11 @@ export default function Dashboard() {
     } catch (error: any) { alert("Error: " + error.message); } finally { setIsSendingEmail(false); }
   };
 
-  // 🚨 FIXED LOGIC: Naya user ho ya purana, agar paid plan nahi hai to Admin ki setting (10) use karo
   let currentLimit = settings?.free_cv_limit || 1;
-  
-  // Agar user ka paid plan hai (yani subscription_type free nahi hai), to uski total_allowed_cvs (130) use karo
   if (profile?.subscription_type && profile.subscription_type !== 'free') {
     currentLimit = profile?.total_allowed_cvs || currentLimit;
   }
 
-  // Account Type Display
   const uniquePackages = [...new Set(payments.map(p => p.package_type))].filter(p => p !== 'Additional CVs');
   const accountTypeDisplay = uniquePackages.length > 0 ? uniquePackages.join(', ') : (profile?.subscription_type || 'Free');
 
@@ -175,7 +167,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
-      {/* ... Navbar ... */}
       <nav className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
         <Link href="/" className="flex items-center gap-2">
           <div className="bg-gradient-to-tr from-blue-500 to-purple-600 p-2 rounded-xl"><FileText className="text-white" size={20} /></div>
@@ -187,7 +178,6 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      {/* ... Main Content ... */}
       <main className="max-w-6xl mx-auto px-4 py-10">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div><h1 className="text-3xl font-bold text-gray-900">My Dashboard</h1><p className="text-gray-500 mt-1">Manage your generated documents and payments</p></div>
@@ -199,7 +189,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <p className="text-sm text-gray-500 mb-1 flex items-center gap-2"><FileText size={16}/> CVs Used</p>
@@ -217,7 +206,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Payment History */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-10">
           <div className="p-6 border-b border-gray-100 flex items-center justify-between"><div className="flex items-center gap-2"><CreditCard className="text-blue-600" size={20} /><h2 className="text-lg font-bold text-gray-900">My Payment History</h2></div><Link href="/payment" className="text-sm font-bold text-blue-600 hover:underline">Upgrade Now</Link></div>
           <div className="overflow-x-auto">
@@ -238,7 +226,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Documents */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <h2 className="text-lg font-bold text-gray-900">My Documents</h2>
@@ -275,8 +262,65 @@ export default function Dashboard() {
           </div>
         </div>
       </main>
-      
-      {/* Modals ... same rahenge */}
+
+      {/* RENAME MODAL */}
+      {renamingDoc && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold text-gray-900">Rename Document</h3><button onClick={() => setRenamingDoc(null)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button></div>
+            <form onSubmit={handleRenameSubmit}>
+              <input type="text" value={newDocName} onChange={(e) => setNewDocName(e.target.value)} className="w-full px-4 py-2 border rounded-xl mb-4 outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter new name" required />
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setRenamingDoc(null)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-bold">Cancel</button>
+                <button type="submit" disabled={isRenaming} className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 disabled:opacity-50">{isRenaming ? 'Saving...' : 'Save'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* SHARE MODAL */}
+      {sharingDoc && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold text-gray-900">Share Document</h3><button onClick={() => setSharingDoc(null)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button></div>
+            <p className="text-sm text-gray-600 mb-4">Generate a 4-digit code to share this document securely.</p>
+            <div className="flex gap-2 mb-4">
+              <input type="text" maxLength={4} value={shareCode} onChange={(e) => setShareCode(e.target.value.replace(/\D/g, ''))} className="flex-1 px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-center text-lg tracking-widest font-mono font-bold" placeholder="0000" />
+              <button onClick={generateRandomCode} className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-1 transition"><RefreshCw size={16} /> Auto</button>
+            </div>
+            <label className="flex items-center gap-2 mb-6 cursor-pointer">
+              <input type="checkbox" checked={isShareable} onChange={(e) => { setIsShareable(e.target.checked); if (!e.target.checked) setShareCode(''); }} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" />
+              <span className="text-sm font-medium text-gray-700">Enable sharing for this document</span>
+            </label>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setSharingDoc(null)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-bold">Cancel</button>
+              <button onClick={handleSaveShareCode} disabled={isSavingShare} className="px-4 py-2 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 disabled:opacity-50">{isSavingShare ? 'Saving...' : 'Save'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EMAIL MODAL */}
+      {emailingDoc && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold text-gray-900">Email Document</h3><button onClick={() => setEmailingDoc(null)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button></div>
+            <p className="text-sm text-gray-600 mb-4">Send a link to view <strong>{emailingDoc.full_name}</strong>.</p>
+            <form onSubmit={handleEmailDocument}>
+              <input type="email" value={emailTo} onChange={(e) => setEmailTo(e.target.value)} className="w-full px-4 py-2 border rounded-xl mb-4 outline-none focus:ring-2 focus:ring-purple-500" placeholder="recipient@example.com" required />
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setEmailingDoc(null)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-bold">Cancel</button>
+                <button type="submit" disabled={isSendingEmail} className="px-4 py-2 bg-purple-600 text-white rounded-lg font-bold hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2">
+                  {isSendingEmail ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                  {isSendingEmail ? 'Sending...' : 'Send'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
