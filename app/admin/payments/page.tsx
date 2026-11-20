@@ -48,10 +48,15 @@ export default function AdminPayments() {
 
       if (payError) throw payError;
 
+      // Get current profile OUTSIDE the if/else blocks so it's available for both
+      const { data: currentProfile } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', payment.user_id)
+        .single();
+
       // 2. Handle User Profile Updates
       if (actionStatus === 'approved') {
-        const { data: currentProfile } = await supabase.from('user_profiles').select('*').eq('id', payment.user_id).single();
-        
         if (payment.package_type === 'Additional CVs') {
           const { data: settings } = await supabase.from('app_settings').select('cvs_per_price').eq('id', 1).single();
           const cvsBought = settings?.cvs_per_price || 5;

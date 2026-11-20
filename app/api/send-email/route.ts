@@ -13,9 +13,9 @@ export async function POST(req: Request) {
     const resend = new Resend(apiKey);
 
     const data = await resend.emails.send({
-      from: 'CVNova Support <support@nexifynova.co.uk>', // Yahan Support ka naam add kiya
+      from: 'CVNova Support <support@nexifynova.co.uk>',
       to: [to],
-      reply_to: 'support@nexifynova.co.uk', // YEH SABSE ZAROORI HAI (Spam se bachne ke liye)
+      replyTo: 'support@nexifynova.co.uk', // FIXED: camelCase format
       subject: subject,
       html: html,
     });
