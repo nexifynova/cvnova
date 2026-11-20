@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, Printer, Download, Loader2, RefreshCw, Info, Sparkles } from 'lucide-react';
+import { ArrowLeft, Printer, Download, Loader2, RefreshCw, Info, Sparkles, Save } from 'lucide-react';
 import Link from 'next/link';
 import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount } from '@/lib/supabase';
 import { downloadAsWord, downloadAsPDF } from '@/lib/download-utils';
@@ -28,8 +28,8 @@ const emptyData = {
 export default function CoverLetter() {
   const [formData, setFormData] = useState(dummyData);
   const [template, setTemplate] = useState('modern');
-  const [loading, setLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -41,9 +41,8 @@ export default function CoverLetter() {
     }
   };
 
-    const handleGenerateAI = async () => {
+  const handleGenerateAI = async () => {
     setIsGenerating(true);
-    
     try {
       const response = await fetch('/api/generate-cover-letter', {
         method: 'POST',
@@ -55,18 +54,10 @@ export default function CoverLetter() {
         }),
       });
 
-      // Check karein ke response ok hai ya nahi, phir JSON parse karein
-      if (!response.ok) {
-        throw new Error(`API Error: Status ${response.status}. API route mojood nahi hai.`);
-      }
-
+      if (!response.ok) throw new Error(`API Error: Status ${response.status}.`);
       const data = await response.json();
-      
-      if (data.body) {
-        setFormData({ ...formData, body: data.body });
-      } else {
-        alert("AI se response nahi mila.");
-      }
+      if (data.body) setFormData({ ...formData, body: data.body });
+      else alert("AI se response nahi mila.");
     } catch (error: any) {
       alert("AI Error: " + error.message);
     } finally {
@@ -74,8 +65,7 @@ export default function CoverLetter() {
     }
   };
 
-  const handleAction = async () => {
-    setLoading(true);
+  const handleAction = async (actionType: 'print' | 'save') => {
     const { data: { user } } = await supabase.auth.getUser();
     let userEmail = formData.email;
     let isLoggedIn = false;
@@ -88,24 +78,39 @@ export default function CoverLetter() {
       if (!limitCheck.allowed) {
         alert("You have reached your free limit. Please upgrade to continue.");
         window.location.href = '/payment';
-        setLoading(false);
         return;
       }
+    } else {
+      alert("Aap login nahi hain.");
+      window.location.href = '/login';
+      return;
     }
 
-    await saveDocumentRecord({
-      documentType: 'Cover Letter',
-      templateName: template,
-      fullName: formData.fullName,
-      email: userEmail,
-      phone: formData.phone,
-      fullData: formData,
-    });
+    if (actionType === 'save') setIsSaving(true);
 
-    if (isLoggedIn) await incrementUserCount(userEmail);
+    try {
+      await saveDocumentRecord({
+        documentType: 'Cover Letter',
+        templateName: template,
+        fullName: formData.fullName,
+        email: userEmail,
+        phone: formData.phone,
+        fullData: formData,
+      });
 
-    setLoading(false);
-    setTimeout(() => { window.print(); }, 500);
+      if (isLoggedIn) await incrementUserCount(userEmail);
+
+      if (actionType === 'save') {
+        alert("Cover Letter Successfully Saved to your Dashboard!");
+        window.location.href = '/dashboard';
+      } else {
+        setTimeout(() => { window.print(); }, 500);
+      }
+    } catch (error: any) {
+      alert("Error: " + error.message);
+    } finally {
+      if (actionType === 'save') setIsSaving(false);
+    }
   };
 
   return (
@@ -177,96 +182,110 @@ export default function CoverLetter() {
             <textarea name="body" value={formData.body} onChange={handleChange} rows={10} className="w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 outline-none text-sm resize-y"></textarea>
           </div>
 
-          {/* FIXED BUTTONS SECTION */}
-          <div className="flex gap-2 pt-4 border-t border-gray-200">
-            <button type="button" onClick={handleAction} disabled={loading} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-gray-800 transition disabled:opacity-50">
-              {loading ? <Loader2 size={18} className="animate-spin" /> : <Printer size={18} />} Print
+          <div className="flex flex-col gap-2 pt-4 border-t border-gray-200">
+            <button type="button" onClick={() => handleAction('save')} disabled={isSaving} className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-emerald-700 transition shadow-md">
+              {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />} 
+              {isSaving ? 'Saving...' : 'Save to Dashboard'}
             </button>
-            <button type="button" onClick={() => downloadAsPDF('cover-preview', formData.fullName || 'Cover-Letter')} className="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-red-700 transition">
-              <Download size={18} /> PDF
-            </button>
-            <button type="button" onClick={() => downloadAsWord('cover-preview', formData.fullName || 'Cover-Letter')} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-blue-700 transition">
-              <Download size={18} /> Word
-            </button>
+            <div className="flex gap-2 w-full mt-2">
+              <button type="button" onClick={() => handleAction('print')} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-gray-800 transition">
+                <Printer size={18} /> Print
+              </button>
+              <button type="button" onClick={() => downloadAsPDF('cover-letter-preview', formData.fullName || 'Cover_Letter')} className="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-red-700 transition">
+                <Download size={18} /> PDF
+              </button>
+              <button type="button" onClick={() => downloadAsWord('cover-letter-preview', formData.fullName || 'Cover_Letter')} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-blue-700 transition">
+                <Download size={18} /> Word
+              </button>
+            </div>
           </div>
         </div>
-
-        {/* RIGHT SIDE: LIVE PREVIEW */}
+                {/* RIGHT SIDE: LIVE PREVIEW */}
         <div className="py-4 lg:py-8 overflow-x-auto print:p-0">
-          <div id="cover-preview" className="print-area max-w-[210mm] min-h-[297mm] mx-auto bg-white shadow-2xl p-12">
+          <div id="cover-letter-preview" className="print-area max-w-[210mm] min-h-[297mm] mx-auto bg-white shadow-2xl">
             
-            {/* Template 1: Modern */}
+            {/* MODERN TEMPLATE */}
             {template === 'modern' && (
-              <div>
-                <div className="border-l-8 border-blue-600 pl-6 mb-8 avoid-break">
-                  <h1 className="text-4xl font-black text-gray-900 uppercase tracking-tight">{formData.fullName}</h1>
-                  <div className="flex flex-wrap gap-2 text-sm text-blue-600 font-medium mt-2">
+              <div className="p-10 h-full flex flex-col">
+                <div className="border-b-4 border-gray-900 pb-4 mb-6 avoid-break">
+                  <h1 className="text-3xl font-black text-gray-900 uppercase">{formData.fullName}</h1>
+                  <div className="flex flex-wrap gap-4 text-xs text-gray-600 mt-2 font-medium">
                     <span>{formData.email}</span> <span>•</span> <span>{formData.phone}</span> <span>•</span> <span>{formData.address}</span>
                   </div>
                 </div>
-                <div className="flex justify-between items-end mb-8 border-b border-gray-200 pb-4 avoid-break">
-                  <div><p className="text-sm font-bold text-gray-900">{formData.date}</p></div>
-                  <div className="text-right text-sm text-gray-600">
-                    <p className="font-bold text-gray-900">{formData.hiringManager}</p>
-                    <p>{formData.companyName}</p>
-                    <p>{formData.companyAddress}</p>
+                <div className="mb-6 flex justify-between items-end avoid-break">
+                  <div>
+                    <p className="font-bold text-gray-900">{formData.date}</p>
+                    <p className="mt-4 font-bold text-gray-800">{formData.hiringManager}</p>
+                    <p className="text-gray-700">{formData.companyName}</p>
+                    <p className="text-gray-700">{formData.companyAddress}</p>
                   </div>
                 </div>
-                <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{formData.body}</div>
+                <div className="mb-4 avoid-break">
+                  <p className="font-bold text-gray-900 text-lg mb-2">Subject: Application for {formData.jobTitle}</p>
+                </div>
+                <div className="flex-1 text-sm text-gray-800 leading-relaxed whitespace-pre-wrap avoid-break">
+                  {formData.body}
+                </div>
               </div>
             )}
 
-            {/* Template 2: Classic */}
+            {/* CLASSIC TEMPLATE */}
             {template === 'classic' && (
-              <div className="font-serif">
-                <div className="text-center mb-10 avoid-break">
-                  <h1 className="text-3xl font-bold text-gray-900 mb-1">{formData.fullName}</h1>
-                  <p className="text-sm text-gray-600">{formData.address} | {formData.phone} | {formData.email}</p>
+              <div className="p-10 h-full flex flex-col font-serif">
+                <div className="text-center border-b border-gray-300 pb-4 mb-6 avoid-break">
+                  <h1 className="text-2xl font-bold text-gray-900 tracking-widest uppercase">{formData.fullName}</h1>
+                  <p className="text-sm text-gray-600 mt-1">{formData.address}</p>
+                  <p className="text-sm text-gray-600 mt-1">{formData.email} | {formData.phone}</p>
                 </div>
-                <div className="mb-8 text-sm text-gray-800 avoid-break">
-                  <p className="mb-4">{formData.date}</p>
+                <p className="mb-6 text-gray-800">{formData.date}</p>
+                <div className="mb-6 text-gray-800">
                   <p className="font-bold">{formData.hiringManager}</p>
                   <p>{formData.companyName}</p>
                   <p>{formData.companyAddress}</p>
                 </div>
-                <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{formData.body}</div>
+                <div className="flex-1 text-sm text-gray-800 leading-relaxed whitespace-pre-wrap avoid-break">
+                  {formData.body}
+                </div>
               </div>
             )}
 
-            {/* Template 3: Elegant */}
+            {/* ELEGANT TEMPLATE */}
             {template === 'elegant' && (
-              <div className="font-serif p-4">
-                <div className="text-center mb-10 border-b border-gray-300 pb-6 avoid-break">
-                  <h1 className="text-4xl font-normal text-gray-800 tracking-wider mb-2">{formData.fullName}</h1>
-                  <div className="flex justify-center gap-4 text-xs text-gray-500 mt-4">
-                    <span>{formData.email}</span> <span>•</span> <span>{formData.phone}</span> <span>•</span> <span>{formData.address}</span>
-                  </div>
+              <div className="p-10 h-full flex flex-col font-light">
+                <div className="mb-8 avoid-break">
+                  <h1 className="text-4xl text-gray-900 mb-2">{formData.fullName}</h1>
+                  <p className="text-sm text-gray-500 uppercase tracking-widest">{formData.jobTitle}</p>
+                  <div className="mt-2 text-xs text-gray-500">{formData.email} • {formData.phone} • {formData.address}</div>
                 </div>
-                <div className="mb-8 text-sm text-gray-800 avoid-break flex justify-between">
+                <div className="flex justify-between mb-8 text-sm text-gray-700 avoid-break">
                   <div>
-                    <p className="mb-4">{formData.date}</p>
-                    <p className="font-bold">{formData.hiringManager}</p>
-                    <p>{formData.companyName}</p>
+                    <p className="font-bold text-gray-900">{formData.companyName}</p>
                     <p>{formData.companyAddress}</p>
                   </div>
+                  <p>{formData.date}</p>
                 </div>
-                <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{formData.body}</div>
+                <div className="flex-1 text-sm text-gray-800 leading-loose whitespace-pre-wrap avoid-break">
+                  {formData.body}
+                </div>
               </div>
             )}
 
-            {/* Template 4: Minimal */}
+            {/* MINIMAL TEMPLATE */}
             {template === 'minimal' && (
-              <div className="font-sans p-6">
-                <div className="mb-10 avoid-break">
-                  <h1 className="text-2xl text-gray-900 font-light mb-1">{formData.fullName}</h1>
-                  <p className="text-xs text-gray-500 uppercase tracking-widest">{formData.email} • {formData.phone}</p>
+              <div className="p-10 h-full flex flex-col">
+                <div className="mb-8 avoid-break">
+                  <h1 className="text-2xl font-semibold text-gray-900">{formData.fullName}</h1>
+                  <p className="text-sm text-gray-600 mt-1">{formData.email} | {formData.phone}</p>
                 </div>
-                <div className="mb-8 text-xs text-gray-600 avoid-break">
-                  <p className="mb-2">{formData.date}</p>
-                  <p className="font-semibold">{formData.hiringManager}</p>
+                <p className="mb-4 text-sm text-gray-800">{formData.date}</p>
+                <div className="mb-6 text-sm text-gray-800">
+                  <p>{formData.hiringManager}</p>
                   <p>{formData.companyName}</p>
                 </div>
-                <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{formData.body}</div>
+                <div className="flex-1 text-sm text-gray-800 leading-relaxed whitespace-pre-wrap avoid-break">
+                  {formData.body}
+                </div>
               </div>
             )}
 

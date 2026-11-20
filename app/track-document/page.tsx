@@ -2,26 +2,26 @@
 
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Search, Loader2, ArrowLeft, Mail, Key, User } from 'lucide-react';
+import { Search, Loader2, ArrowLeft, Mail, Key, User, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 
 export default function TrackDocument() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'email' | 'code'>('email');
 
-  // Email form state
+  // States
   const [email, setEmail] = useState('');
-
-  // Code form state (Name + Code)
   const [fullName, setFullName] = useState('');
   const [shareCode, setShareCode] = useState('');
+  
+  // Results State
+  const [documents, setDocuments] = useState<any[] | null>(null);
 
   const handleSearchByEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
     setLoading(true);
+    setDocuments(null);
     try {
       const { data, error } = await supabase
         .from('generated_documents')
@@ -35,8 +35,7 @@ export default function TrackDocument() {
         return;
       }
       
-      // Redirect to dashboard-like view or show list (For simplicity, redirecting to view first doc)
-      router.push(`/view/${data[0].id}`);
+      setDocuments(data);
     } catch (err: any) {
       alert("Error: " + err.message);
     } finally {
@@ -51,21 +50,22 @@ export default function TrackDocument() {
       return;
     }
     setLoading(true);
+    setDocuments(null);
     try {
       const { data, error } = await supabase
         .from('generated_documents')
         .select('*')
         .eq('full_name', fullName)
         .eq('share_code', shareCode)
-        .eq('is_shareable', true)
-        .single();
+        .eq('is_shareable', true);
 
-      if (error || !data) {
+      if (error) throw error;
+      if (!data || data.length === 0) {
         alert("Document not found. Please check your Full Name and Code.");
         return;
       }
 
-      router.push(`/view/${data.id}`);
+      setDocuments(data);
     } catch (err: any) {
       alert("Document not found. Please check your credentials.");
     } finally {
@@ -76,13 +76,13 @@ export default function TrackDocument() {
   return (
     <div className="min-h-screen bg-[#0B1120] text-white font-sans flex flex-col items-center py-20 px-4">
       
-      <div className="w-full max-w-2xl mb-6">
+      <div className="w-full max-w-3xl mb-6">
         <Link href="/" className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition font-medium">
           <ArrowLeft size={18} /> Back to Home
         </Link>
       </div>
 
-      <div className="bg-white/5 border border-white/10 p-8 rounded-3xl w-full max-w-2xl shadow-2xl backdrop-blur-sm">
+      <div className="bg-white/5 border border-white/10 p-8 rounded-3xl w-full max-w-3xl shadow-2xl backdrop-blur-sm">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">Track Your Document</h1>
           <p className="text-gray-400">Securely view and print your generated documents.</p>
@@ -91,13 +91,13 @@ export default function TrackDocument() {
         {/* Tabs */}
         <div className="flex bg-black/30 p-1 rounded-xl mb-6">
           <button
-            onClick={() => setActiveTab('email')}
+            onClick={() => { setActiveTab('email'); setDocuments(null); }}
             className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-bold transition ${activeTab === 'email' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
           >
             <Mail size={18} /> By Email / Phone
           </button>
           <button
-            onClick={() => setActiveTab('code')}
+            onClick={() => { setActiveTab('code'); setDocuments(null); }}
             className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-bold transition ${activeTab === 'code' ? 'bg-green-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
           >
             <Key size={18} /> By Name + Code
@@ -156,6 +156,26 @@ export default function TrackDocument() {
               {loading ? 'Searching...' : 'Search'}
             </button>
           </form>
+        )}
+
+        {/* Documents List Result */}
+        {documents && documents.length > 0 && (
+          <div className="mt-8 border-t border-white/10 pt-6">
+            <h3 className="text-lg font-bold text-white mb-4">Your Documents</h3>
+            <div className="space-y-3">
+              {documents.map((doc) => (
+                <div key={doc.id} className="flex justify-between items-center bg-black/40 p-4 rounded-xl border border-white/5 hover:border-white/20 transition">
+                  <div>
+                    <p className="text-white font-bold">{doc.full_name}</p>
+                    <p className="text-xs text-gray-400">{doc.document_type} | {new Date(doc.created_at).toLocaleDateString()}</p>
+                  </div>
+                  <Link href={`/view/${doc.id}`} className="flex items-center gap-1 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition">
+                    <ExternalLink size={16} /> View
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
       </div>
