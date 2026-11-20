@@ -19,24 +19,31 @@ export default function ContactUs() {
   }, []);
 
   // Form submit handler ko is tarah update karein
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
-  
-  const res = await fetch('/api/send-support-message', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(formData)
-  });
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    try {
+      const res = await fetch('/api/send-support-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          message: formData.message
+        })
+      });
 
-  if (res.ok) {
-    alert("Message sent successfully! We will get back to you soon.");
-    setFormData({ name: '', email: '', message: '' });
-  } else {
-    alert("Failed to send message. Please try again.");
-  }
-  setLoading(false);
-};
+      if (!res.ok) throw new Error('Failed to send message');
+
+      alert("Message sent successfully! We will get back to you soon.");
+      setFormData({ name: '', email: '', message: '' });
+    } catch (error: any) {
+      alert("Error: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#0B1120] text-white font-sans">

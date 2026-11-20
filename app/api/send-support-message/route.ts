@@ -10,14 +10,14 @@ export async function POST(req: Request) {
       process.env.SUPABASE_SERVICE_KEY!
     );
 
-    // 1. Save to Database (for Admin Panel)
+    // 1. Admin Panel ke liye Database mein save karein
     const { error: dbError } = await supabaseAdmin.from('contact_messages').insert([{
       name, email, message, is_read: false
     }]);
 
     if (dbError) throw new Error("Database error: " + dbError.message);
 
-    // 2. Send Email to Support
+    // 2. Support Email par email bhejein
     await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://cvnova-one.vercel.app'}/api/send-email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
