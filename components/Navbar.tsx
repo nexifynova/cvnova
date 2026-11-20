@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { FileText, LogOut, LayoutDashboard, ChevronDown, User } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 
 export default function Navbar() {
   const [user, setUser] = useState<any>(null);
@@ -21,7 +20,6 @@ export default function Navbar() {
     };
     checkUser();
 
-    // Fetch dynamic settings for Logo & Menu
     const fetchSettings = async () => {
       const { data } = await supabase.from('app_settings').select('site_logo_url, site_name, nav_menu').eq('id', 1).single();
       if (data) setSettings(data);
@@ -51,12 +49,12 @@ export default function Navbar() {
     }, 150); 
   };
 
-  // Default menu (agar database se load na ho)
+  // Default menu (Wapis Track Document add kar diya gaya hai)
   const defaultMenu = [
     { label: 'CV Builder', href: '/builder', visible: true },
     { label: 'Cover Letter', href: '/cover-letter', visible: true },
     { label: 'Experience Letter', href: '/experience-letter', visible: true },
-    { label: 'Track Document', href: '/track-document', visible: true }, // Added Track Document
+    { label: 'Track Document', href: '/track-document', visible: true }, 
     { label: 'Track Payment', href: '/track-payment', visible: true },
     { label: 'Contact Us', href: '/contact', visible: true },
     { label: 'Pricing', href: '/#pricing', visible: true },
@@ -69,7 +67,6 @@ export default function Navbar() {
   return (
     <nav className="bg-[#0B1120]/80 backdrop-blur-md border-b border-white/10 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
       
-      {/* LOGO */}
       <Link href="/" className="flex items-center gap-2">
         {settings?.site_logo_url ? (
           <div className="h-10 w-auto relative">
@@ -85,7 +82,6 @@ export default function Navbar() {
         )}
       </Link>
       
-      {/* MENU */}
       <div className="hidden md:flex gap-6 text-sm font-medium text-gray-300">
         {activeMenu.map((item: any, idx: number) => (
           <Link key={idx} href={item.href} className="hover:text-white transition">
@@ -94,7 +90,6 @@ export default function Navbar() {
         ))}
       </div>
 
-      {/* USER ACTIONS */}
       <div className="flex gap-4 items-center">
         {user ? (
           <div className="relative py-2" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>

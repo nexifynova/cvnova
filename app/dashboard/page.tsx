@@ -105,12 +105,23 @@ export default function Dashboard() {
   };
 
   const openShareModal = (doc: any) => { setSharingDoc(doc); setShareCode(doc.share_code || ''); setIsShareable(doc.is_shareable || false); };
-  const generateRandomCode = () => { const code = Math.floor(1000 + Math.random() * 9000).toString(); setShareCode(code); setIsShareable(true); };
+  
+  // 6-Digit Code Generator (Letters + Numbers)
+  const generateRandomCode = () => { 
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setShareCode(code); 
+    setIsShareable(true); 
+  };
+  
   const resetShareCode = () => { setShareCode(''); setIsShareable(false); };
   
   const handleSaveShareCode = async () => {
     if (!sharingDoc) return;
-    if (isShareable && shareCode && shareCode.length !== 4) { alert("Share code must be exactly 4 digits."); return; }
+    if (isShareable && shareCode && shareCode.length !== 6) { alert("Share code must be exactly 6 characters."); return; }
     setIsSavingShare(true);
     try {
       const { error } = await supabase.from('generated_documents').update({ share_code: shareCode || null, is_shareable: isShareable }).eq('id', sharingDoc.id);
@@ -279,14 +290,14 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* SHARE MODAL */}
+      {/* SHARE MODAL (6-Digits) */}
       {sharingDoc && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md">
             <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold text-gray-900">Share Document</h3><button onClick={() => setSharingDoc(null)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button></div>
-            <p className="text-sm text-gray-600 mb-4">Generate a 4-digit code to share this document securely.</p>
+            <p className="text-sm text-gray-600 mb-4">Generate a secure 6-character code to share this document.</p>
             <div className="flex gap-2 mb-4">
-              <input type="text" maxLength={4} value={shareCode} onChange={(e) => setShareCode(e.target.value.replace(/\D/g, ''))} className="flex-1 px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-center text-lg tracking-widest font-mono font-bold" placeholder="0000" />
+              <input type="text" maxLength={6} value={shareCode} onChange={(e) => setShareCode(e.target.value.toUpperCase())} className="flex-1 px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-center text-lg tracking-widest font-mono font-bold" placeholder="XXXXXX" />
               <button onClick={generateRandomCode} className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-1 transition"><RefreshCw size={16} /> Auto</button>
             </div>
             <label className="flex items-center gap-2 mb-6 cursor-pointer">
