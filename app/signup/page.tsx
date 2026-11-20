@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import { FileText, Loader2, ArrowLeft, Eye, EyeOff, CheckCircle, Mail } from 'lucide-react';
+import { FileText, Loader2, ArrowLeft, Eye, EyeOff, Mail } from 'lucide-react';
 
 export default function Signup() {
   const router = useRouter();
@@ -21,7 +21,7 @@ export default function Signup() {
     }
     setLoading(true);
 
-    // 1. Sign up in Supabase Auth (Supabase bhejega Verify Email)
+    // 1. Supabase Signup (Supabase will send the Confirm Email)
     const { data, error } = await supabase.auth.signUp({
       email: formData.email,
       password: formData.password,
@@ -37,7 +37,7 @@ export default function Signup() {
       return;
     }
     
-    // 2. Send Professional Welcome Email via Resend API
+    // 2. Send Professional Welcome Email via Resend
     try {
       await fetch('/api/send-email', {
         method: 'POST',
@@ -70,7 +70,7 @@ export default function Signup() {
                 <a href="${window.location.origin}/login" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Go to Dashboard</a>
               </div>
               <p style="color: #94a3b8; font-size: 12px; margin-top: 40px; text-align: center;">
-                If you have any questions, reply to this email or contact us at <a href="mailto:support@nexifynova.co.uk">support@nexifynova.co.uk</a>
+                If you have any questions, reply to this email or contact us at support@nexifynova.co.uk
               </p>
             </div>
           `
