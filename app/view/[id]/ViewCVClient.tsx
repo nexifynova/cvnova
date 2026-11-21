@@ -4,12 +4,16 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Loader2, ArrowLeft, Printer, Save, LayoutTemplate, Edit } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
 export function ViewCVClient({ id }: { id: string }) {
   const [doc, setDoc] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [currentTemplate, setCurrentTemplate] = useState('classicgray');
+  
+  const searchParams = useSearchParams();
+  const isTracked = searchParams.get('track') === 'true'; // Privacy Check
 
   const templatesList = ['classicgray', 'modern', 'classic', 'minimal', 'creative', 'executive', 'elegant', 'tech', 'corporate', 'simple', 'bold', 'timeline', 'compact', 'bluecorporate', 'redexecutive', 'greenprofessional', 'darkmode', 'blueheader', 'professional'];
 
@@ -49,9 +53,17 @@ export function ViewCVClient({ id }: { id: string }) {
       {/* Top Navigation Bar */}
       <div className="bg-white shadow-sm py-4 px-6 sticky top-0 z-50 print:hidden">
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <Link href="/dashboard" className="flex items-center gap-2 text-gray-600 hover:text-blue-600 font-medium">
-            <ArrowLeft size={18} /> Back to Dashboard
-          </Link>
+          
+          {/* 🚨 PRIVACY FIX: Track vs Dashboard Back Button */}
+          {isTracked ? (
+            <Link href="/track-document" className="flex items-center gap-2 text-gray-600 hover:text-blue-600 font-medium">
+              <ArrowLeft size={18} /> Back to Track Document
+            </Link>
+          ) : (
+            <Link href="/dashboard" className="flex items-center gap-2 text-gray-600 hover:text-blue-600 font-medium">
+              <ArrowLeft size={18} /> Back to Dashboard
+            </Link>
+          )}
           
           <div className="flex flex-wrap items-center justify-center gap-3">
             {/* Template Switcher (Only for CV) */}
@@ -70,10 +82,12 @@ export function ViewCVClient({ id }: { id: string }) {
               </button>
             )}
 
-            {/* EDIT BUTTON (Newly Added) */}
-            <Link href={editLink} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-700 transition shadow-sm">
-              <Edit size={16} /> Edit Document
-            </Link>
+            {/* EDIT BUTTON (Sirf tab dikhega jab user apne dashboard se aaya ho) */}
+            {!isTracked && (
+              <Link href={editLink} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-700 transition shadow-sm">
+                <Edit size={16} /> Edit Document
+              </Link>
+            )}
 
             <button onClick={() => window.print()} className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-gray-800 transition">
               <Printer size={16} /> Print / PDF
@@ -86,6 +100,10 @@ export function ViewCVClient({ id }: { id: string }) {
       <div className="py-10 px-4 overflow-x-auto">
         <div id="cv-preview" className="print-area max-w-[210mm] min-h-[297mm] mx-auto bg-white shadow-2xl">
           
+          {/* ======================================================== */}
+          {/* NEECHE SAARE TEMPLATES WAISA HI HAIN (KOI CHANGE NAHI)   */}
+          {/* ======================================================== */}
+
           {/* TEMPLATE 1: CLASSIC GRAY */}
           {currentTemplate === 'classicgray' && (
             <div className="bg-white h-full text-gray-800">

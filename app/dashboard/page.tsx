@@ -106,7 +106,6 @@ export default function Dashboard() {
 
   const openShareModal = (doc: any) => { setSharingDoc(doc); setShareCode(doc.share_code || ''); setIsShareable(doc.is_shareable || false); };
   
-  // 6-Digit Code Generator (Letters + Numbers)
   const generateRandomCode = () => { 
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let code = '';
@@ -116,8 +115,6 @@ export default function Dashboard() {
     setShareCode(code); 
     setIsShareable(true); 
   };
-  
-  const resetShareCode = () => { setShareCode(''); setIsShareable(false); };
   
   const handleSaveShareCode = async () => {
     if (!sharingDoc) return;
@@ -155,6 +152,7 @@ export default function Dashboard() {
     } catch (error: any) { alert("Error: " + error.message); } finally { setIsSendingEmail(false); }
   };
 
+  // 🚨 FIXED: 5 Years ka limit 250 theek karne ke liye
   let currentLimit = settings?.free_cv_limit || 1;
   if (profile?.subscription_type && profile.subscription_type !== 'free') {
     currentLimit = profile?.total_allowed_cvs || currentLimit;
@@ -175,8 +173,7 @@ export default function Dashboard() {
   });
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="animate-spin text-blue-600" size={48} /></div>;
-
-  return (
+    return (
     <div className="min-h-screen bg-gray-50 font-sans">
       <nav className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
         <Link href="/" className="flex items-center gap-2">
@@ -236,8 +233,7 @@ export default function Dashboard() {
             </table>
           </div>
         </div>
-
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <h2 className="text-lg font-bold text-gray-900">My Documents</h2>
             <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
@@ -273,8 +269,7 @@ export default function Dashboard() {
           </div>
         </div>
       </main>
-
-      {/* RENAME MODAL */}
+            {/* RENAME MODAL */}
       {renamingDoc && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md">
