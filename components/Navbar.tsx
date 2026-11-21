@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import Link from 'next/link';
-import { FileText, LogOut, LayoutDashboard, ChevronDown, User } from 'lucide-react';
+import { FileText, LogOut, LayoutDashboard, ChevronDown, User, Search } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
@@ -64,6 +64,19 @@ export default function Navbar() {
     ? settings.nav_menu.filter((m: any) => m.visible) 
     : defaultMenu;
 
+  // Dedicated "Track Document" button — always rendered as a highlighted pill
+  // right before the "Payment" link so it stands out in the top navbar.
+  const menuItems = activeMenu.filter((m: any) => m.href !== '/track-document');
+  const hasPaymentItem = menuItems.some((m: any) => m.href === '/payment');
+  const trackDocButton = (
+    <Link
+      href="/track-document"
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-blue-500/20 to-purple-600/20 border border-white/20 text-white shadow-[0_0_12px_rgba(59,130,246,0.15)] hover:from-blue-500/30 hover:to-purple-600/30 hover:border-white/30 hover:shadow-[0_0_16px_rgba(139,92,246,0.3)] transition-all"
+    >
+      <Search size={15} /> Track Document
+    </Link>
+  );
+
   return (
     <nav className="bg-[#0B1120]/80 backdrop-blur-md border-b border-white/10 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
       
@@ -82,12 +95,16 @@ export default function Navbar() {
         )}
       </Link>
       
-      <div className="hidden md:flex gap-6 text-sm font-medium text-gray-300">
-        {activeMenu.map((item: any, idx: number) => (
-          <Link key={idx} href={item.href} className="hover:text-white transition">
-            {item.label}
-          </Link>
+      <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-300">
+        {menuItems.map((item: any, idx: number) => (
+          <Fragment key={idx}>
+            {item.href === '/payment' && trackDocButton}
+            <Link href={item.href} className="hover:text-white transition">
+              {item.label}
+            </Link>
+          </Fragment>
         ))}
+        {!hasPaymentItem && trackDocButton}
       </div>
 
       <div className="flex gap-4 items-center">
