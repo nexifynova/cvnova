@@ -59,7 +59,7 @@ export function ViewCVClient({ id }: { id: string }) {
               <ArrowLeft size={18} /> Back to Track Document
             </Link>
           ) : (
-                      {isTracked ? (
+                                {isTracked === true ? (
             <Link href="/track-document" className="flex items-center gap-2 text-gray-600 hover:text-blue-600 font-medium">
               <ArrowLeft size={18} /> Back to Track Document
             </Link>
@@ -67,7 +67,6 @@ export function ViewCVClient({ id }: { id: string }) {
             <Link href="/dashboard" className="flex items-center gap-2 text-gray-600 hover:text-blue-600 font-medium">
               <ArrowLeft size={18} /> Back to Dashboard
             </Link>
-          )}
           )}
           
           <div className="flex flex-wrap items-center justify-center gap-3">
