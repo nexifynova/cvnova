@@ -76,7 +76,7 @@ export default function CoverLetter() {
       
       const limitCheck = await checkUserLimit(userEmail);
       if (!limitCheck.allowed) {
-        alert("You have reached your free limit. Please upgrade to continue.");
+        alert("You have reached your document limit for your current plan. Please upgrade to continue.");
         window.location.href = '/payment';
         return;
       }

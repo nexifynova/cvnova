@@ -6,6 +6,14 @@ import { useRouter } from 'next/navigation';
 import { FileText, LogOut, Plus, ExternalLink, Loader2, Mail, Briefcase, CreditCard, Clock, CheckCircle2, XCircle, ShieldCheck, Crown, Search, Filter, Calendar, Edit2, X, Share2, RefreshCw, Trash2, Send } from 'lucide-react';
 import Link from 'next/link';
 
+// Plan ka naam -> app_settings mein us plan ke CVs wala column
+const PLAN_CV_SETTING_KEY: Record<string, string> = {
+  '3 Months': 'cvs_3m',
+  '6 Months': 'cvs_6m',
+  '1 Year': 'cvs_1y',
+  '5 Years': 'cvs_5y',
+};
+
 export default function Dashboard() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -60,10 +68,24 @@ export default function Dashboard() {
     setUser(user);
 
     const { data: profileData } = await supabase.from('user_profiles').select('*').eq('id', user.id).single();
-    if (profileData) setProfile(profileData);
-
     const { data: settingsData } = await supabase.from('app_settings').select('*').eq('id', 1).single();
     if (settingsData) setSettings(settingsData);
+
+    if (profileData) {
+      // 🚨 SELF-HEAL: agar plan ke saath aane wale CVs DB mein kam save hain
+      // (misal: 5 Years = 250 CVs hone chahiye lekin purana 100 para hua hai)
+      // to profile ko admin settings wali correct value se update kar do.
+      const planKey = PLAN_CV_SETTING_KEY[profileData.subscription_type];
+      const planCVs = planKey ? Number(settingsData?.[planKey]) || 0 : 0;
+      if (profileData.subscription_type !== 'free' && planCVs > (Number(profileData.total_allowed_cvs) || 0)) {
+        const { error: healError } = await supabase
+          .from('user_profiles')
+          .update({ total_allowed_cvs: planCVs })
+          .eq('id', user.id);
+        if (!healError) profileData.total_allowed_cvs = planCVs;
+      }
+      setProfile(profileData);
+    }
 
     const { data: docs } = await supabase.from('generated_documents').select('*').eq('email', user.email).order('created_at', { ascending: false });
     if (docs) setDocuments(docs);
@@ -152,10 +174,15 @@ export default function Dashboard() {
     } catch (error: any) { alert("Error: " + error.message); } finally { setIsSendingEmail(false); }
   };
 
-  // 🚨 FIXED: 5 Years ka limit 250 theek karne ke liye
+  // 🚨 FIXED: Limit = plan ka CV allowance (admin settings se) ya purchased total,
+  // jo bhi zyada ho. Isse 5 Years ($40 = 250 CVs) par galti se "2 / 100" nahi aayega.
+  const isPlanActive = !!profile?.subscription_type && profile.subscription_type !== 'free'
+    && (!profile?.subscription_expiry || new Date(profile.subscription_expiry) > new Date());
   let currentLimit = settings?.free_cv_limit || 1;
-  if (profile?.subscription_type && profile.subscription_type !== 'free') {
-    currentLimit = profile?.total_allowed_cvs || currentLimit;
+  if (isPlanActive) {
+    const planKey = PLAN_CV_SETTING_KEY[profile.subscription_type];
+    const planCVs = planKey ? Number(settings?.[planKey]) || 0 : 0;
+    currentLimit = Math.max(Number(profile?.total_allowed_cvs) || 0, planCVs) || currentLimit;
   }
 
   const uniquePackages = [...new Set(payments.map(p => p.package_type))].filter(p => p !== 'Additional CVs');

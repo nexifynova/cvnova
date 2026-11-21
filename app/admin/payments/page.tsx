@@ -59,18 +59,23 @@ export default function AdminPayments() {
       if (actionStatus === 'approved') {
         if (payment.package_type === 'Additional CVs') {
           const { data: settings } = await supabase.from('app_settings').select('cvs_per_price').eq('id', 1).single();
-          const cvsBought = settings?.cvs_per_price || 5;
+          const cvsBought = Number(settings?.cvs_per_price) || 5;
           const currentTotal = currentProfile?.total_allowed_cvs || 1;
           
           await supabase.from('user_profiles').update({ total_allowed_cvs: currentTotal + cvsBought }).eq('id', payment.user_id);
         } else {
-          // Calculate New Package CVs and Expiry
-          let monthsToAdd = 0;
-          let cvsToAdd = 0;
-          if (payment.package_type === '3 Months') { monthsToAdd = 3; cvsToAdd = 25; }
-          if (payment.package_type === '6 Months') { monthsToAdd = 6; cvsToAdd = 45; }
-          if (payment.package_type === '1 Year') { monthsToAdd = 12; cvsToAdd = 60; }
-          if (payment.package_type === '5 Years') { monthsToAdd = 60; cvsToAdd = 250; }
+          // 🚨 Plan ki CVs aur months admin settings se lo (hardcoded nahi),
+          // taake "5 Years = 250 CVs" jaisi configured values hi apply hon.
+          const { data: settings } = await supabase.from('app_settings').select('*').eq('id', 1).single();
+          const planConfig: Record<string, { months: number; cvs: number }> = {
+            '3 Months': { months: 3, cvs: Number(settings?.cvs_3m) || 25 },
+            '6 Months': { months: 6, cvs: Number(settings?.cvs_6m) || 45 },
+            '1 Year': { months: 12, cvs: Number(settings?.cvs_1y) || 60 },
+            '5 Years': { months: 60, cvs: Number(settings?.cvs_5y) || 250 },
+          };
+          const plan = planConfig[payment.package_type];
+          const monthsToAdd = plan?.months || 0;
+          const cvsToAdd = plan?.cvs || 0;
 
           // Expiry Date Calculation (Pick the longest one)
           let newExpiryDate = new Date();
@@ -93,17 +98,17 @@ export default function AdminPayments() {
       } 
       else if (isReverting) {
         // Disapprove Logic (Minus CVs)
+        const { data: revertSettings } = await supabase.from('app_settings').select('*').eq('id', 1).single();
         if (payment.package_type === 'Additional CVs') {
-          const { data: settings } = await supabase.from('app_settings').select('cvs_per_price').eq('id', 1).single();
-          const cvsBought = settings?.cvs_per_price || 5;
+          const cvsBought = Number(revertSettings?.cvs_per_price) || 5;
           const currentTotal = currentProfile?.total_allowed_cvs || 1;
           await supabase.from('user_profiles').update({ total_allowed_cvs: Math.max(1, currentTotal - cvsBought) }).eq('id', payment.user_id);
         } else {
-          // Revert to Free
+          // Revert to Free (free limit admin settings se)
           await supabase.from('user_profiles').update({
             subscription_type: 'free',
             subscription_expiry: null,
-            total_allowed_cvs: 10 // Default free limit
+            total_allowed_cvs: Number(revertSettings?.free_cv_limit) || 10
           }).eq('id', payment.user_id);
         }
       }

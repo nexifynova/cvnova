@@ -152,7 +152,7 @@ export default function Builder() {
       return;
     }
     if (!limitCheck.allowed) {
-      alert("You have reached your free limit.");
+      alert("You have reached your document limit for your current plan. Please upgrade to create more documents.");
       window.location.href = '/payment';
       return;
     }

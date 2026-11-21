@@ -11,6 +11,8 @@ export function ViewCVClient({ id }: { id: string }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [currentTemplate, setCurrentTemplate] = useState('classicgray');
+  // Ownership flag: sirf document ka asli owner hi owner-only controls dekh sakta hai
+  const [isOwner, setIsOwner] = useState(false);
   
   const searchParams = useSearchParams();
   const isTracked = searchParams.get('track') === 'true'; // <--- YE PRIVACY CHECK HAI
@@ -21,15 +23,32 @@ export function ViewCVClient({ id }: { id: string }) {
   }, [id]);
 
   const fetchDocument = async (docId: string) => {
-    const { data, error } = await supabase.from('generated_documents').select('*').eq('id', docId).single();
+    const { data } = await supabase.from('generated_documents').select('*').eq('id', docId).single();
     if (data) {
       setDoc(data);
       setCurrentTemplate(data.template_name || 'classicgray');
+
+      // 🚨 PRIVACY: check karo ke viewer is document ka owner hai ya nahi.
+      // Track-document / email se aane wale shared viewers ko owner controls
+      // (Back to Dashboard, Edit, Save) kabhi nahi milna chahiye.
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        const ownerEmail = String(data.email || '').trim().toLowerCase();
+        const myEmail = String(user?.email || '').trim().toLowerCase();
+        const ownedByMe = !!user && (data.user_id
+          ? data.user_id === user.id
+          : (!!myEmail && ownerEmail === myEmail));
+        setIsOwner(ownedByMe);
+      } catch {
+        setIsOwner(false);
+      }
     }
     setLoading(false);
   };
 
   const handleSaveTemplate = async () => {
+    // Sirf owner hi document ka design save kar sakta hai
+    if (!isOwner) return;
     setSaving(true);
     const { error } = await supabase.from('generated_documents').update({ template_name: currentTemplate }).eq('id', id);
     if (error) alert("Error saving template: " + error.message);
@@ -53,16 +72,20 @@ export function ViewCVClient({ id }: { id: string }) {
       <div className="bg-white shadow-sm py-4 px-6 sticky top-0 z-50 print:hidden">
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           
-          {/* 🚨 PRIVACY FIX: Track vs Dashboard Back Button */}
-          {isTracked ? (
-            <Link href="/track-document" className="flex items-center gap-2 text-gray-600 hover:text-blue-600 font-medium">
-              <ArrowLeft size={18} /> Back to Track Document
-            </Link>
-          ) : (
-            <Link href="/dashboard" className="flex items-center gap-2 text-gray-600 hover:text-blue-600 font-medium">
-              <ArrowLeft size={18} /> Back to Dashboard
-            </Link>
-          )}
+          {/* 🚨 PRIVACY FIX: "Back to Dashboard" sirf document ka asli owner dekhega.
+              Shared / track-document viewer ko sirf view-mode milta hai. */}
+          <div>
+            {isOwner && !isTracked && (
+              <Link href="/dashboard" className="flex items-center gap-2 text-gray-600 hover:text-blue-600 font-medium">
+                <ArrowLeft size={18} /> Back to Dashboard
+              </Link>
+            )}
+            {isTracked && (
+              <Link href="/track-document" className="flex items-center gap-2 text-gray-600 hover:text-blue-600 font-medium">
+                <ArrowLeft size={18} /> Back to Track Document
+              </Link>
+            )}
+          </div>
           
           <div className="flex flex-wrap items-center justify-center gap-3">
             {/* Template Switcher (Only for CV) */}
@@ -75,14 +98,14 @@ export function ViewCVClient({ id }: { id: string }) {
               </div>
             )}
             
-            {doc.document_type === 'CV' && (
+            {doc.document_type === 'CV' && isOwner && (
               <button onClick={handleSaveTemplate} disabled={saving} className="flex items-center gap-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-100 transition">
                 {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Save Design
               </button>
             )}
 
-            {/* EDIT BUTTON (Sirf tab dikhega jab user apne dashboard se aaya ho) */}
-            {!isTracked && (
+            {/* EDIT BUTTON (Sirf owner ke liye, track/shared view mein kabhi nahi) */}
+            {!isTracked && isOwner && (
               <Link href={editLink} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-700 transition shadow-sm">
                 <Edit size={16} /> Edit Document
               </Link>

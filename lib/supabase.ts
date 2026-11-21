@@ -34,6 +34,13 @@ export const saveDocumentRecord = async (data: {
 };
 
 // Check Limit
+const PLAN_CV_SETTING_KEY: Record<string, string> = {
+  '3 Months': 'cvs_3m',
+  '6 Months': 'cvs_6m',
+  '1 Year': 'cvs_1y',
+  '5 Years': 'cvs_5y',
+};
+
 export const checkUserLimit = async (_userEmail?: string) => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { allowed: false, reason: 'not_logged_in' as const };
@@ -46,7 +53,7 @@ export const checkUserLimit = async (_userEmail?: string) => {
 
   const { data: settings, error: settingsError } = await supabase
     .from('app_settings')
-    .select('free_cv_limit')
+    .select('free_cv_limit, cvs_3m, cvs_6m, cvs_1y, cvs_5y')
     .eq('id', 1)
     .single();
 
@@ -61,6 +68,14 @@ export const checkUserLimit = async (_userEmail?: string) => {
       const expiry = new Date(profile.subscription_expiry);
       const now = new Date();
       if (expiry > now) {
+        // 🚨 Plan ka CV allowance admin settings + purchased total, jo bhi zyada ho.
+        const planKey = PLAN_CV_SETTING_KEY[profile.subscription_type];
+        const planCVs = planKey ? Number((settings as any)[planKey]) || 0 : 0;
+        const allowedCVs = Math.max(Number(profile.total_allowed_cvs) || 0, planCVs);
+        const used = profile.free_cv_count || 0;
+        if (allowedCVs > 0 && used >= allowedCVs) {
+          return { allowed: false, isPro: true, reason: 'pro_limit_reached' as const };
+        }
         return { allowed: true, isPro: true, reason: 'pro_active' as const };
       }
       await supabase
