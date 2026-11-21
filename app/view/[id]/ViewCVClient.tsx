@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Loader2, ArrowLeft, Printer, Save, LayoutTemplate, Edit } from 'lucide-react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation'; // <--- YE IMPORTANT HAI
 
 export function ViewCVClient({ id }: { id: string }) {
   const [doc, setDoc] = useState<any>(null);
@@ -13,8 +13,7 @@ export function ViewCVClient({ id }: { id: string }) {
   const [currentTemplate, setCurrentTemplate] = useState('classicgray');
   
   const searchParams = useSearchParams();
-  const isTracked = searchParams.get('track') === 'true'; // Privacy Check
-
+  const isTracked = searchParams.get('track') === 'true'; // <--- YE PRIVACY CHECK HAI
   const templatesList = ['classicgray', 'modern', 'classic', 'minimal', 'creative', 'executive', 'elegant', 'tech', 'corporate', 'simple', 'bold', 'timeline', 'compact', 'bluecorporate', 'redexecutive', 'greenprofessional', 'darkmode', 'blueheader', 'professional'];
 
   useEffect(() => {
@@ -60,9 +59,15 @@ export function ViewCVClient({ id }: { id: string }) {
               <ArrowLeft size={18} /> Back to Track Document
             </Link>
           ) : (
+                      {isTracked ? (
+            <Link href="/track-document" className="flex items-center gap-2 text-gray-600 hover:text-blue-600 font-medium">
+              <ArrowLeft size={18} /> Back to Track Document
+            </Link>
+          ) : (
             <Link href="/dashboard" className="flex items-center gap-2 text-gray-600 hover:text-blue-600 font-medium">
               <ArrowLeft size={18} /> Back to Dashboard
             </Link>
+          )}
           )}
           
           <div className="flex flex-wrap items-center justify-center gap-3">

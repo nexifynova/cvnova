@@ -49,7 +49,7 @@ export default function Navbar() {
     }, 150); 
   };
 
-  // Default menu (Wapis Track Document add kar diya gaya hai)
+  // 🚨 FIX: Yahan link ko exact '/track-document' kiya gaya hai
   const defaultMenu = [
     { label: 'CV Builder', href: '/builder', visible: true },
     { label: 'Cover Letter', href: '/cover-letter', visible: true },
