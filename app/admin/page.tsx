@@ -68,7 +68,7 @@ export default function AdminPanel() {
     setIsUpdating(true);
     
     try {
-      let payloadValue = inputValue;
+      let payloadValue: string | boolean = inputValue;
       if (modalAction === 'deactivate') payloadValue = inputValue === 'true'; // Boolean convert
 
       const res = await fetch('/api/update-user', {
