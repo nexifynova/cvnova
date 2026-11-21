@@ -8,7 +8,7 @@ export async function POST(req: Request) {
     // Admin privileges ke liye Service Key use karni hai
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_bd! 
+      process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_bd!
     );
 
     if (action === 'toggle_deactivate') {

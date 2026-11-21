@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     const { email, password } = await req.json();
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const supabaseKey = process.env.SUPABASE_SERVICE_KEY || '';
+    const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_bd || '';
 
     if (!supabaseUrl || !supabaseKey) {
        return NextResponse.json({ error: 'Server config error: Missing ENV in Vercel' }, { status: 500 });

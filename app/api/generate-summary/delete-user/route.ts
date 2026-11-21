@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     // Admin privileges use karne ke liye (Vercel wala naam)
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_KEY! 
+      process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_bd! 
     );
 
     // 1. Delete user's profile data

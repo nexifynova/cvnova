@@ -8,7 +8,7 @@ export async function POST(req: Request) {
     // Aapke Vercel ke mutabiq variable ka naam 'bd' kar diya gaya hai
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_bd!
+      process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_bd!
     );
 
     // 1. Admin Panel ke liye Database mein save karein
