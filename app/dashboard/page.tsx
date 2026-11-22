@@ -252,7 +252,7 @@ export default function Dashboard() {
                     <td className="px-6 py-4 text-gray-500">{new Date(p.created_at).toLocaleDateString()}</td>
                     <td className="px-6 py-4 font-medium text-gray-900">{p.package_type}</td>
                     <td className="px-6 py-4 font-bold text-gray-900">${p.amount}</td>
-                    <td className="px-6 py-4"><span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 w-fit ${p.status === 'approved' ? 'bg-green-100 text-green-700' : p.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>{p.status === 'approved' && <CheckCircle2 size={12}/>}{p.status === 'rejected' && <XCircle size={12}/>}{p.status === 'pending' && <Clock size={12}/>}{p.status.toUpperCase()}</span></td>
+                    <td className="px-6 py-4"><span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 w-fit ${p.status === 'approved' ? 'bg-green-100 text-green-700' : p.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>{p.status === 'approved' && <CheckCircle2 size={12}/>}{p.status === 'rejected' && <XCircle size={12}/>}{p.status === 'pending' && <Clock size={12}/>}{p.status === 'pending' ? 'IN CHECKING' : p.status.toUpperCase()}</span></td>
                   </tr>
                 ))}
                 {payments.length === 0 && (<tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">No payments made yet.</td></tr>)}
