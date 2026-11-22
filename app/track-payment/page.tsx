@@ -5,6 +5,12 @@ import { supabase } from '@/lib/supabase';
 import { Search, Loader2, ArrowLeft, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import Link from 'next/link';
 
+const STATUS_LABEL: Record<string, string> = {
+  pending: 'IN CHECKING',
+  approved: 'APPROVED',
+  rejected: 'REJECTED',
+};
+
 export default function TrackPayment() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -41,6 +47,9 @@ export default function TrackPayment() {
         <div className="bg-white/5 p-8 rounded-3xl border border-white/10 shadow-2xl">
           <h1 className="text-3xl font-bold mb-2">Track Your Payment</h1>
           <p className="text-gray-400 text-sm mb-8">Enter the email address you used during payment to check your approval status.</p>
+          <div className="flex items-center gap-2 text-xs text-amber-300/80 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2 mb-6">
+            <Clock size={14} /> <span><strong>In Checking</strong> = aap ki payment verify ho rahi hai. Approve hone par plan/CVs turant apply ho jate hain.</span>
+          </div>
           
           <form onSubmit={handleSearch} className="flex gap-2 mb-8">
             <div className="relative flex-1">
@@ -86,7 +95,7 @@ export default function TrackPayment() {
                         {p.status === 'approved' && <CheckCircle2 size={14}/>}
                         {p.status === 'rejected' && <XCircle size={14}/>}
                         {p.status === 'pending' && <Clock size={14}/>}
-                        {p.status.toUpperCase()}
+                        {STATUS_LABEL[p.status] || p.status.toUpperCase()}
                       </span>
                     </div>
                   </div>

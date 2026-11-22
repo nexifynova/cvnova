@@ -30,6 +30,8 @@ export default function CoverLetter() {
   const [template, setTemplate] = useState('modern');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  // Duplicate save se bachne ke liye last saved document ka snapshot
+  const [lastSavedSnapshot, setLastSavedSnapshot] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -88,21 +90,30 @@ export default function CoverLetter() {
 
     if (actionType === 'save') setIsSaving(true);
 
-    try {
-      await saveDocumentRecord({
-        documentType: 'Cover Letter',
-        templateName: template,
-        fullName: formData.fullName,
-        email: userEmail,
-        phone: formData.phone,
-        fullData: formData,
-      });
+    // Same letter dobara save karne se CV/document count double na ho
+    const snapshot = JSON.stringify({ template, formData });
+    const alreadySaved = snapshot === lastSavedSnapshot;
 
-      if (isLoggedIn) await incrementUserCount(userEmail);
+    try {
+      if (!alreadySaved) {
+        await saveDocumentRecord({
+          documentType: 'Cover Letter',
+          templateName: template,
+          fullName: formData.fullName,
+          email: userEmail,
+          phone: formData.phone,
+          fullData: formData,
+        });
+
+        if (isLoggedIn) await incrementUserCount(userEmail);
+        setLastSavedSnapshot(snapshot);
+      }
 
       if (actionType === 'save') {
-        alert("Cover Letter Successfully Saved to your Dashboard!");
-        window.location.href = '/dashboard';
+        // Save hone ke baad dashboard kholne ka option
+        if (confirm("✅ Cover Letter successfully saved to your Dashboard!\n\nAb My Dashboard kholein?")) {
+          window.location.href = '/dashboard';
+        }
       } else {
         setTimeout(() => { window.print(); }, 500);
       }
@@ -183,11 +194,14 @@ export default function CoverLetter() {
           </div>
 
           <div className="flex flex-col gap-2 pt-4 border-t border-gray-200">
-            <button type="button" onClick={() => handleAction('save')} disabled={isSaving} className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-emerald-700 transition shadow-md">
-              {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />} 
-              {isSaving ? 'Saving...' : 'Save to Dashboard'}
+            <button type="button" onClick={() => handleAction('save')} disabled={isSaving} className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-emerald-700 transition shadow-md disabled:opacity-60">
+              {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+              {isSaving ? 'Saving to Dashboard...' : 'Save on Dashboard'}
             </button>
-            <div className="flex gap-2 w-full mt-2">
+            <p className="text-[11px] text-gray-500 text-center">
+              Ye letter aap ke <strong>My Dashboard</strong> mein save ho jayegi. Print / PDF / Word sirf copy download karne ke liye hain.
+            </p>
+            <div className="flex gap-2 w-full mt-1">
               <button type="button" onClick={() => handleAction('print')} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-gray-800 transition">
                 <Printer size={18} /> Print
               </button>

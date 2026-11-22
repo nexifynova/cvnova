@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Settings, CreditCard, MessageSquare, ArrowLeft, Image as ImageIcon, Link as LinkIcon, IndianRupee, Phone, LogOut, Key, X, Loader2, Eye, EyeOff, Headphones } from 'lucide-react';
+import { LayoutDashboard, Settings, CreditCard, MessageSquare, ArrowLeft, Image as ImageIcon, Link as LinkIcon, IndianRupee, Phone, LogOut, Key, X, Loader2, Eye, EyeOff, Headphones, TrendingUp } from 'lucide-react';
 import { Suspense, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
@@ -32,6 +32,7 @@ function SidebarNavigation() {
   const menuItems = [
     { name: 'Overview', href: '/admin', icon: LayoutDashboard },
     { name: 'Payments', href: '/admin/payments', icon: CreditCard },
+    { name: 'Revenue Received', href: '/admin/revenue', icon: TrendingUp },
     { name: 'Support / Messages', href: '/admin/messages', icon: Headphones, badge: unreadSupport },
     { name: 'Settings', href: '/admin/settings', icon: Settings },
   ];

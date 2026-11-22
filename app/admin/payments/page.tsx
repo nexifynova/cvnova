@@ -5,6 +5,13 @@ import { supabase } from '@/lib/supabase';
 import { Check, X, ExternalLink, Loader2, ArrowLeft, Clock, CheckCircle2, XCircle, Search, RefreshCcw } from 'lucide-react';
 import Link from 'next/link';
 
+// 🚨 Status labels: "pending" ka matlab hai payment abhi CHECKING PROCESS mein hai
+const STATUS_LABEL: Record<string, string> = {
+  pending: 'In Checking',
+  approved: 'Approved',
+  rejected: 'Rejected',
+};
+
 export default function AdminPayments() {
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,11 +38,30 @@ export default function AdminPayments() {
     setLoading(false);
   };
 
-  const handleAction = async (payment: any, actionStatus: 'approved' | 'rejected') => {
-    const isReverting = (payment.status === 'approved' && actionStatus === 'rejected');
-    const confirmText = isReverting ? 'disapprove (revert)' : actionStatus;
+  // 🚨 Admin ke paas har payment ka FULL status control hai:
+  //   pending  = "Payment in checking process" (abhi verify ho rahi hai)
+  //   approved = payment received -> user ko plan/CVs mil jate hain
+  //   rejected = payment reject -> agar pehle approved thi to benefit revert ho jata hai
+  // Admin kisi bhi waqt koi bhi status laga sakta hai (galti se approve/reject bhi theek ho sakta hai).
+  const handleAction = async (payment: any, newStatus: 'pending' | 'approved' | 'rejected') => {
+    const wasApproved = payment.status === 'approved';
+    const willBeApproved = newStatus === 'approved';
+    const isGranting = !wasApproved && willBeApproved;   // naya benefit dena hai
+    const isReverting = wasApproved && !willBeApproved;  // diya hua benefit wapas lena hai
 
-    if (!confirm(`Are you sure you want to ${confirmText} this payment?`)) return;
+    const confirmMessages: Record<string, string> = {
+      approved: isGranting
+        ? 'APPROVE this payment (user ko plan/CVs mil jayenge)'
+        : 'mark this payment as APPROVED',
+      rejected: isReverting
+        ? 'DISAPPROVE this payment (user ke plan/CVs revert ho jayenge)'
+        : 'REJECT this payment',
+      pending: isReverting
+        ? 'move this payment back to IN CHECKING (user ke plan/CVs revert ho jayenge)'
+        : 'mark this payment as IN CHECKING (payment verify ho rahi hai)',
+    };
+
+    if (!confirm(`Are you sure you want to ${confirmMessages[newStatus]}?`)) return;
     
     setProcessing(payment.id);
 
@@ -43,7 +69,11 @@ export default function AdminPayments() {
       // 1. Update Payment Status
       const { error: payError } = await supabase
         .from('payments')
-        .update({ status: actionStatus, approved_at: new Date().toISOString() })
+        .update({
+          status: newStatus,
+          approved_at: willBeApproved ? new Date().toISOString() : null,
+          updated_at: new Date().toISOString(),
+        })
         .eq('id', payment.id);
 
       if (payError) throw payError;
@@ -56,7 +86,7 @@ export default function AdminPayments() {
         .single();
 
       // 2. Handle User Profile Updates
-      if (actionStatus === 'approved') {
+      if (isGranting) {
         if (payment.package_type === 'Additional CVs') {
           const { data: settings } = await supabase.from('app_settings').select('cvs_per_price').eq('id', 1).single();
           const cvsBought = Number(settings?.cvs_per_price) || 5;
@@ -113,7 +143,7 @@ export default function AdminPayments() {
         }
       }
 
-      alert(`Payment successfully ${isReverting ? 'reverted' : actionStatus}!`);
+      alert(`Payment status updated to "${STATUS_LABEL[newStatus]}".`);
       fetchPayments();
     } catch (error: any) {
       alert("Error: " + error.message);
@@ -135,12 +165,21 @@ export default function AdminPayments() {
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center gap-4 mb-8">
           <Link href="/admin" className="p-2 bg-white rounded-lg shadow-sm hover:bg-gray-100 transition"><ArrowLeft size={20} /></Link>
-          <div><h1 className="text-3xl font-bold text-gray-900">Payment Approvals</h1><p className="text-sm text-gray-500 mt-1">Approve or disapprove user payments</p></div>
+          <div><h1 className="text-3xl font-bold text-gray-900">Payment Approvals</h1><p className="text-sm text-gray-500 mt-1">Approve, disapprove ya "In Checking" — har payment ka status aap ke control mein hai</p></div>
+        </div>
+
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs sm:text-sm rounded-xl px-4 py-3 mb-6 flex items-start gap-2">
+          <Clock size={18} className="mt-0.5 shrink-0" />
+          <p>
+            <strong>Status control:</strong> <em>In Checking</em> = payment abhi verify ho rahi hai, <em>Approved</em> = payment receive ho gayi (plan/CVs user ko mil jate hain),
+            <em> Rejected</em> = payment reject. Galti se approve ho jaye to <strong>Disapprove</strong> dabayein — user ke CVs/plan khud revert ho jayenge, aur dobara approve karne par
+            wapas apply ho jayenge. Approved revenue <Link href="/admin/revenue" className="underline font-bold">Revenue Received</Link> mein automatically dikhti hai.
+          </p>
         </div>
         
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input type="text" placeholder="Search by email or transaction ID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-blue-500 bg-white" /></div>
-          <select value={filter} onChange={(e) => setFilter(e.target.value)} className="px-4 py-3 rounded-xl border border-gray-200 outline-none bg-white font-medium"><option value="all">All Status</option><option value="pending">Pending Only</option><option value="approved">Approved Only</option><option value="rejected">Rejected Only</option></select>
+          <select value={filter} onChange={(e) => setFilter(e.target.value)} className="px-4 py-3 rounded-xl border border-gray-200 outline-none bg-white font-medium"><option value="all">All Status</option><option value="pending">In Checking</option><option value="approved">Approved Only</option><option value="rejected">Rejected Only</option></select>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -154,11 +193,25 @@ export default function AdminPayments() {
                     <td className="px-6 py-4 font-medium text-gray-900">{p.user_email}</td>
                     <td className="px-6 py-4 text-blue-600 font-semibold whitespace-nowrap">{p.package_type}</td>
                     <td className="px-6 py-4 font-bold text-gray-900">${p.amount}</td>
-                    <td className="px-6 py-4"><span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 w-fit ${p.status === 'approved' ? 'bg-green-100 text-green-700' : p.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>{p.status === 'approved' && <CheckCircle2 size={12}/>}{p.status === 'rejected' && <XCircle size={12}/>}{p.status === 'pending' && <Clock size={12}/>}{p.status.toUpperCase()}</span></td>
+                    <td className="px-6 py-4"><span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 w-fit ${p.status === 'approved' ? 'bg-green-100 text-green-700' : p.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>{p.status === 'approved' && <CheckCircle2 size={12}/>}{p.status === 'rejected' && <XCircle size={12}/>}{p.status === 'pending' && <Clock size={12}/>}{(STATUS_LABEL[p.status] || p.status).toUpperCase()}</span></td>
                     <td className="px-6 py-4">
-                      {p.status === 'pending' ? (
-                        <div className="flex gap-2"><button onClick={() => handleAction(p, 'approved')} disabled={processing === p.id} className="flex items-center gap-1 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition font-medium text-xs disabled:opacity-50">{processing === p.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Approve</button><button onClick={() => handleAction(p, 'rejected')} disabled={processing === p.id} className="flex items-center gap-1 bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition font-medium text-xs disabled:opacity-50">{processing === p.id ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />} Reject</button></div>
-                      ) : (<span className="text-xs text-gray-400 italic">Processed</span>)}
+                      <div className="flex flex-wrap gap-2">
+                        {p.status !== 'approved' && (
+                          <button onClick={() => handleAction(p, 'approved')} disabled={processing === p.id} title="Approve payment" className="flex items-center gap-1 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition font-medium text-xs disabled:opacity-50">
+                            {processing === p.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Approve
+                          </button>
+                        )}
+                        {p.status !== 'pending' && (
+                          <button onClick={() => handleAction(p, 'pending')} disabled={processing === p.id} title="Payment abhi check ho rahi hai" className="flex items-center gap-1 bg-amber-500 text-white px-3 py-2 rounded-lg hover:bg-amber-600 transition font-medium text-xs disabled:opacity-50">
+                            {processing === p.id ? <Loader2 size={14} className="animate-spin" /> : <Clock size={14} />} In Checking
+                          </button>
+                        )}
+                        {p.status !== 'rejected' && (
+                          <button onClick={() => handleAction(p, 'rejected')} disabled={processing === p.id} title={p.status === 'approved' ? 'Disapprove & revert plan/CVs' : 'Reject payment'} className="flex items-center gap-1 bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition font-medium text-xs disabled:opacity-50">
+                            {processing === p.id ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />} {p.status === 'approved' ? 'Disapprove' : 'Reject'}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

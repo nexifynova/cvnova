@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { FileText, Mail, Briefcase, ExternalLink, Phone, Settings, Users, Trash2, Loader2, ShieldCheck, CreditCard, Search, Eye, Filter, FolderOpen, Ban, Calendar, FilePlus } from 'lucide-react';
+import { FileText, Mail, Briefcase, ExternalLink, Phone, Settings, Users, Trash2, Loader2, ShieldCheck, CreditCard, Search, Eye, Filter, FolderOpen, Ban, Calendar, FilePlus, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AdminPanel() {
@@ -109,6 +109,7 @@ export default function AdminPanel() {
         <h1 className="text-3xl font-bold text-gray-900">CVNova Admin Panel</h1>
         <div className="flex flex-wrap items-center gap-3">
           <Link href="/admin/payments" className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-blue-600 bg-white px-4 py-2 rounded-lg border shadow-sm transition"><CreditCard size={16} /> Payments</Link>
+          <Link href="/admin/revenue" className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-emerald-600 bg-white px-4 py-2 rounded-lg border shadow-sm transition"><TrendingUp size={16} /> Revenue Received</Link>
           <Link href="/admin/settings" className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-blue-600 bg-white px-4 py-2 rounded-lg border shadow-sm transition"><Settings size={16} /> Settings</Link>
           <Link href="/" className="text-sm font-medium text-blue-600 hover:underline">Back to Website</Link>
         </div>

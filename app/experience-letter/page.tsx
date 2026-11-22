@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, Printer, Download, Loader2, RefreshCw, Info, Sparkles } from 'lucide-react';
+import { ArrowLeft, Printer, Download, Loader2, RefreshCw, Info, Sparkles, Save } from 'lucide-react';
 import Link from 'next/link';
 import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount } from '@/lib/supabase';
 import { downloadAsWord, downloadAsPDF } from '@/lib/download-utils';
@@ -30,6 +30,9 @@ export default function ExperienceLetter() {
   const [template, setTemplate] = useState('modern');
   const [loading, setLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  // "Save on Dashboard" ke liye: loading state + last saved snapshot (duplicate save se bachne ke liye)
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSavedSnapshot, setLastSavedSnapshot] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -51,39 +54,67 @@ export default function ExperienceLetter() {
     setIsGenerating(false);
   };
 
-  const handleAction = async () => {
-    setLoading(true);
+  // actionType: 'print' = sirf print, 'save' = My Dashboard mein save karke dashboard kholna
+  const handleAction = async (actionType: 'print' | 'save' = 'print') => {
+    if (actionType === 'save') setIsSaving(true); else setLoading(true);
+
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     let userEmail = 'N/A';
     let isLoggedIn = false;
 
     if (user && user.email) {
       userEmail = user.email;
       isLoggedIn = true;
-      
+
       const limitCheck = await checkUserLimit(userEmail);
       if (!limitCheck.allowed) {
         alert("You have reached your document limit for your current plan. Please upgrade to continue.");
         window.location.href = '/payment';
         setLoading(false);
+        setIsSaving(false);
         return;
       }
+    } else if (actionType === 'save') {
+      // Dashboard mein save karne ke liye login zaroori hai
+      alert("Experience Letter apne Dashboard mein save karne ke liye pehle login karein.");
+      window.location.href = '/login';
+      setLoading(false);
+      setIsSaving(false);
+      return;
     }
 
-    await saveDocumentRecord({
-      documentType: 'Experience Letter',
-      templateName: template,
-      fullName: formData.employeeName,
-      email: userEmail,
-      phone: 'N/A',
-      fullData: formData,
-    });
+    // Same letter dobara save karne se document count double na ho
+    const snapshot = JSON.stringify({ template, formData });
+    const alreadySaved = snapshot === lastSavedSnapshot;
 
-    if (isLoggedIn) await incrementUserCount(userEmail);
-    
-    setLoading(false);
-    setTimeout(() => { window.print(); }, 500);
+    try {
+      if (!alreadySaved) {
+        await saveDocumentRecord({
+          documentType: 'Experience Letter',
+          templateName: template,
+          fullName: formData.employeeName,
+          email: userEmail,
+          phone: 'N/A',
+          fullData: formData,
+        });
+
+        if (isLoggedIn) await incrementUserCount(userEmail);
+        setLastSavedSnapshot(snapshot);
+      }
+
+      if (actionType === 'save') {
+        // Save hone ke baad dashboard kholne ka option
+        if (confirm("✅ Experience Letter successfully saved to your Dashboard!\n\nAb My Dashboard kholein?")) {
+          window.location.href = '/dashboard';
+        }
+      } else {
+        setTimeout(() => { window.print(); }, 500);
+      }
+    } finally {
+      setLoading(false);
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -157,16 +188,27 @@ export default function ExperienceLetter() {
             <div><label className="block text-xs font-semibold text-gray-600 mb-1">Designation</label><input type="text" name="signatoryDesignation" value={formData.signatoryDesignation} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border text-sm" /></div>
           </div>
 
-          <div className="flex gap-2 pt-4 border-t border-gray-200">
-            <button type="button" onClick={handleAction} disabled={loading} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-gray-800 transition disabled:opacity-50">
-              {loading ? <Loader2 size={18} className="animate-spin" /> : <Printer size={18} />} Print
+          <div className="pt-4 border-t border-gray-200">
+            {/* 🚨 SAVE ON DASHBOARD: ye letter user ke apne profile/dashboard mein save karta hai */}
+            <button type="button" onClick={() => handleAction('save')} disabled={isSaving} className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white px-3 py-3 rounded-xl font-bold text-sm hover:bg-emerald-700 transition shadow-md disabled:opacity-60">
+              {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+              {isSaving ? 'Saving to Dashboard...' : 'Save on Dashboard'}
             </button>
-            <button type="button" onClick={() => downloadAsPDF('exp-preview', formData.employeeName || 'Experience-Letter')} className="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-red-700 transition">
-              <Download size={18} /> PDF
-            </button>
-            <button type="button" onClick={() => downloadAsWord('exp-preview', formData.employeeName || 'Experience-Letter')} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-blue-700 transition">
-              <Download size={18} /> Word
-            </button>
+            <p className="text-[11px] text-gray-500 text-center mt-2">
+              Ye letter aap ke <strong>My Dashboard</strong> mein save ho jayegi. Print / PDF / Word sirf copy download karne ke liye hain.
+            </p>
+
+            <div className="flex gap-2 mt-3">
+              <button type="button" onClick={() => handleAction('print')} disabled={loading} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-gray-800 transition disabled:opacity-50">
+                {loading ? <Loader2 size={18} className="animate-spin" /> : <Printer size={18} />} Print
+              </button>
+              <button type="button" onClick={() => downloadAsPDF('exp-preview', formData.employeeName || 'Experience-Letter')} className="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-red-700 transition">
+                <Download size={18} /> PDF
+              </button>
+              <button type="button" onClick={() => downloadAsWord('exp-preview', formData.employeeName || 'Experience-Letter')} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-blue-700 transition">
+                <Download size={18} /> Word
+              </button>
+            </div>
           </div>
         </div>
 

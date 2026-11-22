@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import Image from 'next/image';
-import { Sparkles, ArrowLeft, Download, Printer, Plus, Trash2, Loader2, Camera, Upload, RefreshCw } from 'lucide-react';
+import { Sparkles, ArrowLeft, Download, Printer, Plus, Trash2, Loader2, Camera, Upload, RefreshCw, Save } from 'lucide-react';
 import Link from 'next/link';
 import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount } from '@/lib/supabase';
 import { downloadAsWord, downloadAsPDF } from '@/lib/download-utils';
@@ -38,6 +38,9 @@ export default function Builder() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingCert, setUploadingCert] = useState<number | null>(null);
+  // "Save on Dashboard" ke liye: loading state + last saved snapshot (duplicate save se bachne ke liye)
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSavedSnapshot, setLastSavedSnapshot] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -138,7 +141,8 @@ export default function Builder() {
     }
   };
 
-  const handleAction = async () => {
+  // actionType: 'print' = sirf print, 'save' = My Dashboard mein save karke dashboard kholna
+  const handleAction = async (actionType: 'print' | 'save' = 'print') => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user || !user.email) {
       alert("Aap login nahi hain.");
@@ -146,27 +150,50 @@ export default function Builder() {
       return;
     }
 
-    const limitCheck = await checkUserLimit(user.email);
-    if (limitCheck.reason === 'error_fallback') {
-      alert("Profile database mein nahi mili.");
-      return;
+    // Same CV ko baar baar save karne se CV count double na ho
+    const snapshot = JSON.stringify({ template, formData });
+    const alreadySaved = snapshot === lastSavedSnapshot;
+
+    // Naya document hai to hi limit check karo (already saved document count nahi barhata)
+    if (!alreadySaved) {
+      const limitCheck = await checkUserLimit(user.email);
+      if (limitCheck.reason === 'error_fallback') {
+        alert("Profile database mein nahi mili.");
+        return;
+      }
+      if (!limitCheck.allowed) {
+        alert("You have reached your document limit for your current plan. Please upgrade to create more documents.");
+        window.location.href = '/payment';
+        return;
+      }
     }
-    if (!limitCheck.allowed) {
-      alert("You have reached your document limit for your current plan. Please upgrade to create more documents.");
-      window.location.href = '/payment';
-      return;
+
+    if (actionType === 'save') setIsSaving(true);
+
+    try {
+      if (!alreadySaved) {
+        await saveDocumentRecord({
+          documentType: 'CV', templateName: template, fullName: formData.fullName,
+          email: user.email, phone: formData.phone, fullData: formData,
+        });
+
+        await incrementUserCount(user.email);
+        setLastSavedSnapshot(snapshot);
+      }
+
+      if (actionType === 'save') {
+        // Save hone ke baad user ko dashboard ka option do
+        if (confirm("✅ CV successfully saved to your Dashboard!\n\nAb My Dashboard kholein?")) {
+          window.location.href = '/dashboard';
+        }
+      } else {
+        setTimeout(() => {
+          window.print();
+        }, 500);
+      }
+    } finally {
+      setIsSaving(false);
     }
-
-    await saveDocumentRecord({
-      documentType: 'CV', templateName: template, fullName: formData.fullName,
-      email: user.email, phone: formData.phone, fullData: formData,
-    });
-
-    await incrementUserCount(user.email); 
-
-    setTimeout(() => { 
-      window.print(); 
-    }, 500); 
   };
 
   return (
@@ -343,16 +370,27 @@ export default function Builder() {
             ))}
           </div>
 
-          <div className="flex gap-2 pt-4 border-t border-gray-200">
-            <button type="button" onClick={handleAction} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-gray-800 transition">
-              <Printer size={18} /> Print
+          <div className="pt-4 border-t border-gray-200">
+            {/* 🚨 SAVE ON DASHBOARD: ye CV user ke apne profile/dashboard mein save karta hai */}
+            <button type="button" onClick={() => handleAction('save')} disabled={isSaving} className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white px-3 py-3 rounded-xl font-bold text-sm hover:bg-emerald-700 transition shadow-md disabled:opacity-60">
+              {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+              {isSaving ? 'Saving to Dashboard...' : 'Save on Dashboard'}
             </button>
-            <button type="button" onClick={() => downloadAsPDF('cv-preview', formData.fullName || 'CV')} className="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-red-700 transition">
-              <Download size={18} /> PDF
-            </button>
-            <button type="button" onClick={() => downloadAsWord('cv-preview', formData.fullName || 'CV')} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-blue-700 transition">
-              <Download size={18} /> Word
-            </button>
+            <p className="text-[11px] text-gray-500 text-center mt-2">
+              Ye CV aap ke <strong>My Dashboard</strong> mein save ho jayegi. Print / PDF / Word sirf copy download karne ke liye hain.
+            </p>
+
+            <div className="flex gap-2 mt-3">
+              <button type="button" onClick={() => handleAction('print')} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-gray-800 transition">
+                <Printer size={18} /> Print
+              </button>
+              <button type="button" onClick={() => downloadAsPDF('cv-preview', formData.fullName || 'CV')} className="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-red-700 transition">
+                <Download size={18} /> PDF
+              </button>
+              <button type="button" onClick={() => downloadAsWord('cv-preview', formData.fullName || 'CV')} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-blue-700 transition">
+                <Download size={18} /> Word
+              </button>
+            </div>
           </div>
         </div>
 
