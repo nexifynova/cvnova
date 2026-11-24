@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import bcrypt from 'bcryptjs';
 
 export async function POST(req: Request) {
   try {
@@ -18,16 +19,20 @@ export async function POST(req: Request) {
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
 
+    // Hash the new password with bcrypt (never store plain text).
+    const passwordHash = await bcrypt.hash(String(newPassword), 10);
+
     // Update the admin password. Assuming there is only one admin master account.
     const { error } = await supabaseAdmin
       .from('admin_users')
-      .update({ password: newPassword })
+      .update({ password: passwordHash })
       .neq('email', ''); // Updates the admin account
 
     if (error) throw error;
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

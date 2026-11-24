@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import bcrypt from 'bcryptjs';
 
 // Yeh GET sirf test karne ke liye hai
 export async function GET() {
@@ -9,6 +10,10 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const { email, password } = await req.json();
+
+    if (!email || !password) {
+      return NextResponse.json({ error: 'Email aur password zaroori hain!' }, { status: 400 });
+    }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
     const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_bd || '';
@@ -21,9 +26,9 @@ export async function POST(req: Request) {
 
     const { data, error } = await supabaseAdmin
       .from('admin_users')
-      .select('*')
+      .select('id, email, password')
       .eq('email', email)
-      .eq('password', password)
+      // (password is verified below with bcrypt)
       .maybeSingle();
 
     if (error) {
@@ -31,6 +36,31 @@ export async function POST(req: Request) {
     }
 
     if (!data) {
+      return NextResponse.json({ error: 'Email ya Password galat hai!' }, { status: 401 });
+    }
+
+    // Verify the submitted plain-text password against the stored bcrypt hash.
+    const storedPassword = String(data.password || '');
+    const isBcryptHash =
+      storedPassword.startsWith('$2a$') ||
+      storedPassword.startsWith('$2b$') ||
+      storedPassword.startsWith('$2y$');
+    let passwordMatches = false;
+
+    if (isBcryptHash) {
+      passwordMatches = await bcrypt.compare(String(password), storedPassword);
+    } else if (storedPassword !== '' && storedPassword === password) {
+      // Legacy plain-text row: allow one login, then transparently upgrade it to a hash.
+      passwordMatches = true;
+      try {
+        const upgradedHash = await bcrypt.hash(String(password), 10);
+        await supabaseAdmin.from('admin_users').update({ password: upgradedHash }).eq('id', data.id);
+      } catch {
+        // Upgrade is best-effort; the login itself still succeeds.
+      }
+    }
+
+    if (!passwordMatches) {
       return NextResponse.json({ error: 'Email ya Password galat hai!' }, { status: 401 });
     }
 
@@ -43,7 +73,8 @@ export async function POST(req: Request) {
     });
 
     return response;
-  } catch (error: any) {
-    return NextResponse.json({ error: `System Error: ${error.message}` }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: `System Error: ${message}` }, { status: 500 });
   }
 }
