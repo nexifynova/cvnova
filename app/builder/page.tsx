@@ -8,6 +8,7 @@ import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount, authe
 import { downloadAsWord, downloadAsPDF } from '@/lib/download-utils';
 import CVTemplateRenderer from '@/components/cv/CVTemplateRenderer';
 import AtsBadge from '@/components/AtsBadge';
+import PlanBadge from '@/components/PlanBadge';
 import PricingModal, { type PricingReason } from '@/components/PricingModal';
 import { TEMPLATES, EXTRA_CV_FIELDS, getTemplate, ATS_META } from '@/lib/templates';
 
@@ -292,7 +293,7 @@ export default function Builder() {
                     Blue ATS {account.ats.used}/{account.ats.limit}
                   </span>
                 )}
-                {isPaidAccount && <span className="rounded-full bg-emerald-100 px-2 py-1 font-bold text-emerald-700">Premium unlocked</span>}
+                <PlanBadge plan={account?.plan} size="sm" hideSubtitle />
               </div>
             </div>
             <div className="grid max-h-64 grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3">

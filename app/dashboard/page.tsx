@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { FileText, LogOut, Plus, ExternalLink, Loader2, Mail, Briefcase, CreditCard, Clock, CheckCircle2, XCircle, ShieldCheck, Crown, Search, Filter, Calendar, Edit2, X, Share2, RefreshCw, Trash2, Send, Eye, EyeOff, MessageSquare, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import AtsBadge from '@/components/AtsBadge';
+import PlanBadge from '@/components/PlanBadge';
 import { getTemplate } from '@/lib/templates';
 
 // Plan ka naam -> app_settings mein us plan ke CVs wala column
@@ -30,6 +31,7 @@ export default function Dashboard() {
   const [account, setAccount] = useState<any>(null);
   const [consent, setConsent] = useState({ shareCv: false, allowContact: false, marketing: false });
   const [consentSaving, setConsentSaving] = useState(false);
+  const [consentFlash, setConsentFlash] = useState(false);
   const [visibilitySaving, setVisibilitySaving] = useState<string | null>(null);
   const [inbox, setInbox] = useState<any[]>([]);
   const [inboxOpen, setInboxOpen] = useState(false);
@@ -199,9 +201,6 @@ export default function Dashboard() {
     currentLimit = Math.max(Number(profile?.total_allowed_cvs) || 0, planCVs) || currentLimit;
   }
 
-  const uniquePackages = [...new Set(payments.map(p => p.package_type))].filter(p => p !== 'Additional CVs');
-  const accountTypeDisplay = uniquePackages.length > 0 ? uniquePackages.join(', ') : (profile?.subscription_type || 'Free');
-
   const filteredDocuments = documents.filter((doc) => {
     if (searchTerm && !doc.full_name?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
     if (filterType !== 'All' && doc.document_type !== filterType) return false;
@@ -240,6 +239,7 @@ export default function Dashboard() {
   };
 
   const saveConsent = async (patch: Partial<typeof consent>) => {
+    const previous = consent;
     const next = { ...consent, ...patch };
     // Contact consent is meaningless without CV sharing consent.
     if (!next.shareCv) next.allowContact = false;
@@ -257,7 +257,13 @@ export default function Dashboard() {
       }
       await loadAccountState();
     } catch (err: any) {
-      alert("Error: " + err.message);
+      // Roll the checkbox back so the UI never shows a state that wasn't saved.
+      setConsent(previous);
+      const message = String(err?.message || err);
+      const migrationHint = /column|schema|does not exist/i.test(message)
+        ? '\n\nNaye database columns missing hain. Supabase → SQL Editor mein supabase/cvnova_upgrade.sql chala kar "Run" karein, phir dobara koshish karein.'
+        : '';
+      alert("Consent could not be saved. " + message + migrationHint);
     } finally {
       setConsentSaving(false);
     }
@@ -269,7 +275,10 @@ export default function Dashboard() {
       return;
     }
     if (!consent.shareCv) {
-      alert("Turn on \"Show my CV to companies\" in the privacy centre first.");
+      // Instead of a dead-end alert, guide the user straight to the privacy centre.
+      setConsentFlash(true);
+      document.getElementById('consent-centre')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      window.setTimeout(() => setConsentFlash(false), 2600);
       return;
     }
     const next = doc.is_public !== true;
@@ -388,8 +397,8 @@ export default function Dashboard() {
             )}
           </div>
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <p className="text-sm text-gray-500 mb-1 flex items-center gap-2"><ShieldCheck size={16}/> Account Type</p>
-            <p className="text-2xl font-bold text-gray-900 capitalize">{accountTypeDisplay}</p>
+            <p className="text-sm text-gray-500 mb-2 flex items-center gap-2"><ShieldCheck size={16}/> Account Type</p>
+            <PlanBadge profile={profile} plan={account?.plan} size="lg" />
           </div>
           <div className={`p-6 rounded-2xl shadow-sm border ${profile?.subscription_type !== 'free' && timeLeft !== 'Expired' ? 'bg-green-50 border-green-200' : 'bg-white border-gray-100'}`}>
             <p className="text-sm text-gray-500 mb-1 flex items-center gap-2"><Clock size={16}/> Subscription Expiry</p>
@@ -399,7 +408,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
+        <div id="consent-centre" className={`bg-white p-6 rounded-2xl shadow-sm border mb-6 transition-all ${consentFlash ? 'border-blue-400 ring-2 ring-blue-300' : 'border-gray-100'}`}>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
             <div className="flex items-center gap-2"><ShieldCheck className="text-blue-600" size={20} /><h2 className="text-lg font-bold text-gray-900">Privacy &amp; Consent Centre</h2></div>
             <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Policy {account?.consent?.version || 'v1'}</span>

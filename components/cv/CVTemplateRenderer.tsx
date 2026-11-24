@@ -1,6 +1,5 @@
 'use client';
 
-import { ATS_META, getTemplate } from '@/lib/templates';
 import { normalizeCV } from './shared';
 import ClassicGray from './templates/ClassicGray';
 import Modern from './templates/Modern';
@@ -59,24 +58,17 @@ const REGISTRY: Record<string, (p: { data: any }) => any> = {
 export default function CVTemplateRenderer({
   template,
   formData,
-  showAtsBadge = true,
 }: {
   template: string;
   formData: any;
-  showAtsBadge?: boolean;
 }) {
   const Component = REGISTRY[template] || REGISTRY.classicgray;
-  const meta = getTemplate(template);
-  const ats = ATS_META[meta.ats];
 
+  // NOTE: No ATS / "Premium · Free" watermark is rendered inside the CV.
+  // The exported document (screen, print, PDF, Word) must stay 100% branded-free
+  // so recruiters only see the candidate's content.
   return (
     <div className="relative">
-      {showAtsBadge && (
-        <div className={`absolute right-3 top-3 z-10 hidden items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold shadow-sm print:hidden md:inline-flex ${ats.className}`}>
-          <span className={`h-1.5 w-1.5 rounded-full ${ats.dot}`} /> {ats.short}
-          <span className="font-medium opacity-70">· {meta.tier === 'premium' ? 'Premium' : 'Free'}</span>
-        </div>
-      )}
       <Component data={normalizeCV(formData)} />
     </div>
   );

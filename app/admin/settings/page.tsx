@@ -46,10 +46,27 @@ function SettingsContent() {
 
   const handleSave = async () => {
     setSaving(true);
-    const { error } = await supabase.from('app_settings').update({ ...settings, updated_at: new Date().toISOString() }).eq('id', 1);
-    if (error) alert("Error: " + error.message);
-    else alert("Settings Saved Successfully!");
-    setSaving(false);
+    try {
+      // Only send real setting fields. `updated_at` is deliberately not sent:
+      // the migration never adds it to app_settings, and pushing a missing
+      // column is what made "Save Changes" fail with a DB error.
+      const payload: any = { ...settings };
+      delete payload.id;
+      delete payload.created_at;
+      delete payload.updated_at;
+
+      const { error } = await supabase.from('app_settings').update(payload).eq('id', 1);
+      if (error) throw error;
+      alert('Settings Saved Successfully!');
+    } catch (err: any) {
+      const message = String(err?.message || err);
+      const migrationHint = /column|schema|does not exist/i.test(message)
+        ? '\n\nDatabase mein naye columns missing hain. Supabase → SQL Editor mein supabase/cvnova_upgrade.sql chala kar "Run" karein, phir dobara Save karein.'
+        : '';
+      alert('Could not save settings: ' + message + migrationHint);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleChange = (e: any) => {

@@ -199,9 +199,12 @@ export default function AdminPanel() {
                       {user.free_cv_count || 0} / {user.total_allowed_cvs || 10}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase ${user.subscription_type === 'free' ? 'bg-gray-100 text-gray-600' : 'bg-green-100 text-green-700'}`}>
-                        {user.subscription_type || 'Free'}
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold uppercase ${!user.subscription_type || user.subscription_type === 'free' ? 'bg-slate-100 text-slate-600' : 'bg-amber-100 text-amber-800'}`}>
+                        {!user.subscription_type || user.subscription_type === 'free' ? 'Basic' : 'Premium'}
                       </span>
+                      {user.subscription_type && user.subscription_type !== 'free' && (
+                        <p className="text-[10px] font-semibold text-amber-700 mt-1">{user.subscription_type} package</p>
+                      )}
                       <p className="text-[10px] text-gray-500 mt-1">{user.subscription_expiry ? new Date(user.subscription_expiry).toLocaleDateString() : 'No Expiry'}</p>
                     </td>
                     <td className="px-6 py-4 flex flex-wrap gap-1">

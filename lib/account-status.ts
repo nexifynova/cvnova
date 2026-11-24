@@ -52,6 +52,8 @@ export type PlanState = {
   daysLeft: number;
   label: string;
   planName: string;
+  /** Coarse tier used by UI badges: premium (paid/reactivated) vs basic (free/trial). */
+  tier: 'premium' | 'basic';
 };
 
 export function getPlanState(profile?: ProfileLike | null, now: Date = new Date()): PlanState {
@@ -89,7 +91,10 @@ export function getPlanState(profile?: ProfileLike | null, now: Date = new Date(
     trialEnd: end,
     daysLeft,
     label,
-    planName: profile?.subscription_type || 'Free',
+    // Public-facing package names: paid/reactivated accounts are "Premium",
+    // everything else (free signup + active trial) is "Basic".
+    planName: isPaid || isReactivated ? 'Premium' : 'Basic',
+    tier: isPaid || isReactivated ? 'premium' : 'basic',
   };
 }
 
@@ -142,3 +147,65 @@ export function getAtsQuota(profile?: ProfileLike | null, freeLimit = 3) {
     exhausted: !unlimited && used >= limit,
   };
 }
+
+export type PlanTone = 'basic' | 'premium' | 'reactivated' | 'trial' | 'locked';
+
+/**
+ * Turns a profile (+ optional server-computed plan) into ready-to-render badge
+ * content. Package names follow the public model: free/trial = "Basic",
+ * paid/reactivated = "Premium".
+ */
+export function getPlanBadgeInfo(
+  profile?: ProfileLike | null,
+  plan?: Partial<PlanState> | null,
+): { name: string; subtitle: string; tone: PlanTone } {
+  const rawType = String(profile?.subscription_type || '').trim();
+  const lower = rawType.toLowerCase();
+  const hasPackage = !!rawType && lower !== 'free' && lower !== 'trial';
+  const packageLabel = hasPackage ? rawType : '';
+
+  // The server-computed plan is authoritative. It is produced inside the
+  // /api/account/status route handler — never during prerender — so reading
+  // `daysLeft` here is safe. We must NOT call getPlanState() (which uses
+  // `new Date()`) during render: Next.js 16 rejects that while prerendering.
+  if (plan) {
+    if (plan.isPaid === true) {
+      return {
+        name: 'Premium',
+        subtitle: packageLabel ? `${packageLabel} package` : 'Premium plan',
+        tone: 'premium',
+      };
+    }
+
+    if (plan.isReactivated === true) {
+      return { name: 'Premium', subtitle: 'Reactivated access', tone: 'reactivated' };
+    }
+
+    if (plan.isLocked === true) {
+      return {
+        name: 'Basic',
+        subtitle: 'Trial ended — reactivate to keep creating',
+        tone: 'locked',
+      };
+    }
+
+    if (plan.isTrial === true) {
+      const daysLeft = Number(plan.daysLeft) || 0;
+      return {
+        name: 'Basic',
+        subtitle: daysLeft > 0 ? `Free trial · ${daysLeft} day${daysLeft === 1 ? '' : 's'} left` : 'Free trial',
+        tone: 'trial',
+      };
+    }
+
+    return { name: 'Basic', subtitle: 'Free plan', tone: 'basic' };
+  }
+
+  // Fallback (plan not loaded yet / API unavailable): derive from the static
+  // subscription type only — never touch the clock while rendering.
+  if (hasPackage) {
+    return { name: 'Premium', subtitle: `${packageLabel} package`, tone: 'premium' };
+  }
+  return { name: 'Basic', subtitle: 'Free plan', tone: 'basic' };
+}
+
