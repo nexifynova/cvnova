@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { supabase, authedFetch } from '@/lib/supabase';
 import Link from 'next/link';
-import { FileText, Loader2, ArrowLeft, Eye, EyeOff, Mail } from 'lucide-react';
+import { FileText, Loader2, ArrowLeft, Eye, EyeOff, Mail, ShieldCheck } from 'lucide-react';
+import { CONSENT_VERSION } from '@/lib/account-status';
 
 export default function Signup() {
   const router = useRouter();
@@ -12,6 +13,8 @@ export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [formData, setFormData] = useState({ fullName: '', email: '', password: '', confirmPassword: '' });
+  // Every consent box starts unchecked. Nothing is pre-ticked for the user.
+  const [consent, setConsent] = useState({ shareCv: false, allowContact: false, marketing: false });
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +29,14 @@ export default function Signup() {
       email: formData.email,
       password: formData.password,
       options: {
-        data: { full_name: formData.fullName },
+        data: {
+          full_name: formData.fullName,
+          role: 'candidate',
+          consent_share_cv: consent.shareCv,
+          consent_company_contact: consent.shareCv && consent.allowContact,
+          consent_marketing: consent.marketing,
+          consent_version: CONSENT_VERSION,
+        },
         emailRedirectTo: `${window.location.origin}/auth/confirm`,
       }
     });
@@ -35,6 +45,21 @@ export default function Signup() {
       alert(error.message);
       setLoading(false);
       return;
+    }
+
+    // When email confirmation is disabled Supabase returns a session right away,
+    // so persist the (unchecked-by-default) choices immediately. With confirmation
+    // enabled the same flags travel in metadata and are mirrored by
+    // /api/account/status on the first authenticated request.
+    if (data?.session) {
+      try {
+        await authedFetch('/api/account/consent', {
+          method: 'POST',
+          body: JSON.stringify({ ...consent, version: CONSENT_VERSION }),
+        });
+      } catch {
+        /* non-blocking: metadata copy still survives */
+      }
     }
     
     // 2. Send Professional Welcome Email via Resend
@@ -137,6 +162,46 @@ export default function Signup() {
             <label className="block text-sm font-semibold text-gray-700 mb-1">Confirm Password</label>
             <input type={showPassword ? "text" : "password"} required value={formData.confirmPassword} onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} className="w-full px-4 py-3 rounded-xl border text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="••••••••" />
           </div>
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
+            <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-gray-600">
+              <ShieldCheck size={14} className="text-blue-600" /> Privacy choices (optional)
+            </p>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={consent.shareCv}
+                onChange={(e) => setConsent({ ...consent, shareCv: e.target.checked, allowContact: e.target.checked ? consent.allowContact : false })}
+                className="mt-0.5 w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-xs text-gray-600 leading-relaxed">
+                <strong className="text-gray-800">Show my CV to companies.</strong> Only CVs you also mark public in your dashboard appear in the company portal. You can turn this off any time.
+              </span>
+            </label>
+            <label className={`flex items-start gap-2 ${consent.shareCv ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
+              <input
+                type="checkbox"
+                disabled={!consent.shareCv}
+                checked={consent.allowContact}
+                onChange={(e) => setConsent({ ...consent, allowContact: e.target.checked })}
+                className="mt-0.5 w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-xs text-gray-600 leading-relaxed">
+                <strong className="text-gray-800">Let companies contact me.</strong> Without this, companies can view your CV but your email, phone and social links stay hidden.
+              </span>
+            </label>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={consent.marketing}
+                onChange={(e) => setConsent({ ...consent, marketing: e.target.checked })}
+                className="mt-0.5 w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-xs text-gray-600 leading-relaxed">
+                Send me career tips and product updates. No spam, unsubscribe anytime.
+              </span>
+            </label>
+          </div>
+
           <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-bold hover:from-blue-500 hover:to-purple-500 transition disabled:opacity-50 mt-2">
             {loading ? <Loader2 className="animate-spin mx-auto" /> : 'Sign Up'}
           </button>

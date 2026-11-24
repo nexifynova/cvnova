@@ -1,25 +1,63 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Upload, Loader2, ArrowLeft, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Upload, Loader2, ArrowLeft, CheckCircle, Clock, AlertCircle, Globe, Crown } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { CURRENCIES, detectCurrency, formatLocal, getCurrency } from '@/lib/currency';
 
-export default function PaymentPage() {
+const PACKAGE_KEYS = ['3 Months', '6 Months', '1 Year', '5 Years', 'Additional CVs', 'Reactivation'] as const;
+type PackageKey = (typeof PACKAGE_KEYS)[number];
+
+// Single price resolver so the dropdown, the amount box and the stored record
+// can never disagree.
+function packagePrice(pkg: PackageKey, settings: any): number {
+  if (!settings) return 0;
+  switch (pkg) {
+    case '3 Months': return Number(settings.package_3m_price) || 5;
+    case '6 Months': return Number(settings.package_6m_price) || 8;
+    case '1 Year': return Number(settings.package_1y_price) || 12;
+    case '5 Years': return Number(settings.package_5y_price) || 40;
+    case 'Additional CVs': return Number(settings.additional_cv_price) || 1;
+    case 'Reactivation': return Number(settings.reactivation_price) || 2;
+    default: return 0;
+  }
+}
+
+// Only rails the admin has switched on are offered.
+function paymentMethods(settings: any) {
+  const methods: { value: string; label: string }[] = [];
+  if (settings?.skrill_enabled) methods.push({ value: 'Skrill', label: 'Skrill' });
+  if (settings?.payoneer_enabled) methods.push({ value: 'Payoneer', label: 'Payoneer' });
+  if (settings?.easy_paisa_enabled) methods.push({ value: 'EasyPaisa', label: 'EasyPaisa' });
+  if (settings?.binance_enabled) methods.push({ value: 'Binance', label: 'Binance' });
+  if (settings?.bank_enabled) methods.push({ value: 'Bank', label: 'Bank Transfer' });
+  return methods;
+}
+
+function PaymentContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedPackage = (searchParams.get('package') || '6 Months') as PackageKey;
+
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [settings, setSettings] = useState<any>(null);
+  const [currency, setCurrency] = useState('USD');
   
   const [formData, setFormData] = useState({
-    packageType: '6 Months',
+    packageType: (PACKAGE_KEYS.includes(requestedPackage) ? requestedPackage : '6 Months') as PackageKey,
     amount: 8,
     paymentMethod: 'EasyPaisa',
     transactionId: '',
     slipFile: null as File | null
   });
+
+  useEffect(() => {
+    setCurrency(detectCurrency());
+  }, []);
 
   useEffect(() => {
     const getUserAndSettings = async () => {
@@ -30,22 +68,25 @@ export default function PaymentPage() {
       const { data } = await supabase.from('app_settings').select('*').eq('id', 1).single();
       if (data) {
         setSettings(data);
-        // Set default amount based on 6 months
-        setFormData(prev => ({ ...prev, amount: data.package_6m_price || 8 }));
+        const pkg = PACKAGE_KEYS.includes(requestedPackage) ? requestedPackage : '6 Months';
+        const methods = paymentMethods(data);
+        setFormData((prev) => ({
+          ...prev,
+          packageType: pkg,
+          amount: packagePrice(pkg, data) || prev.amount,
+          paymentMethod: methods.some((m) => m.value === prev.paymentMethod) ? prev.paymentMethod : (methods[0]?.value || 'EasyPaisa'),
+        }));
       }
     };
     getUserAndSettings();
-  }, [router]);
+  }, [router, requestedPackage]);
+
+  const methods = paymentMethods(settings);
+  const isReactivation = formData.packageType === 'Reactivation';
 
   const handlePackageChange = (e: any) => {
-    const pkg = e.target.value;
-    let amt = 8;
-    if (pkg === '3 Months') amt = settings?.package_3m_price || 5;
-    if (pkg === '6 Months') amt = settings?.package_6m_price || 8;
-    if (pkg === '1 Year') amt = settings?.package_1y_price || 12;
-    if (pkg === '5 Years') amt = settings?.package_5y_price || 40;
-    if (pkg === 'Additional CVs') amt = settings?.additional_cv_price || 1.11;
-    setFormData({ ...formData, packageType: pkg, amount: amt });
+    const pkg = e.target.value as PackageKey;
+    setFormData({ ...formData, packageType: pkg, amount: packagePrice(pkg, settings) });
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -123,17 +164,47 @@ export default function PaymentPage() {
             <div>
               <label className="block text-sm font-semibold text-gray-300 mb-2">Select Package</label>
               <select value={formData.packageType} onChange={handlePackageChange} className="w-full bg-black/40 border border-white/20 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 appearance-none cursor-pointer">
-                <option value="3 Months">3 Months - ${settings?.package_3m_price}</option>
-                <option value="6 Months">6 Months - ${settings?.package_6m_price}</option>
-                <option value="1 Year">1 Year - ${settings?.package_1y_price}</option>
-                <option value="5 Years">5 Years - ${settings?.package_5y_price}</option>
-                <option value="Additional CVs">Buy {settings?.cvs_per_price || 5} Extra CVs - ${settings?.additional_cv_price || 1.11}</option>
+                <option value="3 Months">3 Months - ${packagePrice('3 Months', settings)}</option>
+                <option value="6 Months">6 Months - ${packagePrice('6 Months', settings)}</option>
+                <option value="1 Year">1 Year - ${packagePrice('1 Year', settings)}</option>
+                <option value="5 Years">5 Years - ${packagePrice('5 Years', settings)}</option>
+                <option value="Additional CVs">Buy {settings?.cvs_per_price || 5} Extra CVs - ${packagePrice('Additional CVs', settings)}</option>
+                <option value="Reactivation">Account Reactivation - ${packagePrice('Reactivation', settings)}</option>
               </select>
             </div>
 
+            {isReactivation && (
+              <div className="flex items-start gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                <Crown className="mt-0.5 shrink-0 text-emerald-300" size={18} />
+                <p className="text-xs text-emerald-100">
+                  <strong className="block text-sm text-emerald-200">One-time reactivation</strong>
+                  Unlocks document creation again, unlocks all 25 templates and resets the free Blue ATS counter — no subscription, no recurring charge.
+                </p>
+              </div>
+            )}
+
             <div className="bg-blue-900/20 border border-blue-500/30 p-4 rounded-xl text-sm space-y-2">
-              <p className="font-bold text-blue-300">Amount to Pay: ${formData.amount}</p>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-bold text-blue-300">Amount to Pay: ${formData.amount} USD</p>
+                <label className="flex items-center gap-1 text-[11px] text-gray-300">
+                  <Globe size={12} />
+                  <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="rounded-md border border-white/20 bg-black/40 px-2 py-1 text-[11px] text-white outline-none">
+                    {CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.code}</option>)}
+                  </select>
+                </label>
+              </div>
+              {currency !== 'USD' && (
+                <p className="text-xs text-blue-200">
+                  ≈ {formatLocal(formData.amount, settings, currency)} at today's rate ({getCurrency(currency).name}). Send the USD amount above — the local figure is for reference only.
+                </p>
+              )}
               <p className="text-gray-400">Please transfer the exact amount to any of these accounts:</p>
+              {settings?.skrill_enabled && (
+                <p className="text-white">Skrill: <span className="font-mono bg-white/10 px-2 py-0.5 rounded">{settings.skrill_email}</span>{settings.skrill_name ? ` (${settings.skrill_name})` : ''}</p>
+              )}
+              {settings?.payoneer_enabled && (
+                <p className="text-white">Payoneer: <span className="font-mono bg-white/10 px-2 py-0.5 rounded">{settings.payoneer_email}</span>{settings.payoneer_name ? ` (${settings.payoneer_name})` : ''}</p>
+              )}
               {settings?.easy_paisa_enabled && (
                 <p className="text-white">EasyPaisa: <span className="font-mono bg-white/10 px-2 py-0.5 rounded">{settings.easy_paisa_number}</span> ({settings.easy_paisa_name})</p>
               )}
@@ -152,10 +223,12 @@ export default function PaymentPage() {
             <div>
               <label className="block text-sm font-semibold text-gray-300 mb-2">Which method did you use?</label>
               <select value={formData.paymentMethod} onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})} className="w-full bg-black/40 border border-white/20 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 appearance-none cursor-pointer">
-                {settings?.easy_paisa_enabled && <option value="EasyPaisa">EasyPaisa</option>}
-                {settings?.binance_enabled && <option value="Binance">Binance</option>}
-                {settings?.bank_enabled && <option value="Bank">Bank Transfer</option>}
+                {methods.length === 0 && <option value="Manual">Manual transfer</option>}
+                {methods.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
               </select>
+              {methods.length === 0 && (
+                <p className="mt-2 text-[11px] text-amber-300">No payment rails are enabled yet. Contact support and we will send you the current account details.</p>
+              )}
             </div>
 
             <div>
@@ -174,7 +247,7 @@ export default function PaymentPage() {
 
             <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-xl">
               <p className="text-yellow-300 text-sm font-bold flex items-center gap-2 mb-1"><AlertCircle size={16}/> Important Note:</p>
-              <p className="text-gray-400 text-xs">Payment submit karne ke baad admin aapki slip ko <b>30 minutes se 24 hours</b> ke andar verify karega. Approve hone par aapka account automatic Pro mein convert ho jayega aur aap unlimited documents bana sakenge.</p>
+              <p className="text-gray-400 text-xs">Payment submit karne ke baad admin aapki slip ko <b>30 minutes se 24 hours</b> ke andar verify karega. Approve hone par aapka account automatic update ho jayega.{isReactivation ? ' Reactivation is applied immediately on approval and resets your Blue ATS counter.' : ' Aap unlimited documents bana sakenge.'}</p>
             </div>
 
             <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-xl font-bold hover:from-blue-500 hover:to-purple-500 transition disabled:opacity-50 flex items-center justify-center gap-2">
@@ -184,5 +257,13 @@ export default function PaymentPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PaymentPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0B1120] flex items-center justify-center"><Loader2 className="animate-spin text-blue-500" size={48} /></div>}>
+      <PaymentContent />
+    </Suspense>
   );
 }

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { getPlanState } from './account-status'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON! // Vercel wala naam
@@ -12,26 +13,53 @@ export const saveDocumentRecord = async (data: {
   email: string;
   phone: string;
   fullData: any;
+  userId?: string | null;
+  isPublic?: boolean;
+  atsTier?: string;
+  templateTier?: string;
 }) => {
   try {
-    const { error } = await supabase
-      .from('generated_documents')
-      .insert([
-        {
-          user_type: 'Guest',
-          document_type: data.documentType,
-          template_name: data.templateName,
-          full_name: data.fullName,
-          email: data.email,
-          phone: data.phone,
-          full_data: data.fullData,
-        }
-      ]);
-    if (error) console.error("Supabase Save Error:", error);
+    const baseRow = {
+      user_type: data.userId ? 'Registered' : 'Guest',
+      document_type: data.documentType,
+      template_name: data.templateName,
+      full_name: data.fullName,
+      email: data.email,
+      phone: data.phone,
+      full_data: data.fullData,
+    };
+
+    const extendedRow = {
+      ...baseRow,
+      user_id: data.userId || null,
+      is_public: data.isPublic === true,
+      ats_tier: data.atsTier || null,
+      template_tier: data.templateTier || null,
+    };
+
+    // Prefer the extended row. If the 2026 migration has not been applied yet,
+    // fall back to the legacy columns so saving never breaks.
+    let { error } = await supabase.from('generated_documents').insert([extendedRow]);
+    if (error) {
+      const retry = await supabase.from('generated_documents').insert([baseRow]);
+      error = retry.error;
+    }
+    if (error) console.error('Supabase Save Error:', error);
   } catch (err) {
-    console.error("Catch Error:", err);
+    console.error('Catch Error:', err);
   }
 };
+
+// Authenticated fetch for CVNova API routes. Attaches the Supabase access
+// token so server-side consent/quota checks can identify the caller securely
+// (never trust a user id supplied by the browser).
+export async function authedFetch(input: string, init: RequestInit = {}) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const headers = new Headers(init.headers);
+  if (session?.access_token) headers.set('Authorization', `Bearer ${session.access_token}`);
+  if (!headers.has('Content-Type') && init.body) headers.set('Content-Type', 'application/json');
+  return fetch(input, { ...init, headers, cache: 'no-store' });
+}
 
 // Check Limit
 const PLAN_CV_SETTING_KEY: Record<string, string> = {
@@ -61,13 +89,20 @@ export const checkUserLimit = async (_userEmail?: string) => {
     return { allowed: true, reason: 'error_fallback' as const };
   }
 
-  const isPro = profile.subscription_type && profile.subscription_type !== 'free';
+  // Trial / reactivation gate. If the 2-month trial is over and the account is
+  // neither paid nor reactivated, creation is locked until they choose a plan.
+  const plan = getPlanState(profile as any);
+  if (plan.isLocked) {
+    return { allowed: false, isPro: false, reason: 'trial_expired' as const };
+  }
+
+  const isPro = plan.isPaid || plan.isReactivated;
 
   if (isPro) {
     if (profile.subscription_expiry) {
       const expiry = new Date(profile.subscription_expiry);
       const now = new Date();
-      if (expiry > now) {
+      if (expiry > now || plan.isReactivated) {
         // 🚨 Plan ka CV allowance admin settings + purchased total, jo bhi zyada ho.
         const planKey = PLAN_CV_SETTING_KEY[profile.subscription_type];
         const planCVs = planKey ? Number((settings as any)[planKey]) || 0 : 0;

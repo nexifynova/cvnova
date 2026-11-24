@@ -21,6 +21,12 @@ function SettingsContent() {
     package_3m_price: 5, package_6m_price: 8, package_1y_price: 12, package_5y_price: 40,
     cvs_3m: 10, cvs_6m: 20, cvs_1y: 50, cvs_5y: 100,
     easy_paisa_enabled: true, easy_paisa_number: '', easy_paisa_name: '',
+    skrill_enabled: true, skrill_email: '', skrill_name: '',
+    payoneer_enabled: true, payoneer_email: '', payoneer_name: '',
+    reactivation_price: 2, trial_months: 2, free_blue_ats_limit: 3,
+    usd_to_eur: 0.92, usd_to_gbp: 0.79, usd_to_pkr: 278, usd_to_inr: 83, usd_to_aed: 3.67,
+    usd_to_sar: 3.75, usd_to_cad: 1.36, usd_to_aud: 1.52, usd_to_bdt: 118,
+    usd_to_ngn: 1550, usd_to_zar: 18.5, usd_to_try: 34, usd_to_myr: 4.7, usd_to_idr: 15800,
     binance_enabled: true, binance_id: '', binance_name: '',
     bank_enabled: false, bank_account_name: '', bank_name: '', bank_branch: '', bank_account_number: '', bank_iban: '',
     contact_email1: 'info@nexifynova.co.uk', contact_email2: 'support@nexifynova.co.uk',
@@ -266,8 +272,11 @@ function SettingsContent() {
             {/* Payment Methods Section */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
               <h2 className="text-lg font-bold mb-4 border-b pb-2 text-gray-500">Payment Methods & Free Limits</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <div><label className="block text-xs font-semibold text-gray-600 mb-1">Free CVs per User</label><input type="number" name="free_cv_limit" value={settings.free_cv_limit} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+                <div><label className="block text-xs font-semibold text-gray-600 mb-1">Free Trial (months)</label><input type="number" name="trial_months" value={settings.trial_months} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+                <div><label className="block text-xs font-semibold text-gray-600 mb-1">Free Blue ATS Uses</label><input type="number" name="free_blue_ats_limit" value={settings.free_blue_ats_limit} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
+                <div><label className="block text-xs font-semibold text-gray-600 mb-1">Reactivation Price ($)</label><input type="number" step="0.01" name="reactivation_price" value={settings.reactivation_price} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" /></div>
               </div>
               <div className="space-y-4">
                 {/* EasyPaisa */}
@@ -276,6 +285,22 @@ function SettingsContent() {
                   <div className="grid grid-cols-2 gap-2">
                     <input type="text" name="easy_paisa_number" value={settings.easy_paisa_number} onChange={handleChange} placeholder="Account Number" className="px-2 py-1 border rounded text-sm"/>
                     <input type="text" name="easy_paisa_name" value={settings.easy_paisa_name} onChange={handleChange} placeholder="Account Name" className="px-2 py-1 border rounded text-sm"/>
+                  </div>
+                </div>
+                {/* Skrill */}
+                <div className="p-4 border rounded-xl">
+                  <div className="flex items-center gap-2 mb-2"><input type="checkbox" name="skrill_enabled" checked={settings.skrill_enabled} onChange={handleChange} className="w-4 h-4"/><label className="text-sm font-bold">Skrill</label></div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input type="text" name="skrill_email" value={settings.skrill_email || ''} onChange={handleChange} placeholder="Skrill email" className="px-2 py-1 border rounded text-sm"/>
+                    <input type="text" name="skrill_name" value={settings.skrill_name || ''} onChange={handleChange} placeholder="Account Name" className="px-2 py-1 border rounded text-sm"/>
+                  </div>
+                </div>
+                {/* Payoneer */}
+                <div className="p-4 border rounded-xl">
+                  <div className="flex items-center gap-2 mb-2"><input type="checkbox" name="payoneer_enabled" checked={settings.payoneer_enabled} onChange={handleChange} className="w-4 h-4"/><label className="text-sm font-bold">Payoneer</label></div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input type="text" name="payoneer_email" value={settings.payoneer_email || ''} onChange={handleChange} placeholder="Payoneer email" className="px-2 py-1 border rounded text-sm"/>
+                    <input type="text" name="payoneer_name" value={settings.payoneer_name || ''} onChange={handleChange} placeholder="Account Name" className="px-2 py-1 border rounded text-sm"/>
                   </div>
                 </div>
                 {/* Binance */}
@@ -297,6 +322,35 @@ function SettingsContent() {
                     <input type="text" name="bank_iban" value={settings.bank_iban} onChange={handleChange} placeholder="IBAN (Optional)" className="px-2 py-1 border rounded text-sm sm:col-span-2"/>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Local currency rates (display only — settlement stays in USD) */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <h2 className="text-lg font-bold mb-1 border-b pb-2 text-gray-500">Local Currency Rates</h2>
+              <p className="text-[11px] text-gray-500 mb-4">How much 1 USD is worth in each currency. Used only to show an approximate local price next to the USD amount on the checkout page. Settlement is always in USD.</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {([
+                  ['usd_to_eur', 'EUR (€)'],
+                  ['usd_to_gbp', 'GBP (£)'],
+                  ['usd_to_pkr', 'PKR (₨)'],
+                  ['usd_to_inr', 'INR (₹)'],
+                  ['usd_to_aed', 'AED'],
+                  ['usd_to_sar', 'SAR'],
+                  ['usd_to_cad', 'CAD (CA$)'],
+                  ['usd_to_aud', 'AUD (A$)'],
+                  ['usd_to_bdt', 'BDT (৳)'],
+                  ['usd_to_ngn', 'NGN (₦)'],
+                  ['usd_to_zar', 'ZAR (R)'],
+                  ['usd_to_try', 'TRY (₺)'],
+                  ['usd_to_myr', 'MYR (RM)'],
+                  ['usd_to_idr', 'IDR (Rp)'],
+                ] as [string, string][]).map(([key, label]) => (
+                  <div key={key}>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">1 USD = {label}</label>
+                    <input type="number" step="0.0001" name={key} value={(settings as any)[key] ?? ''} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border text-sm" />
+                  </div>
+                ))}
               </div>
             </div>
           </div>

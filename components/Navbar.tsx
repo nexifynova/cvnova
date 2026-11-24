@@ -56,6 +56,7 @@ export default function Navbar() {
     { label: 'Experience Letter', href: '/experience-letter', visible: true },
     { label: 'Track Document', href: '/track-document', visible: true }, 
     { label: 'Track Payment', href: '/track-payment', visible: true },
+    { label: 'For Companies', href: '/company', visible: true },
     { label: 'Contact Us', href: '/contact', visible: true },
     { label: 'Pricing', href: '/#pricing', visible: true },
   ];

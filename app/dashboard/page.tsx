@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, authedFetch } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import { FileText, LogOut, Plus, ExternalLink, Loader2, Mail, Briefcase, CreditCard, Clock, CheckCircle2, XCircle, ShieldCheck, Crown, Search, Filter, Calendar, Edit2, X, Share2, RefreshCw, Trash2, Send } from 'lucide-react';
+import { FileText, LogOut, Plus, ExternalLink, Loader2, Mail, Briefcase, CreditCard, Clock, CheckCircle2, XCircle, ShieldCheck, Crown, Search, Filter, Calendar, Edit2, X, Share2, RefreshCw, Trash2, Send, Eye, EyeOff, MessageSquare, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
+import AtsBadge from '@/components/AtsBadge';
+import { getTemplate } from '@/lib/templates';
 
 // Plan ka naam -> app_settings mein us plan ke CVs wala column
 const PLAN_CV_SETTING_KEY: Record<string, string> = {
@@ -23,6 +25,16 @@ export default function Dashboard() {
   const [payments, setPayments] = useState<any[]>([]);
   const [settings, setSettings] = useState<any>(null);
   const [timeLeft, setTimeLeft] = useState('');
+
+  // Plan / consent / quota state (server computed so the UI can never drift)
+  const [account, setAccount] = useState<any>(null);
+  const [consent, setConsent] = useState({ shareCv: false, allowContact: false, marketing: false });
+  const [consentSaving, setConsentSaving] = useState(false);
+  const [visibilitySaving, setVisibilitySaving] = useState<string | null>(null);
+  const [inbox, setInbox] = useState<any[]>([]);
+  const [inboxOpen, setInboxOpen] = useState(false);
+  const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
+  const [replySending, setReplySending] = useState<string | null>(null);
 
   // Filters & Modals State
   const [searchTerm, setSearchTerm] = useState('');
@@ -92,6 +104,8 @@ export default function Dashboard() {
 
     const { data: pays } = await supabase.from('payments').select('*').eq('user_id', user.id).eq('status', 'approved').order('created_at', { ascending: false });
     if (pays) setPayments(pays);
+
+    await Promise.all([loadAccountState(), loadInbox()]);
     
     setLoading(false);
   };
@@ -199,6 +213,115 @@ export default function Dashboard() {
     return true;
   });
 
+  const loadAccountState = async () => {
+    try {
+      const res = await authedFetch('/api/account/status');
+      const data = await res.json();
+      if (!res.ok || data.error) return;
+      setAccount(data);
+      setConsent({
+        shareCv: data.consent?.shareCv === true,
+        allowContact: data.consent?.allowContact === true,
+        marketing: data.consent?.marketing === true,
+      });
+    } catch {
+      /* migration not applied yet — legacy dashboard keeps working */
+    }
+  };
+
+  const loadInbox = async () => {
+    try {
+      const res = await authedFetch('/api/company/messages');
+      const data = await res.json();
+      if (res.ok && Array.isArray(data.messages)) setInbox(data.messages);
+    } catch {
+      /* company portal not enabled */
+    }
+  };
+
+  const saveConsent = async (patch: Partial<typeof consent>) => {
+    const next = { ...consent, ...patch };
+    // Contact consent is meaningless without CV sharing consent.
+    if (!next.shareCv) next.allowContact = false;
+    setConsent(next);
+    setConsentSaving(true);
+    try {
+      const res = await authedFetch('/api/account/consent', {
+        method: 'POST',
+        body: JSON.stringify({ shareCv: next.shareCv, allowContact: next.allowContact, marketing: next.marketing }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Consent could not be saved');
+      if (!next.shareCv) {
+        setDocuments((docs) => docs.map((d) => ({ ...d, is_public: false })));
+      }
+      await loadAccountState();
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setConsentSaving(false);
+    }
+  };
+
+  const toggleDocVisibility = async (doc: any) => {
+    if (doc.document_type && doc.document_type !== 'CV') {
+      alert("Only CVs can be shared with companies.");
+      return;
+    }
+    if (!consent.shareCv) {
+      alert("Turn on \"Show my CV to companies\" in the privacy centre first.");
+      return;
+    }
+    const next = doc.is_public !== true;
+    setVisibilitySaving(doc.id);
+    try {
+      const res = await authedFetch('/api/documents/visibility', {
+        method: 'POST',
+        body: JSON.stringify({ documentId: doc.id, isPublic: next }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error === 'consent_required' ? "Turn on CV sharing consent first." : (data.error || 'Could not update visibility'));
+        return;
+      }
+      setDocuments((docs) => docs.map((d) => (d.id === doc.id ? { ...d, is_public: next } : d)));
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setVisibilitySaving(null);
+    }
+  };
+
+  const sendReply = async (companyId: string, documentId: string | null) => {
+    const text = (replyDrafts[companyId] || '').trim();
+    if (!text) return;
+    setReplySending(companyId);
+    try {
+      const res = await authedFetch('/api/company/messages', {
+        method: 'POST',
+        body: JSON.stringify({ companyId, documentId, body: text }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Message failed');
+      setReplyDrafts((drafts) => ({ ...drafts, [companyId]: '' }));
+      await loadInbox();
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setReplySending(null);
+    }
+  };
+
+  // One thread per company so a candidate can reply privately.
+  const inboxThreads = Object.values(
+    inbox.reduce((acc: Record<string, { companyId: string; companyName: string; messages: any[] }>, m: any) => {
+      const key = m.company_id || 'unknown';
+      acc[key] = acc[key] || { companyId: key, companyName: m.companyName || 'Company', messages: [] };
+      acc[key].messages.push(m);
+      return acc;
+    }, {}),
+  );
+
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="animate-spin text-blue-600" size={48} /></div>;
     return (
     <div className="min-h-screen bg-gray-50 font-sans">
@@ -214,6 +337,36 @@ export default function Dashboard() {
       </nav>
 
       <main className="max-w-6xl mx-auto px-4 py-10">
+        {account?.plan?.isLocked && (
+          <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-red-200 bg-red-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 shrink-0 text-red-600" size={20} />
+              <div>
+                <p className="font-bold text-red-800">Your 2-month free trial has ended</p>
+                <p className="text-sm text-red-700">Your saved documents are safe and still downloadable. Reactivate once for ${account?.limits?.reactivationPrice || 2} to keep creating CVs.</p>
+              </div>
+            </div>
+            <Link href="/payment?package=Reactivation" className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700">
+              <Crown size={16} /> Reactivate ${account?.limits?.reactivationPrice || 2}
+            </Link>
+          </div>
+        )}
+
+        {!account?.plan?.isLocked && account?.plan?.isTrial && account.plan.daysLeft <= 14 && (
+          <div className="mb-6 flex flex-col gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <p className="flex items-center gap-2 text-amber-800">
+              <Clock size={16} /> <strong>Trial ends in {account.plan.daysLeft} day{account.plan.daysLeft === 1 ? '' : 's'}.</strong> Compare plans before creation locks.
+            </p>
+            <Link href="/#pricing" className="font-bold text-amber-800 underline">View plans</Link>
+          </div>
+        )}
+
+        {account?.plan?.isReactivated && (
+          <div className="mb-6 flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+            <CheckCircle2 size={16} /> Reactivation active — you can create documents again. All templates unlocked.
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div><h1 className="text-3xl font-bold text-gray-900">My Dashboard</h1><p className="text-gray-500 mt-1">Manage your generated documents and payments</p></div>
           <div className="flex flex-wrap gap-2">
@@ -228,6 +381,11 @@ export default function Dashboard() {
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <p className="text-sm text-gray-500 mb-1 flex items-center gap-2"><FileText size={16}/> CVs Used</p>
             <p className="text-3xl font-bold text-gray-900">{profile?.free_cv_count || 0} / {currentLimit}</p>
+            {account?.ats && (
+              <p className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${account.ats.unlimited ? 'bg-emerald-100 text-emerald-700' : account.ats.exhausted ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+                <ShieldCheck size={11} /> Blue ATS {account.ats.unlimited ? 'unlimited' : `${account.ats.used}/${account.ats.limit}`}
+              </p>
+            )}
           </div>
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <p className="text-sm text-gray-500 mb-1 flex items-center gap-2"><ShieldCheck size={16}/> Account Type</p>
@@ -239,6 +397,93 @@ export default function Dashboard() {
               <div><p className={`text-2xl font-bold ${timeLeft === 'Expired' ? 'text-red-600' : 'text-green-700'}`}>{timeLeft === 'Expired' ? 'Expired' : timeLeft}</p><p className="text-xs text-gray-500 mt-1">Expires on: {new Date(profile.subscription_expiry).toLocaleDateString()}</p></div>
             ) : <p className="text-xl font-bold text-gray-400 mt-2">No Active Plan</p>}
           </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
+            <div className="flex items-center gap-2"><ShieldCheck className="text-blue-600" size={20} /><h2 className="text-lg font-bold text-gray-900">Privacy &amp; Consent Centre</h2></div>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Policy {account?.consent?.version || 'v1'}</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <label className="flex cursor-pointer items-start justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50 p-4">
+              <span>
+                <span className="block text-sm font-bold text-gray-900">Show my CV to companies</span>
+                <span className="block text-xs text-gray-500 mt-0.5">Off by default. Companies only see CVs you additionally mark public.</span>
+              </span>
+              <input type="checkbox" checked={consent.shareCv} disabled={consentSaving} onChange={(e) => saveConsent({ shareCv: e.target.checked })} className="mt-1 h-5 w-5 shrink-0 rounded text-blue-600 focus:ring-blue-500" />
+            </label>
+
+            <label className={`flex items-start justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50 p-4 ${consent.shareCv ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
+              <span>
+                <span className="block text-sm font-bold text-gray-900">Let companies contact me</span>
+                <span className="block text-xs text-gray-500 mt-0.5">Otherwise your email, phone and social links stay hidden.</span>
+              </span>
+              <input type="checkbox" checked={consent.allowContact} disabled={!consent.shareCv || consentSaving} onChange={(e) => saveConsent({ allowContact: e.target.checked })} className="mt-1 h-5 w-5 shrink-0 rounded text-blue-600 focus:ring-blue-500" />
+            </label>
+
+            <label className="flex cursor-pointer items-start justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50 p-4">
+              <span>
+                <span className="block text-sm font-bold text-gray-900">Career tips &amp; updates</span>
+                <span className="block text-xs text-gray-500 mt-0.5">Marketing only. Never affects document creation.</span>
+              </span>
+              <input type="checkbox" checked={consent.marketing} disabled={consentSaving} onChange={(e) => saveConsent({ marketing: e.target.checked })} className="mt-1 h-5 w-5 shrink-0 rounded text-blue-600 focus:ring-blue-500" />
+            </label>
+          </div>
+
+          <p className="mt-3 text-[11px] text-gray-500">
+            {account?.consent?.updatedAt ? `Last updated ${new Date(account.consent.updatedAt).toLocaleString()}. ` : ''}
+            Withdraw consent at any time — your CVs leave the company pool immediately.
+          </p>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
+            <div className="flex items-center gap-2"><MessageSquare className="text-purple-600" size={20} /><h2 className="text-lg font-bold text-gray-900">Company Inbox</h2></div>
+            <span className="text-xs font-semibold text-gray-500">{inboxThreads.length} conversation{inboxThreads.length === 1 ? '' : 's'}</span>
+          </div>
+
+          {inboxThreads.length === 0 ? (
+            <p className="text-sm text-gray-500">No messages yet. Turn on CV sharing so recruiters can find and contact you.</p>
+          ) : (
+            <div className="space-y-3">
+              {(inboxOpen ? inboxThreads : inboxThreads.slice(0, 2)).map((thread: any) => {
+                const last = thread.messages[thread.messages.length - 1];
+                return (
+                  <div key={thread.companyId} className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="truncate text-sm font-bold text-gray-900">{thread.companyName}</p>
+                      <span className="shrink-0 text-[10px] text-gray-400">{new Date(last.created_at).toLocaleString()}</span>
+                    </div>
+                    <div className="mt-2 max-h-40 space-y-1.5 overflow-y-auto">
+                      {thread.messages.map((m: any) => (
+                        <p key={m.id} className={`text-xs ${m.sender === 'candidate' ? 'text-right font-medium text-blue-700' : 'text-gray-700'}`}>
+                          <span className={`inline-block rounded-lg px-2 py-1 ${m.sender === 'candidate' ? 'bg-blue-100' : 'bg-white border border-gray-200'}`}>{m.body}</span>
+                        </p>
+                      ))}
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      <input
+                        type="text"
+                        value={replyDrafts[thread.companyId] || ''}
+                        onChange={(e) => setReplyDrafts((drafts) => ({ ...drafts, [thread.companyId]: e.target.value }))}
+                        placeholder="Reply privately..."
+                        className="min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                      <button onClick={() => sendReply(thread.companyId, last.document_id || null)} disabled={replySending === thread.companyId || !(replyDrafts[thread.companyId] || '').trim()} className="flex items-center gap-1 rounded-lg bg-purple-600 px-3 py-2 text-sm font-bold text-white hover:bg-purple-700 disabled:opacity-50">
+                        {replySending === thread.companyId ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} Reply
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+              {inboxThreads.length > 2 && (
+                <button onClick={() => setInboxOpen(!inboxOpen)} className="w-full text-xs font-bold text-purple-600 hover:underline">
+                  {inboxOpen ? 'Show fewer conversations' : `View all ${inboxThreads.length} conversations`}
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-10">
@@ -271,7 +516,7 @@ export default function Dashboard() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="bg-gray-50 text-gray-600"><tr><th className="px-6 py-3 font-medium">Date</th><th className="px-6 py-3 font-medium">Document Type</th><th className="px-6 py-3 font-medium">Name</th><th className="px-6 py-3 font-medium">Template</th><th className="px-6 py-3 font-medium">Action</th></tr></thead>
+              <thead className="bg-gray-50 text-gray-600"><tr><th className="px-6 py-3 font-medium">Date</th><th className="px-6 py-3 font-medium">Document Type</th><th className="px-6 py-3 font-medium">Name</th><th className="px-6 py-3 font-medium">Template</th><th className="px-6 py-3 font-medium">ATS</th><th className="px-6 py-3 font-medium">Company Visibility</th><th className="px-6 py-3 font-medium">Action</th></tr></thead>
               <tbody className="divide-y divide-gray-100">
                 {filteredDocuments.map((doc) => (
                   <tr key={doc.id} className="hover:bg-gray-50">
@@ -281,7 +526,23 @@ export default function Dashboard() {
                       {doc.full_name}
                       <button onClick={() => { setRenamingDoc(doc); setNewDocName(doc.full_name || ''); }} className="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-1.5 rounded transition" title="Rename Document"><Edit2 size={14} /></button>
                     </td>
-                    <td className="px-6 py-4 capitalize text-gray-600">{doc.template_name}</td>
+                    <td className="px-6 py-4 capitalize text-gray-600">{getTemplate(doc.template_name).name}</td>
+                    <td className="px-6 py-4">{doc.document_type === 'CV' ? <AtsBadge tier={getTemplate(doc.template_name).ats} size="xs" /> : <span className="text-xs text-gray-400">—</span>}</td>
+                    <td className="px-6 py-4">
+                      {doc.document_type === 'CV' ? (
+                        <button
+                          onClick={() => toggleDocVisibility(doc)}
+                          disabled={visibilitySaving === doc.id}
+                          title={doc.is_public ? 'Visible to companies — click to hide' : 'Hidden from companies — click to show'}
+                          className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold transition disabled:opacity-50 ${doc.is_public ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                        >
+                          {visibilitySaving === doc.id ? <Loader2 size={12} className="animate-spin" /> : doc.is_public ? <Eye size={12} /> : <EyeOff size={12} />}
+                          {doc.is_public ? 'Public' : 'Private'}
+                        </button>
+                      ) : (
+                        <span className="text-xs text-gray-400">N/A</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 flex gap-2">
                       <Link href={`/view/${doc.id}`} target="_blank" className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium bg-blue-50 px-3 py-1.5 rounded-lg transition"><ExternalLink size={14} /> View</Link>
                       <button onClick={() => openShareModal(doc)} className={`inline-flex items-center gap-1 font-medium px-3 py-1.5 rounded-lg transition ${doc.is_shareable && doc.share_code ? 'text-green-600 bg-green-50 hover:bg-green-100' : 'text-gray-600 bg-gray-100 hover:bg-gray-200'}`} title="Share Document"><Share2 size={14} /> Share</button>
@@ -290,7 +551,7 @@ export default function Dashboard() {
                     </td>
                   </tr>
                 ))}
-                {filteredDocuments.length === 0 && (<tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">No documents found matching your criteria.</td></tr>)}
+                {filteredDocuments.length === 0 && (<tr><td colSpan={7} className="px-6 py-8 text-center text-gray-500">No documents found matching your criteria.</td></tr>)}
               </tbody>
             </table>
           </div>

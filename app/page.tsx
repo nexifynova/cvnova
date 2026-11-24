@@ -117,7 +117,7 @@ export default function Home() {
               <Link href="/builder" className="group bg-white/5 p-8 rounded-3xl border border-white/10 hover:bg-white/10 transition duration-300 cursor-pointer">
                 <div className="w-14 h-14 bg-blue-500/20 rounded-2xl flex items-center justify-center mb-6 border border-blue-500/30 group-hover:scale-110 transition"><FileText className="text-blue-400" size={28} /></div>
                 <h3 className="text-xl font-bold mb-3">CV Builder</h3>
-                <p className="text-gray-400 leading-relaxed">Create a professional resume with 19+ modern templates and real-time preview.</p>
+                <p className="text-gray-400 leading-relaxed">Create a professional resume with 25 ATS-scored templates and real-time preview.</p>
               </Link>
               <Link href="/cover-letter" className="group bg-white/5 p-8 rounded-3xl border border-white/10 hover:bg-white/10 transition duration-300 cursor-pointer">
                 <div className="w-14 h-14 bg-green-500/20 rounded-2xl flex items-center justify-center mb-6 border border-green-500/30 group-hover:scale-110 transition"><Mail className="text-green-400" size={28} /></div>
@@ -138,10 +138,13 @@ export default function Home() {
           <div className="max-w-7xl mx-auto px-6">
             <div className="text-center mb-12">
               <h2 className="text-3xl lg:text-5xl font-bold mb-6">Simple, transparent <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">pricing.</span></h2>
-              <p className="text-gray-400 max-w-2xl mx-auto mb-6">Choose the plan that fits your needs. No hidden fees.</p>
+              <p className="text-gray-400 max-w-2xl mx-auto mb-3">Choose the plan that fits your needs. No hidden fees.</p>
+              <p className="text-sm text-blue-300 font-semibold mb-6">Every new account gets a 2-month free trial, 3 free Blue ATS uses and all free templates — reactivate any time for just ${settings?.reactivation_price ?? 2}.</p>
               
               <div className="flex flex-wrap justify-center gap-4 items-center mb-10">
                 <span className="text-sm text-gray-400">We accept:</span>
+                {settings?.skrill_enabled && <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-bold border border-white/20">Skrill</span>}
+                {settings?.payoneer_enabled && <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-bold border border-white/20">Payoneer</span>}
                 {settings?.easy_paisa_enabled && <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-bold border border-white/20">EasyPaisa</span>}
                 {settings?.binance_enabled && <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-bold border border-white/20">Binance</span>}
                 {settings?.bank_enabled && <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-bold border border-white/20">Bank Transfer</span>}
@@ -208,6 +211,9 @@ export default function Home() {
         </div>
 
         <p className="text-xs text-gray-600">© 2026 CVNova. All rights reserved.</p>
+        <p className="mt-3 text-xs">
+          <Link href="/company" className="font-semibold text-blue-400 hover:underline">Recruiter? Open the company portal →</Link>
+        </p>
       </footer>
     </div>
   );

@@ -87,7 +87,16 @@ export default function AdminPayments() {
 
       // 2. Handle User Profile Updates
       if (isGranting) {
-        if (payment.package_type === 'Additional CVs') {
+        if (payment.package_type === 'Reactivation') {
+          // One-time $2 reactivation: unlock creation for 30 days and reset the
+          // free Blue ATS counter. No subscription is created.
+          const reactivatedUntil = new Date();
+          reactivatedUntil.setDate(reactivatedUntil.getDate() + 30);
+          await supabase.from('user_profiles').update({
+            reactivated_until: reactivatedUntil.toISOString(),
+            blue_ats_used: 0,
+          }).eq('id', payment.user_id);
+        } else if (payment.package_type === 'Additional CVs') {
           const { data: settings } = await supabase.from('app_settings').select('cvs_per_price').eq('id', 1).single();
           const cvsBought = Number(settings?.cvs_per_price) || 5;
           const currentTotal = currentProfile?.total_allowed_cvs || 1;
@@ -129,7 +138,10 @@ export default function AdminPayments() {
       else if (isReverting) {
         // Disapprove Logic (Minus CVs)
         const { data: revertSettings } = await supabase.from('app_settings').select('*').eq('id', 1).single();
-        if (payment.package_type === 'Additional CVs') {
+        if (payment.package_type === 'Reactivation') {
+          // Reverting a reactivation locks creation again (trial stays expired).
+          await supabase.from('user_profiles').update({ reactivated_until: null }).eq('id', payment.user_id);
+        } else if (payment.package_type === 'Additional CVs') {
           const cvsBought = Number(revertSettings?.cvs_per_price) || 5;
           const currentTotal = currentProfile?.total_allowed_cvs || 1;
           await supabase.from('user_profiles').update({ total_allowed_cvs: Math.max(1, currentTotal - cvsBought) }).eq('id', payment.user_id);
