@@ -1,4 +1,4 @@
-import { Extras, lines, type TemplateProps } from '../shared';
+import { Extras, PersonalDetails, lines, type TemplateProps } from '../shared';
 
 export default function BlueHeader({ data: d }: TemplateProps) {
   return (
@@ -7,7 +7,7 @@ export default function BlueHeader({ data: d }: TemplateProps) {
         <div>
           <h1 className="text-4xl font-bold uppercase tracking-wider">{d.fullName}</h1>
           <h2 className="text-lg font-medium mt-1 opacity-90">{d.jobTitle}</h2>
-          <Extras data={d} keys={['cvnovaCode', 'maritalStatus', 'placeOfBirth', 'nationality']} className="mt-2 flex flex-wrap gap-x-4 text-[10px] text-blue-50" />
+          <Extras data={d} keys={['cvnovaCode']} className="mt-2 flex flex-wrap gap-x-4 text-[10px] text-blue-50" />
         </div>
         <div className="text-xs text-right space-y-1">
           {d.address && <p>{d.address}</p>}
@@ -63,6 +63,13 @@ export default function BlueHeader({ data: d }: TemplateProps) {
                 </ul>
               </div>
             )}
+            <PersonalDetails
+              data={d}
+              className="avoid-break"
+              headingClassName="font-bold text-gray-800 text-sm mb-2 border-b-2 border-gray-300 pb-1"
+              listClassName="space-y-1 text-[10px] text-gray-600"
+              labelClassName="font-semibold text-gray-900"
+            />
             {d.references.length > 0 && <div className="avoid-break"><h3 className="font-bold text-gray-800 text-sm mb-2 border-b-2 border-gray-300 pb-1">References</h3><ul className="text-[10px] text-gray-600 list-disc pl-4 space-y-1">{d.references.map((r, i) => <li key={i}>{r.name}{r.contact ? ` – ${r.contact}` : ''}</li>)}</ul></div>}
           </div>
         </div>

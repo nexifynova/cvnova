@@ -1,4 +1,4 @@
-import { ContactStrip, Extras, type TemplateProps } from '../shared';
+import { ContactStrip, Extras, PersonalDetails, type TemplateProps } from '../shared';
 
 export default function Classic({ data: d }: TemplateProps) {
   return (
@@ -53,6 +53,14 @@ export default function Classic({ data: d }: TemplateProps) {
         </div>
       </div>
 
+      <PersonalDetails
+        data={d}
+        className="mb-4 avoid-break"
+        headingClassName="text-xs font-bold text-gray-900 uppercase tracking-widest mb-1"
+        listClassName="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-700"
+        labelClassName="font-semibold text-gray-900"
+      />
+
       <div className="grid grid-cols-2 gap-4 mb-4 avoid-break">
         {d.certifications.length > 0 && (
           <div><h2 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-1">Certifications</h2>
@@ -64,7 +72,7 @@ export default function Classic({ data: d }: TemplateProps) {
         )}
       </div>
 
-      <Extras data={d} keys={['cvnovaCode', 'maritalStatus', 'placeOfBirth', 'nationality']} className="flex flex-wrap gap-x-4 gap-y-1 border-t pt-2 text-[10px] text-gray-600" />
+      <Extras data={d} keys={['cvnovaCode']} className="flex flex-wrap gap-x-4 gap-y-1 border-t pt-2 text-[10px] text-gray-600" />
     </div>
   );
 }

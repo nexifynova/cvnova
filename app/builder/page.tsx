@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { Sparkles, ArrowLeft, Download, Printer, Plus, Trash2, Loader2, Camera, Upload, RefreshCw, Save, Lock, Crown } from 'lucide-react';
 import Link from 'next/link';
-import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount, authedFetch } from '@/lib/supabase';
+import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount, authedFetch, fetchDocumentRecord, updateDocumentRecord, ownsDocument } from '@/lib/supabase';
 import { downloadAsWord, downloadAsPDF } from '@/lib/download-utils';
 import CVTemplateRenderer from '@/components/cv/CVTemplateRenderer';
 import AtsBadge from '@/components/AtsBadge';
@@ -45,6 +45,12 @@ const emptyData = {
   hobbies: [''], references: [{ name: '', role: '', contact: '' }],
 };
 
+type Row = Record<string, unknown>;
+
+// Saved document ka koi bhi field safely padhne ke liye: object na ho to khaali row.
+const asRecord = (value: unknown): Row =>
+  typeof value === 'object' && value !== null ? (value as Row) : {};
+
 export default function Builder() {
   const [formData, setFormData] = useState(dummyData);
   const [template, setTemplate] = useState('classicgray');
@@ -56,10 +62,11 @@ export default function Builder() {
   const [lastSavedSnapshot, setLastSavedSnapshot] = useState<string | null>(null);
   const [account, setAccount] = useState<any>(null);
   const [pricing, setPricing] = useState<{ open: boolean; reason: PricingReason }>({ open: false, reason: 'upgrade' });
+  // ?edit=<id> — dashboard se aya hua document (edit mode)
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [loadingDoc, setLoadingDoc] = useState(true);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => { refreshAccount(); }, []);
 
   const refreshAccount = async () => {
     try {
@@ -70,6 +77,98 @@ export default function Builder() {
       /* offline or migration not applied yet */
     }
   };
+
+  // Saved document ko builder form ki shape mein laata hai (blank rows included).
+  const toBuilderData = (raw: unknown) => {
+    const src = asRecord(raw);
+    const str = (value: unknown) => (typeof value === 'string' ? value : value == null ? '' : String(value));
+    const rows = <T,>(value: unknown, empty: T, map: (item: Row) => T): T[] => {
+      const list = Array.isArray(value) ? value.map((item) => map(asRecord(item))) : [];
+      return list.length ? list : [empty];
+    };
+
+    return {
+      fullName: str(src.fullName),
+      email: str(src.email),
+      phone: str(src.phone),
+      address: str(src.address),
+      jobTitle: str(src.jobTitle),
+      summary: str(src.summary),
+      photoUrl: str(src.photoUrl),
+      linkedin: str(src.linkedin),
+      instagram: str(src.instagram),
+      indeed: str(src.indeed),
+      cvnovaCode: str(src.cvnovaCode),
+      maritalStatus: str(src.maritalStatus),
+      placeOfBirth: str(src.placeOfBirth),
+      nationality: str(src.nationality),
+      skills: rows(src.skills, '', (s) => str(s)),
+      education: rows(src.education, { degree: '', school: '', year: '' }, (e) => ({ degree: str(e?.degree), school: str(e?.school), year: str(e?.year) })),
+      experience: rows(src.experience, { role: '', company: '', duration: '', desc: '' }, (e) => ({ role: str(e?.role), company: str(e?.company), duration: str(e?.duration), desc: str(e?.desc) })),
+      languages: rows(src.languages, { language: '', proficiency: '' }, (l) => ({ language: str(l?.language), proficiency: str(l?.proficiency) })),
+      certifications: rows(src.certifications, { name: '', year: '', fileUrl: '' }, (c) => ({ name: str(c?.name), year: str(c?.year), fileUrl: str(c?.fileUrl) })),
+      hobbies: rows(src.hobbies, '', (h) => str(h)),
+      references: rows(src.references, { name: '', role: '', contact: '' }, (r) => ({ name: str(r?.name), role: str(r?.role), contact: str(r?.contact) })),
+    };
+  };
+
+  const loadDocumentForEdit = async (id: string) => {
+    try {
+      const [{ data: { user } }, doc] = await Promise.all([supabase.auth.getUser(), fetchDocumentRecord(id)]);
+
+      if (!doc || !user) {
+        alert('Ye document load nahi ho saka. Dobara dashboard se try karein.');
+        window.location.href = '/dashboard';
+        return;
+      }
+
+      // Sirf CV builder yahan khulta hai — letter edit apne builder mein hota hai
+      if ((doc.document_type || 'CV') !== 'CV') {
+        window.location.href = `/view/${id}`;
+        return;
+      }
+
+      if (!ownsDocument(doc, user)) {
+        alert('Ye document aap ke account ka nahi hai, is liye edit nahi ho sakta.');
+        window.location.href = `/view/${id}`;
+        return;
+      }
+
+      const loaded = toBuilderData(doc.full_data);
+      const loadedTemplate = getTemplate(doc.template_name).id;
+
+      setFormData(loaded);
+      setTemplate(loadedTemplate);
+      setEditingId(doc.id);
+      // Loaded document hi current state hai — baghair change save karne par
+      // duplicate record na bane.
+      setLastSavedSnapshot(JSON.stringify({ template: loadedTemplate, formData: loaded }));
+    } catch (error) {
+      console.error('Load document error:', error);
+      alert('Document load karte waqt error aya.');
+      window.location.href = '/dashboard';
+    } finally {
+      setLoadingDoc(false);
+    }
+  };
+
+  // Mount par chalta hai: edit link (?edit=id) ho to saved document load karo,
+  // warna sample/dummy data hi dikhao. State updates effect body ke bahar
+  // rakhe gaye hain taake cascading render na ho.
+  useEffect(() => {
+    refreshAccount();
+    const editId = new URLSearchParams(window.location.search).get('edit');
+    if (editId) {
+      // Document load async hai — agle frame par start karte hain taake effect
+      // synchronously state update na kare.
+      const frame = requestAnimationFrame(() => {
+        void loadDocumentForEdit(editId);
+      });
+      return () => cancelAnimationFrame(frame);
+    }
+    const frame = requestAnimationFrame(() => setLoadingDoc(false));
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   const isPaidAccount = account?.plan?.isPaid === true || account?.plan?.isReactivated === true;
 
@@ -192,9 +291,12 @@ export default function Builder() {
     // Same CV ko baar baar save karne se CV count double na ho
     const snapshot = JSON.stringify({ template, formData });
     const alreadySaved = snapshot === lastSavedSnapshot;
+    const isEditing = !!editingId;
 
+    // Edit mode mein naya document create nahi hota, is liye template gate aur
+    // document limit check skip hote hain.
     // Naya document hai to hi limit check karo (already saved document count nahi barhata)
-    if (!alreadySaved) {
+    if (!isEditing && !alreadySaved) {
       // Server-side gate: premium templates, 3 free Blue ATS uses and trial expiry.
       try {
         const gateRes = await authedFetch('/api/templates/use', {
@@ -233,7 +335,24 @@ export default function Builder() {
     if (actionType === 'save') setIsSaving(true);
 
     try {
-      if (!alreadySaved) {
+      if (isEditing) {
+        // Existing document ko UPDATE karo — naya record insert na karo
+        if (!alreadySaved) {
+          const updated = await updateDocumentRecord(editingId!, {
+            templateName: template,
+            fullName: formData.fullName,
+            phone: formData.phone,
+            fullData: formData,
+            atsTier: getTemplate(template).ats,
+            templateTier: getTemplate(template).tier,
+          });
+          if (!updated) {
+            alert('Document update nahi ho saka. Login aur internet connection check karein.');
+            return;
+          }
+          setLastSavedSnapshot(snapshot);
+        }
+      } else if (!alreadySaved) {
         await saveDocumentRecord({
           documentType: 'CV', templateName: template, fullName: formData.fullName,
           email: user.email, phone: formData.phone, fullData: formData,
@@ -248,9 +367,12 @@ export default function Builder() {
       }
 
       if (actionType === 'save') {
-        // Save hone ke baad user ko dashboard ka option do
-        if (confirm("✅ CV successfully saved to your Dashboard!\n\nAb My Dashboard kholein?")) {
-          window.location.href = '/dashboard';
+        // Save/update hone ke baad user ko sahi document dikhao
+        const message = isEditing
+          ? "✅ CV updated! Aap ka wahi dashboard document update ho gaya hai.\n\nDocument dekhein?"
+          : "✅ CV successfully saved to your Dashboard!\n\nAb My Dashboard kholein?";
+        if (confirm(message)) {
+          window.location.href = isEditing ? `/view/${editingId}` : '/dashboard';
         }
       } else {
         setTimeout(() => {
@@ -262,11 +384,22 @@ export default function Builder() {
     }
   };
 
+  if (loadingDoc) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center gap-3 font-sans">
+        <Loader2 size={32} className="animate-spin text-blue-600" />
+        <p className="text-sm font-medium text-gray-600">Loading your document…</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col font-sans">
       <nav className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center sticky top-0 z-50 print:hidden">
-        <Link href="/" className="flex items-center gap-2 text-gray-600 hover:text-blue-600 font-medium"><ArrowLeft size={20} /> Back to Home</Link>
-        <div className="font-bold text-xl text-blue-600">CVNova Builder</div>
+        <Link href={editingId ? `/view/${editingId}` : '/'} className="flex items-center gap-2 text-gray-600 hover:text-blue-600 font-medium">
+          <ArrowLeft size={20} /> {editingId ? 'Back to Document' : 'Back to Home'}
+        </Link>
+        <div className="font-bold text-xl text-blue-600">CVNova Builder{editingId ? ' — Editing' : ''}</div>
         <div className="w-24"></div>
       </nav>
 
@@ -319,9 +452,18 @@ export default function Builder() {
             <p className="mt-2 text-[10px] text-gray-500">{getTemplate(template).description} — {ATS_META[getTemplate(template).ats].hint}</p>
           </div>
 
-          <div className="mb-6 bg-green-50 border border-green-200 p-4 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-sm font-medium text-green-800">Sample CV is filled. Replace text or clear it.</p>
-            <button onClick={resetForm} className="flex items-center gap-2 bg-white text-green-700 border px-4 py-2 rounded-lg font-bold text-sm hover:bg-green-100"><RefreshCw size={16} /> Clear</button>
+          <div className={`mb-6 flex flex-col items-start justify-between gap-4 rounded-xl border p-4 sm:flex-row sm:items-center ${editingId ? 'border-amber-200 bg-amber-50' : 'border-green-200 bg-green-50'}`}>
+            <p className={`text-sm font-medium ${editingId ? 'text-amber-900' : 'text-green-800'}`}>
+              {editingId
+                ? `Aap apna saved CV edit kar rahe hain${formData.fullName ? ` — ${formData.fullName}` : ''}. Save karne par yahi document update hoga, naya nahi banega.`
+                : 'Sample CV is filled. Replace text or clear it.'}
+            </p>
+            <div className="flex items-center gap-2">
+              {editingId && (
+                <Link href={`/view/${editingId}`} className="flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-bold text-amber-800 hover:bg-amber-100">View Saved CV</Link>
+              )}
+              <button onClick={resetForm} className={`flex items-center gap-2 rounded-lg border bg-white px-4 py-2 text-sm font-bold ${editingId ? 'border-amber-300 text-amber-800 hover:bg-amber-100' : 'border-green-300 text-green-700 hover:bg-green-100'}`}><RefreshCw size={16} /> Clear</button>
+            </div>
           </div>
 
           <h1 className="text-xl font-bold mb-4 border-b pb-2">Profile Photo (Optional)</h1>
@@ -493,10 +635,12 @@ export default function Builder() {
             {/* 🚨 SAVE ON DASHBOARD: ye CV user ke apne profile/dashboard mein save karta hai */}
             <button type="button" onClick={() => handleAction('save')} disabled={isSaving} className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white px-3 py-3 rounded-xl font-bold text-sm hover:bg-emerald-700 transition shadow-md disabled:opacity-60">
               {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-              {isSaving ? 'Saving to Dashboard...' : 'Save on Dashboard'}
+              {isSaving ? 'Saving...' : editingId ? 'Update Document' : 'Save on Dashboard'}
             </button>
             <p className="text-[11px] text-gray-500 text-center mt-2">
-              Ye CV aap ke <strong>My Dashboard</strong> mein save ho jayegi. Print / PDF / Word sirf copy download karne ke liye hain.
+              {editingId
+                ? 'Ye changes aap ke My Dashboard wale isi document mein save honge.'
+                : 'Ye CV aap ke My Dashboard mein save ho jayegi. Print / PDF / Word sirf copy download karne ke liye hain.'}
             </p>
 
             <div className="flex gap-2 mt-3">

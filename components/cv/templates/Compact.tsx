@@ -1,4 +1,4 @@
-import { ContactStrip, Extras, type TemplateProps } from '../shared';
+import { ContactStrip, Extras, PersonalDetails, type TemplateProps } from '../shared';
 
 export default function Compact({ data: d }: TemplateProps) {
   return (
@@ -31,11 +31,18 @@ export default function Compact({ data: d }: TemplateProps) {
       )}
       <div className="mb-3 avoid-break"><h2 className="font-bold text-gray-900 uppercase text-xs mb-1">Skills</h2><p className="text-gray-700">{d.skills.join(', ')}</p></div>
       <div className="mb-3 avoid-break"><h2 className="font-bold text-gray-900 uppercase text-xs mb-1">Languages</h2><p className="text-gray-700">{d.languages.map((l) => l.language).join(', ')}</p></div>
+      <PersonalDetails
+        data={d}
+        className="mb-3 avoid-break"
+        headingClassName="font-bold text-gray-900 uppercase text-xs mb-1"
+        listClassName="flex flex-wrap gap-x-4 text-gray-700"
+        labelClassName="font-semibold text-gray-900"
+      />
       <div className="grid grid-cols-2 gap-4 avoid-break">
         <div><h2 className="font-bold text-gray-900 uppercase text-xs mb-1">Certifications</h2><p className="text-gray-700">{d.certifications.map((c) => c.name).join(', ')}</p></div>
         <div><h2 className="font-bold text-gray-900 uppercase text-xs mb-1">References</h2><p className="text-gray-700">{d.references.map((r) => r.name).join(', ')}</p></div>
       </div>
-      <Extras data={d} keys={['cvnovaCode', 'maritalStatus', 'placeOfBirth', 'nationality']} className="mt-3 flex flex-wrap gap-x-4 border-t pt-2 text-[10px] text-gray-600" />
+      <Extras data={d} keys={['cvnovaCode']} className="mt-3 flex flex-wrap gap-x-4 border-t pt-2 text-[10px] text-gray-600" />
     </div>
   );
 }

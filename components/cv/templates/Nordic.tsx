@@ -1,4 +1,4 @@
-import { ContactStrip, Extras, type TemplateProps } from '../shared';
+import { ContactStrip, Extras, PersonalDetails, type TemplateProps } from '../shared';
 
 export default function Nordic({ data: d }: TemplateProps) {
   return (
@@ -41,6 +41,14 @@ export default function Nordic({ data: d }: TemplateProps) {
         </div>
       )}
 
+      <PersonalDetails
+        data={d}
+        className="mb-10 avoid-break"
+        headingClassName="text-[10px] font-bold uppercase tracking-[0.3em] text-gray-400 mb-3"
+        listClassName="flex flex-wrap gap-x-8 gap-y-1 text-xs text-gray-700"
+        labelClassName="font-semibold text-gray-900"
+      />
+
       <div className="grid grid-cols-2 gap-10">
         <div>
           {d.skills.length > 0 && <><h2 className="text-[10px] font-bold uppercase tracking-[0.3em] text-gray-400 mb-3">Skills</h2><ul className="text-xs text-gray-700 space-y-1">{d.skills.map((s, i) => <li key={i} className="border-b border-gray-100 pb-1">{s}</li>)}</ul></>}
@@ -51,7 +59,7 @@ export default function Nordic({ data: d }: TemplateProps) {
         </div>
       </div>
 
-      <Extras data={d} keys={['cvnovaCode', 'maritalStatus', 'placeOfBirth', 'nationality']} className="mt-8 flex flex-wrap gap-x-6 border-t border-gray-200 pt-3 text-[10px] uppercase tracking-wider text-gray-500" />
+      <Extras data={d} keys={['cvnovaCode']} className="mt-8 flex flex-wrap gap-x-6 border-t border-gray-200 pt-3 text-[10px] uppercase tracking-wider text-gray-500" />
     </div>
   );
 }

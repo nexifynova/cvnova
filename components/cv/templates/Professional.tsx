@@ -1,4 +1,4 @@
-import { ContactStrip, Extras, lines, type TemplateProps } from '../shared';
+import { ContactStrip, Extras, PersonalDetails, lines, type TemplateProps } from '../shared';
 
 export default function Professional({ data: d }: TemplateProps) {
   return (
@@ -58,7 +58,15 @@ export default function Professional({ data: d }: TemplateProps) {
         {d.hobbies.length > 0 && <div><h2 className="text-sm font-bold text-gray-900 uppercase tracking-widest mb-2 border-b border-gray-300 pb-1">Interests</h2><p className="text-xs text-gray-700">{d.hobbies.join(', ')}</p></div>}
       </div>
 
-      <Extras data={d} keys={['cvnovaCode', 'maritalStatus', 'placeOfBirth', 'nationality']} className="mt-4 flex flex-wrap gap-x-4 border-t border-gray-300 pt-2 text-[10px] text-gray-600" />
+      <Extras data={d} keys={['cvnovaCode']} className="mt-4 flex flex-wrap gap-x-4 border-t border-gray-300 pt-2 text-[10px] text-gray-600" />
+
+      <PersonalDetails
+        data={d}
+        className="mb-6 avoid-break"
+        headingClassName="text-sm font-bold text-gray-900 uppercase tracking-widest mb-2 border-b border-gray-300 pb-1"
+        listClassName="grid grid-cols-3 gap-x-4 gap-y-1 text-xs text-gray-700"
+        labelClassName="font-semibold text-gray-900"
+      />
 
       {d.references.length > 0 && (
         <div className="mt-6 avoid-break">

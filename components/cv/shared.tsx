@@ -46,8 +46,8 @@ const asString = (value: unknown): string => (typeof value === 'string' ? value 
 const asArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : []);
 
 /** Normalises legacy `full_data` blobs so templates can render without guards. */
-export function normalizeCV(raw: any): CVData {
-  const data = raw || {};
+export function normalizeCV(raw: unknown): CVData {
+  const data = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
   return {
     fullName: asString(data.fullName),
     email: asString(data.email),
@@ -103,15 +103,12 @@ const EXTRA_LABELS: Record<ExtraKey, string> = {
   nationality: 'Nationality',
 };
 
-const DEFAULT_EXTRAS: ExtraKey[] = [
-  'linkedin', 'instagram', 'indeed', 'cvnovaCode', 'maritalStatus', 'placeOfBirth', 'nationality',
-];
-
+const DEFAULT_EXTRAS: ExtraKey[] = ['linkedin', 'instagram', 'indeed', 'cvnovaCode'];
 
 /**
- * Renders the 2026 profile extras (LinkedIn, Instagram, Indeed, CVNova ID,
- * marital status, place of birth, nationality). Every template embeds this so
- * the new fields appear everywhere without duplicating markup.
+ * Renders the 2026 profile extras (LinkedIn, Instagram, Indeed, CVNova ID).
+ * Marital status, place of birth and nationality live in `PersonalDetails`
+ * instead, so they get their own headed section rather than a footer footnote.
  */
 export function Extras({
   data,
@@ -132,7 +129,7 @@ export function Extras({
 }) {
   const items = keys
     .map((key) => {
-      const value = asString((data as any)[key]);
+      const value = asString(data[key]);
       if (!value) return null;
       const isLink = key === 'linkedin' || key === 'instagram' || key === 'indeed';
       return { key, value, isLink };
@@ -160,6 +157,59 @@ export function Extras({
   );
 }
 
+/** Personal-detail fields that get their own dedicated section. */
+export const PERSONAL_DETAIL_KEYS = ['maritalStatus', 'placeOfBirth', 'nationality'] as const;
+
+export type PersonalDetailKey = typeof PERSONAL_DETAIL_KEYS[number];
+
+const PERSONAL_DETAIL_LABELS: Record<PersonalDetailKey, string> = {
+  maritalStatus: 'Marital Status',
+  placeOfBirth: 'Place of Birth',
+  nationality: 'Nationality',
+};
+
+/**
+ * Dedicated "Personal Details" section (Marital Status, Place of Birth,
+ * Nationality). Har CV template ise References se pehle render karta hai, is liye
+ * ye fields kisi template ke footer mein chhup nahi jateen.
+ */
+export function PersonalDetails({
+  data,
+  heading = 'Personal Details',
+  className = '',
+  headingClassName = '',
+  listClassName = '',
+  itemClassName = '',
+  labelClassName = 'font-semibold text-gray-700',
+}: {
+  data: CVData;
+  heading?: string | null;
+  className?: string;
+  headingClassName?: string;
+  listClassName?: string;
+  itemClassName?: string;
+  labelClassName?: string;
+}) {
+  const items = PERSONAL_DETAIL_KEYS
+    .map((key) => ({ key, label: PERSONAL_DETAIL_LABELS[key], value: asString(data[key]) }))
+    .filter((item) => item.value);
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className={className}>
+      {heading ? <h2 className={headingClassName}>{heading}</h2> : null}
+      <ul className={listClassName}>
+        {items.map((item) => (
+          <li key={item.key} className={itemClassName}>
+            <span className={labelClassName}>{item.label}:</span> <span>{item.value}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /** Compact contact strip used by the majority of templates. */
 export function ContactStrip({
   data,
@@ -174,7 +224,7 @@ export function ContactStrip({
   separator?: string;
   keys?: ('email' | 'phone' | 'address')[];
 }) {
-  const items = keys.map((key) => asString((data as any)[key])).filter(Boolean);
+  const items = keys.map((key) => asString(data[key])).filter(Boolean);
   if (items.length === 0) return null;
   return (
     <div className={className}>

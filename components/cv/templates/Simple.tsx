@@ -1,4 +1,4 @@
-import { ContactStrip, Extras, type TemplateProps } from '../shared';
+import { ContactStrip, Extras, PersonalDetails, type TemplateProps } from '../shared';
 
 export default function Simple({ data: d }: TemplateProps) {
   return (
@@ -42,11 +42,19 @@ export default function Simple({ data: d }: TemplateProps) {
         <div><h2 className="font-bold text-gray-900 mb-1">Languages</h2><p className="text-sm text-gray-700">{d.languages.map((l) => l.language).join(' • ')}</p></div>
       </div>
       <hr className="mb-4 border-gray-300" />
+      <PersonalDetails
+        data={d}
+        className="mb-4 avoid-break"
+        headingClassName="font-bold text-gray-900 mb-1"
+        listClassName="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-700"
+        labelClassName="font-semibold text-gray-900"
+      />
+      <hr className="mb-4 border-gray-300" />
       <div className="grid grid-cols-2 gap-4 avoid-break">
         <div><h2 className="font-bold text-gray-900 mb-1">Certifications</h2><p className="text-sm text-gray-700">{d.certifications.map((c) => c.name).join(' • ')}</p></div>
         <div><h2 className="font-bold text-gray-900 mb-1">References</h2><p className="text-sm text-gray-700">{d.references.map((r) => r.name).join(' • ')}</p></div>
       </div>
-      <Extras data={d} keys={['cvnovaCode', 'maritalStatus', 'placeOfBirth', 'nationality']} className="mt-4 flex flex-wrap gap-x-4 border-t pt-2 text-[10px] text-gray-600" />
+      <Extras data={d} keys={['cvnovaCode']} className="mt-4 flex flex-wrap gap-x-4 border-t pt-2 text-[10px] text-gray-600" />
     </div>
   );
 }

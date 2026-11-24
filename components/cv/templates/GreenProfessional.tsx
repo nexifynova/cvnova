@@ -1,4 +1,4 @@
-import { ContactStrip, Extras, type TemplateProps } from '../shared';
+import { ContactStrip, Extras, PersonalDetails, type TemplateProps } from '../shared';
 
 export default function GreenProfessional({ data: d }: TemplateProps) {
   return (
@@ -35,6 +35,13 @@ export default function GreenProfessional({ data: d }: TemplateProps) {
         </div>
 
         <div>
+          <PersonalDetails
+            data={d}
+            className="avoid-break"
+            headingClassName="text-sm font-bold text-green-800 uppercase border-b border-green-300 pb-1 mb-2"
+            listClassName="space-y-1 text-xs text-gray-700 mb-4"
+            labelClassName="font-semibold text-green-800"
+          />
           {d.summary && <><h2 className="text-sm font-bold text-green-800 uppercase border-b border-green-300 pb-1 mb-2">Summary</h2><p className="text-xs text-gray-700 leading-relaxed mb-4 avoid-break">{d.summary}</p></>}
           {d.skills.length > 0 && <><h2 className="text-sm font-bold text-green-800 uppercase border-b border-green-300 pb-1 mb-2">Skills</h2><ul className="text-xs text-gray-700 space-y-1 mb-4">{d.skills.map((s, i) => <li key={i} className="flex items-center gap-2"><span className="w-1.5 h-1.5 bg-green-600 rounded-full" />{s}</li>)}</ul></>}
           {d.languages.length > 0 && <><h2 className="text-sm font-bold text-green-800 uppercase border-b border-green-300 pb-1 mb-2">Languages</h2><ul className="text-xs text-gray-700 space-y-1 mb-4">{d.languages.map((l, i) => <li key={i}>{l.language}{l.proficiency ? ` – ${l.proficiency}` : ''}</li>)}</ul></>}
@@ -43,7 +50,7 @@ export default function GreenProfessional({ data: d }: TemplateProps) {
         </div>
       </div>
 
-      <Extras data={d} keys={['cvnovaCode', 'maritalStatus', 'placeOfBirth', 'nationality']} className="mt-4 flex flex-wrap gap-x-4 border-t border-green-200 pt-2 text-[10px] text-gray-600" />
+      <Extras data={d} keys={['cvnovaCode']} className="mt-4 flex flex-wrap gap-x-4 border-t border-green-200 pt-2 text-[10px] text-gray-600" />
     </div>
   );
 }

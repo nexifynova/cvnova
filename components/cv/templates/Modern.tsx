@@ -1,4 +1,4 @@
-import { ContactStrip, Extras, lines, type TemplateProps } from '../shared';
+import { ContactStrip, Extras, PersonalDetails, lines, type TemplateProps } from '../shared';
 
 export default function Modern({ data: d }: TemplateProps) {
   return (
@@ -33,7 +33,7 @@ export default function Modern({ data: d }: TemplateProps) {
               <ul className="text-[10px] list-disc pl-4">{d.languages.map((l, i) => <li key={i}>{l.language}{l.proficiency ? ` – ${l.proficiency}` : ''}</li>)}</ul>
             </div>
           )}
-          <Extras data={d} keys={['cvnovaCode', 'maritalStatus', 'placeOfBirth', 'nationality']} className="space-y-1 text-[10px] text-gray-600" />
+          <Extras data={d} keys={['cvnovaCode']} className="space-y-1 text-[10px] text-gray-600" />
         </div>
 
         <div className="w-2/3">
@@ -74,6 +74,14 @@ export default function Modern({ data: d }: TemplateProps) {
               </ul>
             </div>
           )}
+
+          <PersonalDetails
+            data={d}
+            className="mb-5 avoid-break"
+            headingClassName="font-bold text-sm mb-3 border-b pb-1 uppercase"
+            listClassName="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px] text-gray-600"
+            labelClassName="font-semibold text-gray-900"
+          />
 
           {d.references.length > 0 && (
             <div>

@@ -1,4 +1,4 @@
-import { Extras, lines, type TemplateProps } from '../shared';
+import { Extras, PersonalDetails, lines, type TemplateProps } from '../shared';
 
 export default function Tech({ data: d }: TemplateProps) {
   return (
@@ -38,11 +38,20 @@ export default function Tech({ data: d }: TemplateProps) {
         <div className="mb-4"><span className="text-blue-600 font-bold">## Certifications</span><ul className="text-gray-700 mt-1 list-disc pl-4">{d.certifications.map((c, i) => <li key={i} className="avoid-break">{c.name}{c.year ? ` (${c.year})` : ''}</li>)}</ul></div>
       )}
 
+      <PersonalDetails
+        data={d}
+        className="mb-4 avoid-break"
+        heading="## Personal Details"
+        headingClassName="text-blue-600 font-bold"
+        listClassName="text-gray-700 mt-1 flex flex-wrap gap-x-4"
+        labelClassName="font-bold"
+      />
+
       {d.references.length > 0 && (
         <div><span className="text-blue-600 font-bold">## References</span><ul className="text-gray-700 mt-1 list-disc pl-4">{d.references.map((r, i) => <li key={i} className="avoid-break">{r.name}{r.contact ? ` - ${r.contact}` : ''}</li>)}</ul></div>
       )}
 
-      <Extras data={d} keys={['cvnovaCode', 'maritalStatus', 'placeOfBirth', 'nationality']} className="mt-4 flex flex-wrap gap-x-4 border-t border-gray-300 pt-2 text-[10px] text-gray-500" />
+      <Extras data={d} keys={['cvnovaCode']} className="mt-4 flex flex-wrap gap-x-4 border-t border-gray-300 pt-2 text-[10px] text-gray-500" />
     </div>
   );
 }

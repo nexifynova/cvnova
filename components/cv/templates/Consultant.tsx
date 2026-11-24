@@ -1,4 +1,4 @@
-import { Extras, type TemplateProps } from '../shared';
+import { Extras, PersonalDetails, type TemplateProps } from '../shared';
 
 export default function Consultant({ data: d }: TemplateProps) {
   return (
@@ -22,7 +22,14 @@ export default function Consultant({ data: d }: TemplateProps) {
           {d.skills.length > 0 && <div><h2 className="mb-2 border-b-2 border-teal-500 pb-1 text-xs font-bold uppercase tracking-widest text-slate-800">Core Skills</h2><ul className="space-y-1 text-xs text-gray-700">{d.skills.map((s, i) => <li key={i} className="flex items-start gap-2"><span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-teal-500" />{s}</li>)}</ul></div>}
           {d.languages.length > 0 && <div><h2 className="mb-2 border-b-2 border-teal-500 pb-1 text-xs font-bold uppercase tracking-widest text-slate-800">Languages</h2><ul className="space-y-1 text-xs text-gray-700">{d.languages.map((l, i) => <li key={i}>{l.language}{l.proficiency ? ` — ${l.proficiency}` : ''}</li>)}</ul></div>}
           {d.certifications.length > 0 && <div><h2 className="mb-2 border-b-2 border-teal-500 pb-1 text-xs font-bold uppercase tracking-widest text-slate-800">Certifications</h2><ul className="space-y-1 text-xs text-gray-700">{d.certifications.map((c, i) => <li key={i}>{c.name}{c.year ? ` (${c.year})` : ''}</li>)}</ul></div>}
-          <Extras data={d} keys={['cvnovaCode', 'maritalStatus', 'placeOfBirth', 'nationality']} className="space-y-1 text-[10px] text-gray-600" />
+          <PersonalDetails
+            data={d}
+            className="avoid-break"
+            headingClassName="mb-2 border-b-2 border-teal-500 pb-1 text-xs font-bold uppercase tracking-widest text-slate-800"
+            listClassName="space-y-1 text-xs text-gray-700"
+            labelClassName="font-semibold text-slate-900"
+          />
+          <Extras data={d} keys={['cvnovaCode']} className="space-y-1 text-[10px] text-gray-600" />
         </div>
 
         <div className="col-span-8 space-y-6">

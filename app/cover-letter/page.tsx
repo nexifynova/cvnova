@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, Printer, Download, Loader2, RefreshCw, Info, Sparkles, Save } from 'lucide-react';
 import Link from 'next/link';
-import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount } from '@/lib/supabase';
+import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount, fetchDocumentRecord, updateDocumentRecord, ownsDocument } from '@/lib/supabase';
 import { downloadAsWord, downloadAsPDF } from '@/lib/download-utils';
+
+const COVER_LETTER_TEMPLATES = ['modern', 'classic', 'elegant', 'minimal'];
 
 const dummyData = {
   fullName: 'Muhammad Ali',
@@ -32,6 +34,79 @@ export default function CoverLetter() {
   const [isSaving, setIsSaving] = useState(false);
   // Duplicate save se bachne ke liye last saved document ka snapshot
   const [lastSavedSnapshot, setLastSavedSnapshot] = useState<string | null>(null);
+  // ?edit=<id> — dashboard se aya hua saved letter (edit mode)
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [loadingDoc, setLoadingDoc] = useState(true);
+
+  const loadDocumentForEdit = async (id: string) => {
+    try {
+      const [{ data: { user } }, doc] = await Promise.all([supabase.auth.getUser(), fetchDocumentRecord(id)]);
+
+      if (!doc || !user) {
+        alert('Ye document load nahi ho saka. Dobara dashboard se try karein.');
+        window.location.href = '/dashboard';
+        return;
+      }
+
+      // Ye builder sirf cover letters ke liye hai
+      if ((doc.document_type || 'Cover Letter') !== 'Cover Letter') {
+        window.location.href = `/view/${id}`;
+        return;
+      }
+
+      if (!ownsDocument(doc, user)) {
+        alert('Ye document aap ke account ka nahi hai, is liye edit nahi ho sakta.');
+        window.location.href = `/view/${id}`;
+        return;
+      }
+
+      const src = doc.full_data || {};
+      const str = (value: unknown) => (typeof value === 'string' ? value : value == null ? '' : String(value));
+      const loaded = {
+        fullName: str(src.fullName),
+        email: str(src.email),
+        phone: str(src.phone),
+        address: str(src.address),
+        companyName: str(src.companyName),
+        companyAddress: str(src.companyAddress),
+        jobTitle: str(src.jobTitle),
+        hiringManager: str(src.hiringManager),
+        date: str(src.date),
+        body: str(src.body),
+      };
+      const templateName = String(doc.template_name || 'modern').toLowerCase();
+      const loadedTemplate = COVER_LETTER_TEMPLATES.includes(templateName) ? templateName : 'modern';
+
+      setFormData(loaded);
+      setTemplate(loadedTemplate);
+      setEditingId(doc.id);
+      // Loaded letter hi current state hai — baghair change save par duplicate na bane
+      setLastSavedSnapshot(JSON.stringify({ template: loadedTemplate, formData: loaded }));
+    } catch (error) {
+      console.error('Load document error:', error);
+      alert('Document load karte waqt error aya.');
+      window.location.href = '/dashboard';
+    } finally {
+      setLoadingDoc(false);
+    }
+  };
+
+  // Mount par chalta hai: edit link (?edit=id) ho to saved letter load karo,
+  // warna sample data hi dikhao. State updates effect body ke bahar rakhe gaye
+  // hain taake cascading render na ho.
+  useEffect(() => {
+    const editId = new URLSearchParams(window.location.search).get('edit');
+    if (editId) {
+      // Load async hai — agle frame par start karte hain taake effect
+      // synchronously state update na kare.
+      const frame = requestAnimationFrame(() => {
+        void loadDocumentForEdit(editId);
+      });
+      return () => cancelAnimationFrame(frame);
+    }
+    const frame = requestAnimationFrame(() => setLoadingDoc(false));
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -75,12 +150,15 @@ export default function CoverLetter() {
     if (user && user.email) {
       userEmail = user.email;
       isLoggedIn = true;
-      
-      const limitCheck = await checkUserLimit(userEmail);
-      if (!limitCheck.allowed) {
-        alert("You have reached your document limit for your current plan. Please upgrade to continue.");
-        window.location.href = '/payment';
-        return;
+
+      // Edit mode mein naya document create nahi hota — limit check skip
+      if (!editingId) {
+        const limitCheck = await checkUserLimit(userEmail);
+        if (!limitCheck.allowed) {
+          alert("You have reached your document limit for your current plan. Please upgrade to continue.");
+          window.location.href = '/payment';
+          return;
+        }
       }
     } else {
       alert("Aap login nahi hain.");
@@ -95,7 +173,22 @@ export default function CoverLetter() {
     const alreadySaved = snapshot === lastSavedSnapshot;
 
     try {
-      if (!alreadySaved) {
+      if (editingId) {
+        // Existing letter ko UPDATE karo — naya document insert na karo
+        if (!alreadySaved) {
+          const updated = await updateDocumentRecord(editingId, {
+            templateName: template,
+            fullName: formData.fullName,
+            phone: formData.phone,
+            fullData: formData,
+          });
+          if (!updated) {
+            alert('Letter update nahi ho saka. Login aur internet connection check karein.');
+            return;
+          }
+          setLastSavedSnapshot(snapshot);
+        }
+      } else if (!alreadySaved) {
         await saveDocumentRecord({
           documentType: 'Cover Letter',
           templateName: template,
@@ -110,9 +203,12 @@ export default function CoverLetter() {
       }
 
       if (actionType === 'save') {
-        // Save hone ke baad dashboard kholne ka option
-        if (confirm("✅ Cover Letter successfully saved to your Dashboard!\n\nAb My Dashboard kholein?")) {
-          window.location.href = '/dashboard';
+        // Save/update hone ke baad sahi document dikhao
+        const message = editingId
+          ? "✅ Cover Letter updated! Aap ka wahi dashboard document update ho gaya hai.\n\nDocument dekhein?"
+          : "✅ Cover Letter successfully saved to your Dashboard!\n\nAb My Dashboard kholein?";
+        if (confirm(message)) {
+          window.location.href = editingId ? `/view/${editingId}` : '/dashboard';
         }
       } else {
         setTimeout(() => { window.print(); }, 500);
@@ -124,13 +220,22 @@ export default function CoverLetter() {
     }
   };
 
+  if (loadingDoc) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center gap-3 font-sans">
+        <Loader2 size={32} className="animate-spin text-blue-600" />
+        <p className="text-sm font-medium text-gray-600">Loading your document…</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col font-sans">
       <nav className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center sticky top-0 z-50 print:hidden">
-        <Link href="/" className="flex items-center gap-2 text-gray-600 hover:text-blue-600 font-medium">
-          <ArrowLeft size={20} /> Back to Home
+        <Link href={editingId ? `/view/${editingId}` : '/'} className="flex items-center gap-2 text-gray-600 hover:text-blue-600 font-medium">
+          <ArrowLeft size={20} /> {editingId ? 'Back to Document' : 'Back to Home'}
         </Link>
-        <div className="font-bold text-xl text-blue-600">Cover Letter Builder</div>
+        <div className="font-bold text-xl text-blue-600">Cover Letter Builder{editingId ? ' — Editing' : ''}</div>
         <div className="w-24"></div>
       </nav>
 
@@ -139,13 +244,24 @@ export default function CoverLetter() {
         {/* LEFT SIDE: FORM */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-fit max-h-[85vh] overflow-y-auto print:hidden">
           
-          <div className="mb-6 bg-green-50 border border-green-200 p-4 rounded-xl flex items-start gap-3">
-            <Info className="text-green-600 shrink-0 mt-0.5" size={20} />
+          <div className={`mb-6 p-4 rounded-xl flex items-start gap-3 border ${editingId ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200'}`}>
+            <Info className={editingId ? 'text-amber-600 shrink-0 mt-0.5' : 'text-green-600 shrink-0 mt-0.5'} size={20} />
             <div className="flex-1">
-              <p className="text-sm font-medium text-green-800 mb-2">Sample letter filled. Replace or clear to start fresh.</p>
-              <button onClick={resetForm} className="flex items-center gap-2 bg-white text-green-700 border border-green-300 px-4 py-2 rounded-lg font-bold text-sm hover:bg-green-100 transition shadow-sm">
-                <RefreshCw size={16} /> Clear & Start Fresh
-              </button>
+              <p className={`text-sm font-medium mb-2 ${editingId ? 'text-amber-900' : 'text-green-800'}`}>
+                {editingId
+                  ? `Aap apna saved cover letter edit kar rahe hain${formData.fullName ? ` — ${formData.fullName}` : ''}. Save karne par yahi letter update hoga.`
+                  : 'Sample letter filled. Replace or clear to start fresh.'}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                {editingId && (
+                  <Link href={`/view/${editingId}`} className="flex items-center gap-2 bg-white text-amber-800 border border-amber-300 px-4 py-2 rounded-lg font-bold text-sm hover:bg-amber-100 transition shadow-sm">
+                    View Saved Letter
+                  </Link>
+                )}
+                <button onClick={resetForm} className={`flex items-center gap-2 bg-white border px-4 py-2 rounded-lg font-bold text-sm transition shadow-sm ${editingId ? 'text-amber-800 border-amber-300 hover:bg-amber-100' : 'text-green-700 border-green-300 hover:bg-green-100'}`}>
+                  <RefreshCw size={16} /> Clear & Start Fresh
+                </button>
+              </div>
             </div>
           </div>
 
@@ -196,10 +312,12 @@ export default function CoverLetter() {
           <div className="flex flex-col gap-2 pt-4 border-t border-gray-200">
             <button type="button" onClick={() => handleAction('save')} disabled={isSaving} className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-emerald-700 transition shadow-md disabled:opacity-60">
               {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-              {isSaving ? 'Saving to Dashboard...' : 'Save on Dashboard'}
+              {isSaving ? 'Saving...' : editingId ? 'Update Letter' : 'Save on Dashboard'}
             </button>
             <p className="text-[11px] text-gray-500 text-center">
-              Ye letter aap ke <strong>My Dashboard</strong> mein save ho jayegi. Print / PDF / Word sirf copy download karne ke liye hain.
+              {editingId
+                ? 'Ye changes aap ke My Dashboard wale isi letter mein save honge.'
+                : <>Ye letter aap ke <strong>My Dashboard</strong> mein save ho jayegi. Print / PDF / Word sirf copy download karne ke liye hain.</>}
             </p>
             <div className="flex gap-2 w-full mt-1">
               <button type="button" onClick={() => handleAction('print')} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-gray-800 transition">

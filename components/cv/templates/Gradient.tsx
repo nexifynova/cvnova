@@ -1,4 +1,4 @@
-import { Extras, type TemplateProps } from '../shared';
+import { Extras, PersonalDetails, type TemplateProps } from '../shared';
 
 export default function Gradient({ data: d }: TemplateProps) {
   return (
@@ -39,6 +39,14 @@ export default function Gradient({ data: d }: TemplateProps) {
           </div>
         )}
 
+        <PersonalDetails
+          data={d}
+          className="mb-6 avoid-break"
+          headingClassName="mb-2 text-xs font-bold uppercase tracking-widest text-indigo-600"
+          listClassName="flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-700"
+          labelClassName="font-semibold text-gray-900"
+        />
+
         <div className="grid grid-cols-2 gap-6 avoid-break">
           <div>
             {d.skills.length > 0 && <><h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-indigo-600">Skills</h2><div className="flex flex-wrap gap-1.5">{d.skills.map((s, i) => <span key={i} className="rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-medium text-indigo-700">{s}</span>)}</div></>}
@@ -49,7 +57,7 @@ export default function Gradient({ data: d }: TemplateProps) {
           </div>
         </div>
 
-        <Extras data={d} keys={['cvnovaCode', 'maritalStatus', 'placeOfBirth', 'nationality']} className="mt-6 flex flex-wrap gap-x-4 border-t border-purple-100 pt-2 text-[10px] text-gray-600" />
+        <Extras data={d} keys={['cvnovaCode']} className="mt-6 flex flex-wrap gap-x-4 border-t border-purple-100 pt-2 text-[10px] text-gray-600" />
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { ContactStrip, Extras, type TemplateProps } from '../shared';
+import { ContactStrip, Extras, PersonalDetails, type TemplateProps } from '../shared';
 
 export default function Academic({ data: d }: TemplateProps) {
   return (
@@ -53,11 +53,19 @@ export default function Academic({ data: d }: TemplateProps) {
 
       {d.summary && <div className="mb-6 avoid-break"><h2 className="mb-2 border-b border-gray-300 pb-1 text-xs font-bold uppercase tracking-[0.2em]">Profile</h2><p className="text-xs leading-relaxed text-gray-700">{d.summary}</p></div>}
 
+      <PersonalDetails
+        data={d}
+        className="mb-4 avoid-break"
+        headingClassName="mb-2 border-b border-gray-300 pb-1 text-xs font-bold uppercase tracking-[0.2em]"
+        listClassName="flex flex-wrap gap-x-8 gap-y-1 text-xs text-gray-700"
+        labelClassName="font-semibold"
+      />
+
       {d.languages.length > 0 && (
         <div className="mb-4 avoid-break"><h2 className="mb-2 border-b border-gray-300 pb-1 text-xs font-bold uppercase tracking-[0.2em]">Languages</h2><p className="text-xs text-gray-700">{d.languages.map((l) => l.language).join(' · ')}</p></div>
       )}
 
-      <Extras data={d} keys={['cvnovaCode', 'maritalStatus', 'placeOfBirth', 'nationality']} className="mt-4 flex flex-wrap gap-x-4 border-t border-gray-300 pt-2 text-[10px] text-gray-600" />
+      <Extras data={d} keys={['cvnovaCode']} className="mt-4 flex flex-wrap gap-x-4 border-t border-gray-300 pt-2 text-[10px] text-gray-600" />
     </div>
   );
 }

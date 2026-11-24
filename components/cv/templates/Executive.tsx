@@ -1,4 +1,4 @@
-import { Extras, type TemplateProps } from '../shared';
+import { Extras, PersonalDetails, type TemplateProps } from '../shared';
 
 export default function Executive({ data: d }: TemplateProps) {
   return (
@@ -43,12 +43,20 @@ export default function Executive({ data: d }: TemplateProps) {
         <div><h2 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-1 border-b-2 border-gray-900 inline-block pb-1">Languages</h2><ul className="flex flex-wrap gap-x-4 gap-y-1 mt-2">{d.languages.map((l, i) => <li key={i} className="text-sm text-gray-700">• {l.language}</li>)}</ul></div>
       </div>
 
+      <PersonalDetails
+        data={d}
+        className="mb-4 avoid-break"
+        headingClassName="text-xs font-bold text-gray-900 uppercase tracking-widest mb-2 border-b-2 border-gray-900 inline-block pb-1"
+        listClassName="grid grid-cols-3 gap-x-4 gap-y-1 text-sm text-gray-700"
+        labelClassName="font-semibold text-gray-900"
+      />
+
       <div className="grid grid-cols-2 gap-4 avoid-break">
         {d.certifications.length > 0 && <div><h2 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-1 border-b-2 border-gray-900 inline-block pb-1">Certifications</h2><ul className="flex flex-wrap gap-x-4 gap-y-1 mt-2">{d.certifications.map((c, i) => <li key={i} className="text-sm text-gray-700">• {c.name}</li>)}</ul></div>}
         {d.references.length > 0 && <div><h2 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-1 border-b-2 border-gray-900 inline-block pb-1">References</h2><ul className="flex flex-wrap gap-x-4 gap-y-1 mt-2">{d.references.map((r, i) => <li key={i} className="text-sm text-gray-700">• {r.name}</li>)}</ul></div>}
       </div>
 
-      <Extras data={d} keys={['cvnovaCode', 'maritalStatus', 'placeOfBirth', 'nationality']} className="mt-4 flex flex-wrap gap-x-4 border-t border-gray-300 pt-2 text-[10px] text-gray-600" />
+      <Extras data={d} keys={['cvnovaCode']} className="mt-4 flex flex-wrap gap-x-4 border-t border-gray-300 pt-2 text-[10px] text-gray-600" />
     </div>
   );
 }

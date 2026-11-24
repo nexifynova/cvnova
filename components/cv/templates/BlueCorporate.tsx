@@ -1,4 +1,4 @@
-import { Extras, type TemplateProps } from '../shared';
+import { Extras, PersonalDetails, type TemplateProps } from '../shared';
 
 export default function BlueCorporate({ data: d }: TemplateProps) {
   return (
@@ -45,12 +45,20 @@ export default function BlueCorporate({ data: d }: TemplateProps) {
           <div><h2 className="text-sm font-bold text-blue-700 uppercase border-b-2 border-blue-700 pb-1 mb-2">Languages</h2><ul className="text-xs text-gray-700 list-disc pl-4">{d.languages.map((l, i) => <li key={i}>{l.language}</li>)}</ul></div>
         </div>
 
+        <PersonalDetails
+          data={d}
+          className="mb-4 avoid-break"
+          headingClassName="text-sm font-bold text-blue-700 uppercase border-b-2 border-blue-700 pb-1 mb-2"
+          listClassName="grid grid-cols-3 gap-x-4 gap-y-1 text-xs text-gray-700"
+          labelClassName="font-semibold text-gray-900"
+        />
+
         <div className="grid grid-cols-2 gap-4 avoid-break">
           {d.certifications.length > 0 && <div><h2 className="text-sm font-bold text-blue-700 uppercase border-b-2 border-blue-700 pb-1 mb-2">Certifications</h2><ul className="text-xs text-gray-700 list-disc pl-4">{d.certifications.map((c, i) => <li key={i}>{c.name}</li>)}</ul></div>}
           {d.references.length > 0 && <div><h2 className="text-sm font-bold text-blue-700 uppercase border-b-2 border-blue-700 pb-1 mb-2">References</h2><ul className="text-xs text-gray-700 list-disc pl-4">{d.references.map((r, i) => <li key={i}>{r.name}</li>)}</ul></div>}
         </div>
 
-        <Extras data={d} keys={['cvnovaCode', 'maritalStatus', 'placeOfBirth', 'nationality']} className="mt-4 flex flex-wrap gap-x-4 border-t border-blue-200 pt-2 text-[10px] text-gray-600" />
+        <Extras data={d} keys={['cvnovaCode']} className="mt-4 flex flex-wrap gap-x-4 border-t border-blue-200 pt-2 text-[10px] text-gray-600" />
       </div>
     </div>
   );

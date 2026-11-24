@@ -1,4 +1,4 @@
-import { ContactStrip, Extras, type TemplateProps } from '../shared';
+import { ContactStrip, Extras, PersonalDetails, type TemplateProps } from '../shared';
 
 const Dot = () => <div className="absolute w-4 h-4 bg-blue-600 rounded-full -left-[9px] top-1" />;
 
@@ -55,8 +55,14 @@ export default function Timeline({ data: d }: TemplateProps) {
       )}
 
       <div className="relative border-l-2 border-blue-200 ml-3 pl-6 avoid-break">
-        <Dot /><h2 className="text-sm font-bold text-blue-600 uppercase mb-2">Profile details</h2>
-        <Extras data={d} keys={['cvnovaCode', 'maritalStatus', 'placeOfBirth', 'nationality']} className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-gray-600" />
+        <Dot /><h2 className="text-sm font-bold text-blue-600 uppercase mb-2">Personal Details</h2>
+        <PersonalDetails
+          data={d}
+          heading={null}
+          listClassName="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-gray-600"
+          labelClassName="font-semibold text-gray-800"
+        />
+        <Extras data={d} keys={['cvnovaCode']} className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-gray-500" />
       </div>
     </div>
   );

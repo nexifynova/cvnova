@@ -1,4 +1,4 @@
-import { Extras, lines, type TemplateProps } from '../shared';
+import { Extras, PersonalDetails, lines, type TemplateProps } from '../shared';
 
 export default function ClassicGray({ data: d }: TemplateProps) {
   return (
@@ -40,7 +40,7 @@ export default function ClassicGray({ data: d }: TemplateProps) {
             </div>
           )}
 
-          <Extras data={d} keys={['cvnovaCode', 'maritalStatus', 'placeOfBirth', 'nationality']} className="mt-auto space-y-1 text-[10px] text-gray-600" />
+          <Extras data={d} keys={['cvnovaCode']} className="mt-auto space-y-1 text-[10px] text-gray-600" />
         </div>
 
         <div className="w-[65%] p-8 bg-white">
@@ -92,6 +92,14 @@ export default function ClassicGray({ data: d }: TemplateProps) {
               ))}
             </div>
           )}
+
+          <PersonalDetails
+            data={d}
+            className="mb-6 avoid-break"
+            headingClassName="font-bold text-gray-800 text-sm mb-3 uppercase tracking-wider border-b border-gray-200 pb-1"
+            listClassName="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-gray-700"
+            labelClassName="font-semibold text-gray-900"
+          />
 
           {d.references.length > 0 && (
             <div>

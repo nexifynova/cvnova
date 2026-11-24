@@ -1,4 +1,4 @@
-import { ContactStrip, Extras, type TemplateProps } from '../shared';
+import { ContactStrip, Extras, PersonalDetails, type TemplateProps } from '../shared';
 
 export default function Bold({ data: d }: TemplateProps) {
   return (
@@ -41,12 +41,20 @@ export default function Bold({ data: d }: TemplateProps) {
         <div><h2 className="text-xl font-black text-gray-900 uppercase mb-2">Languages</h2><ul className="grid grid-cols-1 gap-2">{d.languages.map((l, i) => <li key={i} className="font-bold text-gray-800 text-sm border-l-4 border-gray-500 pl-2">{l.language}</li>)}</ul></div>
       </div>
 
+      <PersonalDetails
+        data={d}
+        className="mb-4 avoid-break"
+        headingClassName="text-xl font-black text-gray-900 uppercase mb-2"
+        listClassName="grid grid-cols-3 gap-x-4 gap-y-1 text-sm font-semibold text-gray-700"
+        labelClassName="font-black text-gray-900"
+      />
+
       <div className="grid grid-cols-2 gap-4 avoid-break">
         {d.certifications.length > 0 && <div><h2 className="text-xl font-black text-gray-900 uppercase mb-2">Certifications</h2><ul className="grid grid-cols-1 gap-2">{d.certifications.map((c, i) => <li key={i} className="font-bold text-gray-800 text-sm border-l-4 border-gray-900 pl-2">{c.name}</li>)}</ul></div>}
         {d.references.length > 0 && <div><h2 className="text-xl font-black text-gray-900 uppercase mb-2">References</h2><ul className="grid grid-cols-1 gap-2">{d.references.map((r, i) => <li key={i} className="font-bold text-gray-800 text-sm border-l-4 border-gray-500 pl-2">{r.name}</li>)}</ul></div>}
       </div>
 
-      <Extras data={d} keys={['cvnovaCode', 'maritalStatus', 'placeOfBirth', 'nationality']} className="mt-4 flex flex-wrap gap-x-4 border-t-4 border-gray-900 pt-2 text-[10px] font-semibold text-gray-600" />
+      <Extras data={d} keys={['cvnovaCode']} className="mt-4 flex flex-wrap gap-x-4 border-t-4 border-gray-900 pt-2 text-[10px] font-semibold text-gray-600" />
     </div>
   );
 }

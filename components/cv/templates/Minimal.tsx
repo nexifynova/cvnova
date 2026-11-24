@@ -1,4 +1,4 @@
-import { Extras, type TemplateProps } from '../shared';
+import { Extras, PersonalDetails, type TemplateProps } from '../shared';
 
 export default function Minimal({ data: d }: TemplateProps) {
   return (
@@ -20,7 +20,15 @@ export default function Minimal({ data: d }: TemplateProps) {
           {d.languages.length > 0 && <div><h3 className="font-bold text-gray-900 uppercase tracking-wider mb-1">Languages</h3><ul className="list-disc pl-4">{d.languages.map((l, i) => <li key={i}>{l.language}{l.proficiency ? ` (${l.proficiency})` : ''}</li>)}</ul></div>}
           {d.certifications.length > 0 && <div><h3 className="font-bold text-gray-900 uppercase tracking-wider mb-1">Certifications</h3><ul className="list-disc pl-4">{d.certifications.map((c, i) => <li key={i}>{c.name}{c.year ? ` (${c.year})` : ''}</li>)}</ul></div>}
           {d.hobbies.length > 0 && <div><h3 className="font-bold text-gray-900 uppercase tracking-wider mb-1">Interests</h3><ul className="list-disc pl-4">{d.hobbies.map((h, i) => <li key={i}>{h}</li>)}</ul></div>}
-          <Extras data={d} keys={['cvnovaCode', 'maritalStatus', 'placeOfBirth', 'nationality']} className="space-y-1 text-[10px]" />
+          {/* Sidebar section: personal details */}
+          <PersonalDetails
+            data={d}
+            className="avoid-break"
+            headingClassName="font-bold text-gray-900 uppercase tracking-wider mb-1"
+            listClassName="space-y-0.5"
+            labelClassName="font-semibold text-gray-700"
+          />
+          <Extras data={d} keys={['cvnovaCode']} className="space-y-1 text-[10px]" />
         </div>
 
         <div className="col-span-2 space-y-6">

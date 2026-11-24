@@ -50,6 +50,69 @@ export const saveDocumentRecord = async (data: {
   }
 };
 
+// Ek saved document ko load karta hai (Edit Document flow ke liye).
+export const fetchDocumentRecord = async (id: string) => {
+  const { data, error } = await supabase
+    .from('generated_documents')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) {
+    console.error('Supabase Fetch Error:', error);
+    return null;
+  }
+  return data;
+};
+
+// Edit permission: sirf document ka owner hi usay edit kar sakta hai.
+export const ownsDocument = (doc: any, user: { id?: string; email?: string } | null) => {
+  if (!doc || !user) return false;
+  if (doc.user_id) return !!user.id && doc.user_id === user.id;
+  const docEmail = String(doc.email || '').trim().toLowerCase();
+  const userEmail = String(user.email || '').trim().toLowerCase();
+  return !!docEmail && docEmail === userEmail;
+};
+
+// Existing document ko update karta hai — naya document insert nahi hota,
+// is liye CV/document count bhi double nahi hota.
+export const updateDocumentRecord = async (
+  id: string,
+  data: {
+    templateName?: string;
+    fullName?: string;
+    email?: string;
+    phone?: string;
+    fullData?: any;
+    atsTier?: string;
+    templateTier?: string;
+  }
+) => {
+  const baseRow: Record<string, any> = {};
+  if (data.templateName !== undefined) baseRow.template_name = data.templateName;
+  if (data.fullName !== undefined) baseRow.full_name = data.fullName;
+  if (data.email !== undefined) baseRow.email = data.email;
+  if (data.phone !== undefined) baseRow.phone = data.phone;
+  if (data.fullData !== undefined) baseRow.full_data = data.fullData;
+
+  const extendedRow: Record<string, any> = { ...baseRow };
+  if (data.atsTier !== undefined) extendedRow.ats_tier = data.atsTier;
+  if (data.templateTier !== undefined) extendedRow.template_tier = data.templateTier;
+
+  // Prefer the extended row. If the 2026 migration has not been applied yet,
+  // fall back to the legacy columns so updating never breaks.
+  let { error } = await supabase.from('generated_documents').update(extendedRow).eq('id', id);
+  if (error) {
+    const retry = await supabase.from('generated_documents').update(baseRow).eq('id', id);
+    error = retry.error;
+  }
+  if (error) {
+    console.error('Supabase Update Error:', error);
+    return false;
+  }
+  return true;
+};
+
 // Authenticated fetch for CVNova API routes. Attaches the Supabase access
 // token so server-side consent/quota checks can identify the caller securely
 // (never trust a user id supplied by the browser).

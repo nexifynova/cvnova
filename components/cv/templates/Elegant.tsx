@@ -1,4 +1,4 @@
-import { ContactStrip, Extras, type TemplateProps } from '../shared';
+import { ContactStrip, Extras, PersonalDetails, type TemplateProps } from '../shared';
 
 export default function Elegant({ data: d }: TemplateProps) {
   return (
@@ -39,8 +39,15 @@ export default function Elegant({ data: d }: TemplateProps) {
           {d.skills.length > 0 && <div><h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest mb-3 pb-1 border-b border-gray-200">Skills</h2><ul className="text-xs text-gray-700 space-y-1">{d.skills.map((s, i) => <li key={i}>{s}</li>)}</ul></div>}
           {d.languages.length > 0 && <div><h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest mb-3 pb-1 border-b border-gray-200">Languages</h2><ul className="text-xs text-gray-700 space-y-1">{d.languages.map((l, i) => <li key={i}>{l.language}</li>)}</ul></div>}
           {d.certifications.length > 0 && <div><h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest mb-3 pb-1 border-b border-gray-200">Certifications</h2><ul className="text-xs text-gray-700 space-y-1">{d.certifications.map((c, i) => <li key={i}>{c.name}</li>)}</ul></div>}
+          <PersonalDetails
+            data={d}
+            className="avoid-break"
+            headingClassName="text-sm font-bold text-gray-800 uppercase tracking-widest mb-3 pb-1 border-b border-gray-200"
+            listClassName="space-y-1 text-xs text-gray-700"
+            labelClassName="font-semibold text-gray-900"
+          />
           {d.references.length > 0 && <div><h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest mb-3 pb-1 border-b border-gray-200">References</h2><ul className="text-xs text-gray-700 space-y-1">{d.references.map((r, i) => <li key={i}>{r.name}</li>)}</ul></div>}
-          <Extras data={d} keys={['cvnovaCode', 'maritalStatus', 'placeOfBirth', 'nationality']} className="space-y-1 text-[10px] text-gray-600" />
+          <Extras data={d} keys={['cvnovaCode']} className="space-y-1 text-[10px] text-gray-600" />
         </div>
       </div>
     </div>
