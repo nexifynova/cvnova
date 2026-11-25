@@ -28,10 +28,10 @@ export default function Login() {
 
     if (error) {
       if (error.message.includes('Email not confirmed')) {
-        setErrorMsg("Aapne abhi tak apni email confirm nahi ki. Meharbani farma kar apni email inbox (ya spam folder) check karein aur 'Confirm Email' wale link par click karein.");
+        setErrorMsg("Please confirm your email first. Open your inbox (or spam folder) and click the 'Confirm Email' link we sent you.");
         setShowResendBtn(true);
       } else if (error.message.includes('Invalid login credentials')) {
-        setErrorMsg("Ghalat email ya password. Agar password bhool gaye hain to neeche 'Forgot Password?' par click karein.");
+        setErrorMsg("Incorrect email or password. If you have forgotten your password, use 'Forgot Password?' below.");
       } else {
         setErrorMsg(error.message);
       }

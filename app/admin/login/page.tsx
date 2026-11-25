@@ -28,7 +28,7 @@ export default function AdminLogin() {
       try {
         data = JSON.parse(textResponse);
       } catch (parseError) {
-        alert(`Server Error: API route crash ho gaya hai ya mojood nahi hai. Status: ${res.status}`);
+        alert(`Server Error: the API route crashed or is unavailable. Status: ${res.status}`);
         setLoading(false);
         return;
       }

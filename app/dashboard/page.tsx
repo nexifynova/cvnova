@@ -10,7 +10,7 @@ import PlanBadge from '@/components/PlanBadge';
 import { getTemplate } from '@/lib/templates';
 import JobFieldsDropdown from '@/components/JobFieldsDropdown';
 
-// Plan ka naam -> app_settings mein us plan ke CVs wala column
+// Plan name -> the app_settings column holding that plan's CV allowance
 const PLAN_CV_SETTING_KEY: Record<string, string> = {
   '3 Months': 'cvs_3m',
   '6 Months': 'cvs_6m',
@@ -38,6 +38,7 @@ export default function Dashboard() {
   const [inboxOpen, setInboxOpen] = useState(false);
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [replySending, setReplySending] = useState<string | null>(null);
+  const [jobs, setJobs] = useState<any[]>([]);
 
   // Filters & Modals State
   const [searchTerm, setSearchTerm] = useState('');
@@ -87,9 +88,9 @@ export default function Dashboard() {
     if (settingsData) setSettings(settingsData);
 
     if (profileData) {
-      // 🚨 SELF-HEAL: agar plan ke saath aane wale CVs DB mein kam save hain
-      // (misal: 5 Years = 250 CVs hone chahiye lekin purana 100 para hua hai)
-      // to profile ko admin settings wali correct value se update kar do.
+      // 🚨 SELF-HEAL: if the CV allowance that comes with the plan is lower in
+      // the DB than in admin settings (e.g. 5 Years should be 250 CVs but was
+      // saved as 100), overwrite it with the correct admin value.
       const planKey = PLAN_CV_SETTING_KEY[profileData.subscription_type];
       const planCVs = planKey ? Number(settingsData?.[planKey]) || 0 : 0;
       if (profileData.subscription_type !== 'free' && planCVs > (Number(profileData.total_allowed_cvs) || 0)) {
@@ -108,7 +109,7 @@ export default function Dashboard() {
     const { data: pays } = await supabase.from('payments').select('*').eq('user_id', user.id).eq('status', 'approved').order('created_at', { ascending: false });
     if (pays) setPayments(pays);
 
-    await Promise.all([loadAccountState(), loadInbox()]);
+    await Promise.all([loadAccountState(), loadInbox(), loadJobs()]);
     
     setLoading(false);
   };
@@ -191,8 +192,9 @@ export default function Dashboard() {
     } catch (error: any) { alert("Error: " + error.message); } finally { setIsSendingEmail(false); }
   };
 
-  // 🚨 FIXED: Limit = plan ka CV allowance (admin settings se) ya purchased total,
-  // jo bhi zyada ho. Isse 5 Years ($40 = 250 CVs) par galti se "2 / 100" nahi aayega.
+  // 🚨 FIXED: Limit = the plan's CV allowance from admin settings or the
+  // purchased total, whichever is higher. This prevents a 5 Years plan
+  // ($40 = 250 CVs) from incorrectly showing "2 / 100".
   const isPlanActive = !!profile?.subscription_type && profile.subscription_type !== 'free'
     && (!profile?.subscription_expiry || new Date(profile.subscription_expiry) > new Date());
   let currentLimit = settings?.free_cv_limit || 1;
@@ -239,6 +241,16 @@ export default function Dashboard() {
     }
   };
 
+  const loadJobs = async () => {
+    try {
+      const res = await authedFetch('/api/jobs');
+      const data = await res.json();
+      if (res.ok && Array.isArray(data.jobs)) setJobs(data.jobs);
+    } catch {
+      /* job board not enabled yet */
+    }
+  };
+
   const saveConsent = async (patch: Partial<typeof consent>) => {
     const previous = consent;
     const next = { ...consent, ...patch };
@@ -262,7 +274,7 @@ export default function Dashboard() {
       setConsent(previous);
       const message = String(err?.message || err);
       const migrationHint = /column|schema|does not exist/i.test(message)
-        ? '\n\nNaye database columns missing hain. Supabase → SQL Editor mein supabase/cvnova_upgrade.sql chala kar "Run" karein, phir dobara koshish karein.'
+        ? '\n\nNew database columns are missing. Open Supabase → SQL Editor, run supabase/cvnova_upgrade.sql and click "Run", then try again.'
         : '';
       alert("Consent could not be saved. " + message + migrationHint);
     } finally {
@@ -398,6 +410,47 @@ export default function Dashboard() {
               <p className="text-xs text-indigo-700">Pick a field to open the chat room with matching professionals.</p>
             </div>
             <JobFieldsDropdown variant="light" label="Your field" />
+          </div>
+        )}
+
+        {settings?.show_jobs_on_dashboard !== false && (
+          <div className="mb-8 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Briefcase className="text-blue-600" size={20} />
+                <h2 className="text-lg font-bold text-gray-900">Latest jobs</h2>
+              </div>
+              <span className="text-xs font-semibold text-gray-500">
+                {jobs.length} open role{jobs.length === 1 ? '' : 's'}
+              </span>
+            </div>
+
+            {jobs.length === 0 ? (
+              <p className="text-sm text-gray-500">
+                No roles posted yet. Hiring companies publish openings here — check back soon.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {jobs.slice(0, 6).map((job: any) => (
+                  <div key={job.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                    <p className="text-sm font-bold text-gray-900">{job.title}</p>
+                    <p className="mt-0.5 text-xs font-semibold text-indigo-700">
+                      {job.companyName}
+                      {job.location ? ` · ${job.location}` : ''}
+                      {job.industry ? ` · ${job.industry}` : ''}
+                    </p>
+                    {job.description && (
+                      <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-gray-600">{job.description}</p>
+                    )}
+                    <p className="mt-2 font-mono text-[11px] text-gray-500">{job.companyChatId || 'Chat ID pending'}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <p className="mt-3 text-[11px] text-gray-500">
+              Open the Chat Room and search a company&apos;s chat ID to message the recruiter directly.
+            </p>
           </div>
         )}
 

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase, authedFetch } from '@/lib/supabase';
-import { Building2, Loader2, LogOut, Search, Filter, X, Mail, MessageSquare, Send, ShieldCheck, Lock, Eye } from 'lucide-react';
+import { Building2, Loader2, LogOut, Search, Filter, X, Mail, MessageSquare, Send, ShieldCheck, Lock, Eye, Briefcase, Plus, Trash2, MapPin } from 'lucide-react';
 import AtsBadge from '@/components/AtsBadge';
 import JobFieldsDropdown from '@/components/JobFieldsDropdown';
 import CVTemplateRenderer from '@/components/cv/CVTemplateRenderer';
@@ -50,6 +50,23 @@ export default function CompanyDashboard() {
   const [sendingMail, setSendingMail] = useState(false);
   const [mailStatus, setMailStatus] = useState('');
 
+  // Phase 2 — jobs board + company-side chat
+  const [featureFlags, setFeatureFlags] = useState<{ show_jobs_on_dashboard?: boolean; enable_company_chat?: boolean }>({});
+  const [companyChatId, setCompanyChatId] = useState('');
+  const [recruitingFieldId, setRecruitingFieldId] = useState('');
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [jobModalOpen, setJobModalOpen] = useState(false);
+  const [jobForm, setJobForm] = useState({ title: '', location: '', description: '' });
+  const [savingJob, setSavingJob] = useState(false);
+  const [deletingJob, setDeletingJob] = useState<string | null>(null);
+  const [chatCandidates, setChatCandidates] = useState<any[]>([]);
+  const [chatFieldName, setChatFieldName] = useState('');
+  const [chatCandidatesLoading, setChatCandidatesLoading] = useState(false);
+  const [activeCandidate, setActiveCandidate] = useState<any>(null);
+  const [dmMessages, setDmMessages] = useState<any[]>([]);
+  const [dmDraft, setDmDraft] = useState('');
+  const [dmSending, setDmSending] = useState(false);
+
   useEffect(() => {
     const guard = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -61,9 +78,124 @@ export default function CompanyDashboard() {
       setCompanyName(String(user.user_metadata?.company_name || 'Company'));
       setChecking(false);
       loadCandidates('');
+      loadFeatureFlags();
+      loadJobs();
+      loadChatCandidates();
     };
     guard();
   }, [router]);
+
+  const loadFeatureFlags = async () => {
+    try {
+      const { data } = await supabase
+        .from('app_settings')
+        .select('show_jobs_on_dashboard, enable_company_chat')
+        .eq('id', 1)
+        .maybeSingle();
+      if (data) setFeatureFlags(data);
+    } catch {
+      /* fall back to the enabled defaults */
+    }
+  };
+
+  const loadJobs = async () => {
+    try {
+      const res = await authedFetch('/api/company/jobs');
+      const data = await res.json();
+      if (!res.ok) return;
+      setJobs(Array.isArray(data.jobs) ? data.jobs : []);
+      if (data.company?.chatId) setCompanyChatId(data.company.chatId);
+      if (data.company?.jobFieldId) setRecruitingFieldId(data.company.jobFieldId);
+    } catch {
+      /* jobs API unavailable */
+    }
+  };
+
+  const loadChatCandidates = async () => {
+    setChatCandidatesLoading(true);
+    try {
+      const res = await authedFetch('/api/company/chat/candidates');
+      const data = await res.json();
+      if (res.ok) {
+        setChatCandidates(Array.isArray(data.candidates) ? data.candidates : []);
+        setChatFieldName(data.fieldName || '');
+        if (data.companyChatId) setCompanyChatId(data.companyChatId);
+      }
+    } catch {
+      /* chat API unavailable */
+    } finally {
+      setChatCandidatesLoading(false);
+    }
+  };
+
+  const createJob = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!jobForm.title.trim() || savingJob) return;
+    setSavingJob(true);
+    try {
+      const res = await authedFetch('/api/company/jobs', {
+        method: 'POST',
+        body: JSON.stringify(jobForm),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error === 'job_title_required' ? 'Enter a job title.' : (data.error || 'Could not post the job'));
+      setJobForm({ title: '', location: '', description: '' });
+      setJobModalOpen(false);
+      await loadJobs();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setSavingJob(false);
+    }
+  };
+
+  const deleteJob = async (id: string) => {
+    if (!confirm('Delete this job post? Candidates will no longer see it.')) return;
+    setDeletingJob(id);
+    try {
+      const res = await authedFetch(`/api/company/jobs?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not delete the job');
+      await loadJobs();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setDeletingJob(null);
+    }
+  };
+
+  const openCandidateChat = async (candidate: any) => {
+    setActiveCandidate(candidate);
+    setDmMessages([]);
+    setDmDraft('');
+    try {
+      const res = await authedFetch(`/api/company/messages?candidateId=${candidate.id}`);
+      const data = await res.json();
+      if (res.ok && Array.isArray(data.messages)) setDmMessages(data.messages);
+    } catch {
+      /* thread unavailable */
+    }
+  };
+
+  const sendDirectMessage = async () => {
+    const body = dmDraft.trim();
+    if (!body || !activeCandidate?.id || dmSending) return;
+    setDmSending(true);
+    try {
+      const res = await authedFetch('/api/company/messages', {
+        method: 'POST',
+        body: JSON.stringify({ candidateUserId: activeCandidate.id, body }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error === 'contact_consent_required' ? 'This candidate has not allowed company contact.' : (data.error || 'Message failed'));
+      setDmDraft('');
+      await openCandidateChat(activeCandidate);
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setDmSending(false);
+    }
+  };
 
   const loadCandidates = async (search: string, atsFilter = ats, fieldFilter = fieldId) => {
     setLoading(true);
@@ -232,6 +364,137 @@ export default function CompanyDashboard() {
           <p>{notice || 'Only candidates who opted in to CV sharing and marked an individual CV public are listed. Contact details are hidden unless the candidate separately allowed company contact.'}</p>
         </div>
 
+        {featureFlags.show_jobs_on_dashboard !== false && (
+          <div className="mb-6 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Briefcase className="text-blue-600" size={19} />
+                <h2 className="text-lg font-bold text-gray-900">Your job posts</h2>
+              </div>
+              <button onClick={() => setJobModalOpen(true)} className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700">
+                <Plus size={14} /> Post a Job
+              </button>
+            </div>
+
+            {jobs.length === 0 ? (
+              <p className="text-sm text-gray-500">No jobs posted yet. Publish a role and it appears on candidate dashboards instantly.</p>
+            ) : (
+              <div className="space-y-2">
+                {jobs.map((job: any) => (
+                  <div key={job.id} className="flex items-start justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-gray-900">{job.title}</p>
+                      <p className="flex flex-wrap items-center gap-x-2 text-[11px] text-gray-500">
+                        <span>{new Date(job.created_at).toLocaleDateString()}</span>
+                        {job.location && <span className="flex items-center gap-1"><MapPin size={10} /> {job.location}</span>}
+                      </p>
+                      {job.description && <p className="mt-1 line-clamp-2 text-xs text-gray-600">{job.description}</p>}
+                    </div>
+                    <button
+                      onClick={() => deleteJob(job.id)}
+                      disabled={deletingJob === job.id}
+                      className="shrink-0 rounded-lg bg-red-50 p-2 text-red-600 transition hover:bg-red-100 disabled:opacity-50"
+                      aria-label="Delete job"
+                    >
+                      {deletingJob === job.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {featureFlags.enable_company_chat !== false && (
+          <div className="mb-6 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="text-purple-600" size={19} />
+                <h2 className="text-lg font-bold text-gray-900">Company chat</h2>
+              </div>
+              <span className="flex items-center gap-1.5 rounded-full border border-purple-100 bg-purple-50 px-3 py-1 font-mono text-xs font-bold text-purple-700">
+                <MessageSquare size={12} /> {companyChatId || 'Chat ID pending'}
+              </span>
+            </div>
+
+            <p className="mb-3 text-[11px] text-gray-500">
+              {chatFieldName
+                ? `Showing candidates in ${chatFieldName} who allowed company contact.`
+                : recruitingFieldId
+                  ? 'No contactable candidates in your recruiting field yet.'
+                  : 'Set a recruiting field on your company account to unlock field-matched candidates.'}
+            </p>
+
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <div className="rounded-xl border border-gray-100 bg-gray-50 p-2 lg:col-span-1">
+                <div className="max-h-72 space-y-1 overflow-y-auto">
+                  {chatCandidatesLoading && (
+                    <div className="flex justify-center py-6"><Loader2 className="animate-spin text-blue-600" size={20} /></div>
+                  )}
+                  {!chatCandidatesLoading && chatCandidates.length === 0 && (
+                    <p className="p-3 text-[11px] text-gray-500">No contactable candidates in this field yet.</p>
+                  )}
+                  {chatCandidates.map((candidate: any) => (
+                    <button
+                      key={candidate.id}
+                      onClick={() => openCandidateChat(candidate)}
+                      className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition hover:bg-white ${activeCandidate?.id === candidate.id ? 'bg-white ring-1 ring-purple-200' : ''}`}
+                    >
+                      <span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-blue-500 to-purple-600 text-[11px] font-bold text-white">
+                        {(candidate.fullName || 'C').slice(0, 2).toUpperCase()}
+                        <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white ${candidate.isOnline ? 'bg-green-500' : 'bg-gray-300'}`} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-xs font-bold text-gray-900">{candidate.fullName}</span>
+                        <span className="block truncate font-mono text-[10px] text-gray-500">{candidate.chatId || 'Chat ID pending'}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-col rounded-xl border border-gray-100 p-3 lg:col-span-2">
+                {activeCandidate ? (
+                  <>
+                    <div className="mb-2 flex items-center justify-between gap-2 border-b border-gray-100 pb-2">
+                      <p className="truncate text-sm font-bold text-gray-900">{activeCandidate.fullName}</p>
+                      <span className="font-mono text-[10px] text-gray-500">{activeCandidate.chatId || 'Chat ID pending'}</span>
+                    </div>
+                    <div className="mb-2 max-h-56 flex-1 space-y-1.5 overflow-y-auto rounded-lg bg-gray-50 p-2">
+                      {dmMessages.length === 0 && <p className="p-2 text-[11px] text-gray-400">No messages yet.</p>}
+                      {dmMessages.map((m: any) => (
+                        <p key={m.id} className={`text-[11px] ${m.sender === 'company' ? 'text-right' : ''}`}>
+                          <span className={`inline-block rounded-lg px-2 py-1 ${m.sender === 'company' ? 'bg-purple-100 text-purple-800' : 'border border-gray-200 bg-white text-gray-700'}`}>{m.body}</span>
+                        </p>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        value={dmDraft}
+                        onChange={(e) => setDmDraft(e.target.value)}
+                        placeholder={`Message ${activeCandidate.fullName}...`}
+                        className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                      <button
+                        onClick={sendDirectMessage}
+                        disabled={dmSending || !dmDraft.trim()}
+                        className="flex items-center gap-1 rounded-lg bg-purple-600 px-3 py-2 text-xs font-bold text-white hover:bg-purple-700 disabled:opacity-50"
+                      >
+                        {dmSending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex h-full min-h-40 flex-col items-center justify-center gap-1 text-center">
+                    <MessageSquare className="text-gray-300" size={26} />
+                    <p className="text-xs font-semibold text-gray-600">Select a candidate to start chatting</p>
+                    <p className="max-w-xs text-[11px] text-gray-500">Only candidates who allowed company contact appear on the left.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {loading && <div className="flex justify-center py-20"><Loader2 className="animate-spin text-blue-600" size={40} /></div>}
         {!loading && candidates.length === 0 && (
           <div className="rounded-2xl border border-gray-100 bg-white p-12 text-center">
@@ -287,6 +550,37 @@ export default function CompanyDashboard() {
         )}
       </main>
 
+
+      {jobModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-900">Post a job</h3>
+              <button onClick={() => setJobModalOpen(false)} className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-200"><X size={20} /></button>
+            </div>
+            <form onSubmit={createJob} className="space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-gray-600">Job title *</label>
+                <input value={jobForm.title} onChange={(e) => setJobForm({ ...jobForm, title: e.target.value })} required maxLength={120} placeholder="Senior Accountant" className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-gray-600">Location</label>
+                <input value={jobForm.location} onChange={(e) => setJobForm({ ...jobForm, location: e.target.value })} maxLength={160} placeholder="London, UK or Remote" className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-gray-600">Description</label>
+                <textarea value={jobForm.description} onChange={(e) => setJobForm({ ...jobForm, description: e.target.value })} rows={5} maxLength={4000} placeholder="Responsibilities, requirements and how to apply..." className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
+                <button type="button" onClick={() => setJobModalOpen(false)} className="rounded-lg px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-100">Cancel</button>
+                <button type="submit" disabled={savingJob || !jobForm.title.trim()} className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50">
+                  {savingJob ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} Post job
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {cvDoc && (
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4">

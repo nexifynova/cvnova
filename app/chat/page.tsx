@@ -25,15 +25,15 @@ type ChatMessage = {
   created_at: string;
 };
 
-// Heartbeat 2.5 minute se purana ho jaye to user ko offline maan lete hain
-// (browser crash / network drop par is_online true reh jata hai).
+// A user is treated as offline when the heartbeat is older than 2.5 minutes
+// (browser crashes / network drops would otherwise leave is_online stuck on).
 const ONLINE_WINDOW_MS = 2.5 * 60 * 1000;
 const HEARTBEAT_MS = 45 * 1000;
 const CLOCK_TICK_MS = 30 * 1000;
 
 const isOnlineNow = (profile: ChatProfile | null | undefined, now: number | null) => {
   if (!profile?.is_online) return false;
-  // Pehle render par server/client mismatch na ho, is liye fresh clock ka intezar.
+  // Wait for the client clock so the first render matches the server markup.
   if (now === null || !profile.last_seen_at) return true;
   return now - new Date(profile.last_seen_at).getTime() < ONLINE_WINDOW_MS;
 };
@@ -85,12 +85,16 @@ export default function ChatPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fieldFilter, setFieldFilter] = useState<string | null>(null);
   const [fieldName, setFieldName] = useState<string | null>(null);
+  // Legacy accounts have no job_field_id, so we also match them through the
+  // job title stored on their saved CV.
+  const [legacyFieldIds, setLegacyFieldIds] = useState<Set<string>>(() => new Set());
+  const [legacyFieldEmails, setLegacyFieldEmails] = useState<Set<string>>(() => new Set());
 
   const clockRef = useRef<number | null>(null);
   const selectedIdRef = useRef<string | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
-  // Presence clock — render ke doran Date.now() call na ho (SSR safe).
+  // Presence clock — never call Date.now() during render (SSR safe).
   useEffect(() => {
     const tick = () => {
       const now = Date.now();
@@ -106,7 +110,7 @@ export default function ChatPage() {
     selectedIdRef.current = selectedUser?.id ?? null;
   }, [selectedUser]);
 
-  // Auth + initial data: apni profile, saare registered users, unread counts.
+  // Auth + initial data: own profile, every registered user, unread counts.
   useEffect(() => {
     let cancelled = false;
     let activeUserId: string | null = null;
@@ -122,7 +126,7 @@ export default function ChatPage() {
       activeUserId = user.id;
       setUserId(user.id);
 
-      // Phase 2: /chat?field=<uuid> aaye to usi job field ke users dikhado.
+      // Phase 2: /chat?field=<uuid> scopes the room to one job field.
       const requestedField = new URLSearchParams(window.location.search).get('field');
       if (requestedField) {
         setFieldFilter(requestedField);
@@ -132,7 +136,32 @@ export default function ChatPage() {
           .eq('id', requestedField)
           .maybeSingle();
         if (cancelled) return;
-        if (fieldRow) setFieldName((fieldRow as { field_name: string }).field_name);
+        if (fieldRow) {
+          const label = (fieldRow as { field_name: string }).field_name;
+          setFieldName(label);
+
+          // Legacy accounts were saved before job fields existed, so match them
+          // through the job title on their latest CV.
+          const { data: cvDocs } = await supabase
+            .from('generated_documents')
+            .select('user_id, email, full_data')
+            .eq('document_type', 'CV')
+            .limit(500);
+          if (cancelled) return;
+
+          const wantedTitle = String(label || '').trim().toLowerCase();
+          const ids = new Set<string>();
+          const emails = new Set<string>();
+          ((cvDocs as { user_id?: string | null; email?: string | null; full_data?: any }[] | null) ?? []).forEach((doc) => {
+            const title = String((doc.full_data || {}).jobTitle || '').trim().toLowerCase();
+            if (!title || title !== wantedTitle) return;
+            if (doc.user_id) ids.add(doc.user_id);
+            const email = String(doc.email || '').trim().toLowerCase();
+            if (email && email !== 'n/a') emails.add(email);
+          });
+          setLegacyFieldIds(ids);
+          setLegacyFieldEmails(emails);
+        }
       }
 
       const { data: myData } = await supabase
@@ -182,7 +211,7 @@ export default function ChatPage() {
 
     void boot();
 
-    // Tab band / route change par user ko offline mark karein.
+    // Mark the user offline when the tab closes or the route changes.
     const goOffline = () => {
       if (!activeUserId) return;
       void supabase
@@ -200,7 +229,7 @@ export default function ChatPage() {
     };
   }, [router]);
 
-  // Heartbeat: online flag + last_seen_at fresh rakho.
+  // Heartbeat: keep the online flag and last_seen_at fresh.
   useEffect(() => {
     if (!userId) return;
     const interval = window.setInterval(() => {
@@ -212,7 +241,7 @@ export default function ChatPage() {
     return () => window.clearInterval(interval);
   }, [userId]);
 
-  // Realtime: naye users aur online/offline updates bina refresh.
+  // Realtime: new users and online/offline changes without a refresh.
   useEffect(() => {
     if (!userId) return;
 
@@ -262,7 +291,7 @@ export default function ChatPage() {
     [userId]
   );
 
-  // Realtime: incoming / outgoing messages, bina page refresh.
+  // Realtime: incoming / outgoing messages without a page refresh.
   useEffect(() => {
     if (!userId) return;
 
@@ -308,7 +337,7 @@ export default function ChatPage() {
     };
   }, [userId, markConversationRead]);
 
-  // Selected user ka pura purana conversation load karein.
+  // Load the full previous conversation for the selected user.
   const openConversation = useCallback(
     async (profile: ChatProfile) => {
       if (!userId) return;
@@ -336,7 +365,7 @@ export default function ChatPage() {
       }
 
       const loaded = (data as ChatMessage[]) ?? [];
-      // Realtime message load ke doran aa jaye to wo bhi shaamil rahe.
+      // Keep any message that arrived over realtime while the history loaded.
       setMessages((prev) =>
         mergeMessages(
           loaded,
@@ -381,7 +410,7 @@ export default function ChatPage() {
 
     if (error) {
       setDraft(text);
-      setErrorMessage(`Message send nahi hua: ${error.message}`);
+      setErrorMessage(`Message could not be sent: ${error.message}`);
     } else if (data) {
       const sent = data as ChatMessage;
       setMessages((prev) =>
@@ -394,16 +423,22 @@ export default function ChatPage() {
 
   const handleBackToList = () => setSelectedUser(null);
 
-  // Naya message aaye to chat bottom par scroll.
+  // Scroll to the bottom whenever a new message arrives.
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
   }, [messages]);
 
-  // Phase 2: field filter lagne par sirf usi field ke professionals.
-  const fieldProfiles = useMemo(
-    () => (fieldFilter ? profiles.filter((profile) => profile.job_field_id === fieldFilter) : profiles),
-    [profiles, fieldFilter]
-  );
+  // Phase 2: when a field filter is active, show linked profiles plus legacy
+  // accounts matched through their CV job title.
+  const fieldProfiles = useMemo(() => {
+    if (!fieldFilter) return profiles;
+    return profiles.filter((profile) => {
+      if (profile.job_field_id === fieldFilter) return true;
+      if (legacyFieldIds.has(profile.id)) return true;
+      const email = String(profile.email || '').trim().toLowerCase();
+      return !!email && legacyFieldEmails.has(email);
+    });
+  }, [profiles, fieldFilter, legacyFieldIds, legacyFieldEmails]);
 
   const sortedProfiles = useMemo(() => sortProfiles(fieldProfiles, clock), [fieldProfiles, clock]);
 
@@ -440,7 +475,7 @@ export default function ChatPage() {
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
         <div className="flex flex-col items-center gap-3 text-gray-500">
           <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-          <p className="text-sm font-semibold">Chat room load ho raha hai...</p>
+          <p className="text-sm font-semibold">Loading chat room…</p>
         </div>
       </div>
     );
@@ -477,11 +512,11 @@ export default function ChatPage() {
             <h1 className="text-2xl font-extrabold text-gray-900">Chat Room</h1>
             {fieldName ? (
               <p className="text-sm font-semibold text-indigo-600">
-                Field: {fieldName} — sirf isi field ke professionals dikh rahe hain.
+                Field: {fieldName} — showing professionals in this field only.
               </p>
             ) : (
               <p className="text-sm text-gray-500">
-                Real-time messages — page refresh ki zaroorat nahi.
+                Real-time messages — no page refresh needed.
               </p>
             )}
           </div>
@@ -532,7 +567,7 @@ export default function ChatPage() {
                   type="text"
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder="Naam, email ya chat ID search karein"
+                  placeholder="Search by name, email or chat ID"
                   className="w-full rounded-xl border border-gray-200 py-2 pl-9 pr-3 text-sm text-gray-800 outline-none transition focus:border-blue-500"
                 />
               </div>
@@ -544,11 +579,11 @@ export default function ChatPage() {
                   <Users className="h-8 w-8 text-gray-300" />
                   <p className="text-sm font-semibold text-gray-600">
                     {profiles.length === 0
-                      ? 'Abhi koi doosra user registered nahi hai'
-                      : 'Koi user match nahi kiya'}
+                      ? 'No other users have registered yet'
+                      : 'No users match your search'}
                   </p>
                   <p className="text-xs text-gray-400">
-                    Naya user signup karega to realtime mein yahan aa jayega.
+                    New sign-ups appear here in real time.
                   </p>
                 </div>
               ) : (
@@ -654,17 +689,17 @@ export default function ChatPage() {
                 <div className="flex-1 space-y-3 overflow-y-auto bg-gray-50/70 p-4">
                   {messagesLoading ? (
                     <div className="flex h-full items-center justify-center gap-2 text-sm text-gray-500">
-                      <Loader2 className="h-4 w-4 animate-spin" /> Conversation load ho rahi hai...
+                      <Loader2 className="h-4 w-4 animate-spin" /> Loading conversation…
                     </div>
                   ) : messages.length === 0 ? (
                     <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
                       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-600">
                         <MessageSquare size={22} />
                       </div>
-                      <p className="text-sm font-bold text-gray-700">Abhi koi message nahi hai</p>
+                      <p className="text-sm font-bold text-gray-700">No messages yet</p>
                       <p className="max-w-xs text-xs text-gray-500">
-                        Pehla message bhejein — {activeProfile.chat_id || 'is user'} ko realtime
-                        mein mil jayega.
+                        Send the first message — {activeProfile.chat_id || 'this user'} receives it
+                        instantly.
                       </p>
                     </div>
                   ) : (
@@ -728,7 +763,7 @@ export default function ChatPage() {
                     </button>
                   </div>
                   <p className="mt-1.5 px-1 text-[10px] text-gray-400">
-                    Message bhejte hi doosre user ke chat window mein realtime show ho jayega.
+                    Your message appears in the recipient&apos;s chat window instantly.
                   </p>
                 </form>
               </>
@@ -739,11 +774,11 @@ export default function ChatPage() {
                 </div>
                 <div>
                   <p className="text-base font-bold text-gray-800">
-                    Chat shuru karne ke liye user select karein
+                    Select a user to start chatting
                   </p>
                   <p className="mx-auto mt-1 max-w-sm text-sm text-gray-500">
-                    Left sidebar mein saare registered users ki list hai. Green dot ka matlab
-                    user online hai, red dot ka matlab offline.
+                    Every registered user is listed in the left sidebar. A green dot means the
+                    user is online; red means offline.
                   </p>
                 </div>
               </div>

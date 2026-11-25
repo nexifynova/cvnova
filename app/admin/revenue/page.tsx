@@ -224,7 +224,7 @@ export default function AdminRevenue() {
             <Link href="/admin" className="p-2 bg-white rounded-lg shadow-sm hover:bg-gray-100 transition"><ArrowLeft size={20} /></Link>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Revenue Received</h1>
-              <p className="text-sm text-gray-500 mt-1">Sirf <strong>approved</strong> payments ki company income — calendar wise aur client wise record</p>
+              <p className="text-sm text-gray-500 mt-1">Company income from <strong>approved</strong> payments only — a calendar and per-client record</p>
             </div>
           </div>
           <button onClick={exportCSV} className="flex items-center justify-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-emerald-700 transition shadow-sm">
@@ -318,7 +318,7 @@ export default function AdminRevenue() {
                     );
                   })}
                 </div>
-                <p className="text-[11px] text-gray-400 mt-3">Kisi bhi din par click karein — neeche us din ki received payments show ho jayengi.</p>
+                <p className="text-[11px] text-gray-400 mt-3">Click any day — that day&apos;s received payments appear below.</p>
               </div>
             </div>
 
@@ -326,10 +326,10 @@ export default function AdminRevenue() {
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-100">
                 <h2 className="font-bold text-gray-900">Month Wise Record</h2>
-                <p className="text-xs text-gray-500">Har mahine ki total company income</p>
+                <p className="text-xs text-gray-500">Total company income for each month</p>
               </div>
               <div className="max-h-[380px] overflow-y-auto divide-y divide-gray-50">
-                {byMonth.length === 0 && <p className="px-5 py-8 text-center text-sm text-gray-400">Abhi koi approved revenue nahi hai.</p>}
+                {byMonth.length === 0 && <p className="px-5 py-8 text-center text-sm text-gray-400">No approved revenue yet.</p>}
                 {byMonth.map((row) => (
                   <button
                     key={row.key}
@@ -360,7 +360,7 @@ export default function AdminRevenue() {
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <div>
                 <h2 className="font-bold text-gray-900">Client Wise Revenue</h2>
-                <p className="text-xs text-gray-500">Har client se received total income (highest first)</p>
+                <p className="text-xs text-gray-500">Total received income per client (highest first)</p>
               </div>
               <Users size={18} className="text-gray-400" />
             </div>
@@ -390,7 +390,7 @@ export default function AdminRevenue() {
                     </tr>
                   ))}
                   {byClient.length === 0 && (
-                    <tr><td colSpan={5} className="px-6 py-10 text-center text-gray-500">Abhi koi approved payment nahi hai.</td></tr>
+                    <tr><td colSpan={5} className="px-6 py-10 text-center text-gray-500">No approved payments yet.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -445,7 +445,7 @@ export default function AdminRevenue() {
                   <tr>
                     <td colSpan={6} className="px-6 py-10 text-center text-gray-500">
                       <CheckCircle2 size={28} className="mx-auto mb-2 text-gray-300" />
-                      Koi payment is filter ke mutabiq nahi mili.
+                      No payment matches this filter.
                     </td>
                   </tr>
                 )}
@@ -455,8 +455,8 @@ export default function AdminRevenue() {
         </div>
 
         <p className="text-xs text-gray-400 mt-4">
-          Note: Revenue sirf un payments ki count hoti hai jin ka status <strong>Approved</strong> hai. Agar kisi payment ko
-          Disapprove ya In Checking kiya jaye to wo revenue se khud hat jati hai.
+          Note: Revenue only counts payments with the <strong>Approved</strong> status. If a payment is
+          moved to Disapproved or In Checking it is removed from revenue automatically.
         </p>
       </div>
     </div>

@@ -46,19 +46,19 @@ export default function AdminPayments() {
   const handleAction = async (payment: any, newStatus: 'pending' | 'approved' | 'rejected') => {
     const wasApproved = payment.status === 'approved';
     const willBeApproved = newStatus === 'approved';
-    const isGranting = !wasApproved && willBeApproved;   // naya benefit dena hai
-    const isReverting = wasApproved && !willBeApproved;  // diya hua benefit wapas lena hai
+    const isGranting = !wasApproved && willBeApproved;   // grant a new benefit
+    const isReverting = wasApproved && !willBeApproved;  // take back a granted benefit
 
     const confirmMessages: Record<string, string> = {
       approved: isGranting
-        ? 'APPROVE this payment (user ko plan/CVs mil jayenge)'
+        ? 'APPROVE this payment (the user will receive the plan/CVs)'
         : 'mark this payment as APPROVED',
       rejected: isReverting
-        ? 'DISAPPROVE this payment (user ke plan/CVs revert ho jayenge)'
+        ? 'DISAPPROVE this payment (the user\'s plan/CVs will be reverted)'
         : 'REJECT this payment',
       pending: isReverting
-        ? 'move this payment back to IN CHECKING (user ke plan/CVs revert ho jayenge)'
-        : 'mark this payment as IN CHECKING (payment verify ho rahi hai)',
+        ? 'move this payment back to IN CHECKING (the user\'s plan/CVs will be reverted)'
+        : 'mark this payment as IN CHECKING (the payment is being verified)',
     };
 
     if (!confirm(`Are you sure you want to ${confirmMessages[newStatus]}?`)) return;
@@ -177,15 +177,15 @@ export default function AdminPayments() {
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center gap-4 mb-8">
           <Link href="/admin" className="p-2 bg-white rounded-lg shadow-sm hover:bg-gray-100 transition"><ArrowLeft size={20} /></Link>
-          <div><h1 className="text-3xl font-bold text-gray-900">Payment Approvals</h1><p className="text-sm text-gray-500 mt-1">Approve, disapprove ya "In Checking" — har payment ka status aap ke control mein hai</p></div>
+          <div><h1 className="text-3xl font-bold text-gray-900">Payment Approvals</h1><p className="text-sm text-gray-500 mt-1">Approve, disapprove or set In Checking — you control every payment&apos;s status</p></div>
         </div>
 
         <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs sm:text-sm rounded-xl px-4 py-3 mb-6 flex items-start gap-2">
           <Clock size={18} className="mt-0.5 shrink-0" />
           <p>
-            <strong>Status control:</strong> <em>In Checking</em> = payment abhi verify ho rahi hai, <em>Approved</em> = payment receive ho gayi (plan/CVs user ko mil jate hain),
-            <em> Rejected</em> = payment reject. Galti se approve ho jaye to <strong>Disapprove</strong> dabayein — user ke CVs/plan khud revert ho jayenge, aur dobara approve karne par
-            wapas apply ho jayenge. Approved revenue <Link href="/admin/revenue" className="underline font-bold">Revenue Received</Link> mein automatically dikhti hai.
+            <strong>Status control:</strong> <em>In Checking</em> = the payment is being verified, <em>Approved</em> = payment received (the plan/CVs are granted to the user),
+            <em> Rejected</em> = payment rejected. If you approved by mistake, click <strong>Disapprove</strong> — the user&apos;s CVs and plan revert automatically, and approving again
+            restores them. Approved revenue appears in <Link href="/admin/revenue" className="underline font-bold">Revenue Received</Link> automatically.
           </p>
         </div>
         
@@ -214,7 +214,7 @@ export default function AdminPayments() {
                           </button>
                         )}
                         {p.status !== 'pending' && (
-                          <button onClick={() => handleAction(p, 'pending')} disabled={processing === p.id} title="Payment abhi check ho rahi hai" className="flex items-center gap-1 bg-amber-500 text-white px-3 py-2 rounded-lg hover:bg-amber-600 transition font-medium text-xs disabled:opacity-50">
+                          <button onClick={() => handleAction(p, 'pending')} disabled={processing === p.id} title="Payment is being verified" className="flex items-center gap-1 bg-amber-500 text-white px-3 py-2 rounded-lg hover:bg-amber-600 transition font-medium text-xs disabled:opacity-50">
                             {processing === p.id ? <Loader2 size={14} className="animate-spin" /> : <Clock size={14} />} In Checking
                           </button>
                         )}

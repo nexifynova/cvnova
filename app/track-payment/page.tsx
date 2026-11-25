@@ -48,7 +48,7 @@ export default function TrackPayment() {
           <h1 className="text-3xl font-bold mb-2">Track Your Payment</h1>
           <p className="text-gray-400 text-sm mb-8">Enter the email address you used during payment to check your approval status.</p>
           <div className="flex items-center gap-2 text-xs text-amber-300/80 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2 mb-6">
-            <Clock size={14} /> <span><strong>In Checking</strong> = aap ki payment verify ho rahi hai. Approve hone par plan/CVs turant apply ho jate hain.</span>
+            <Clock size={14} /> <span><strong>In Checking</strong> = your payment is being verified. Plan and CVs are applied immediately on approval.</span>
           </div>
           
           <form onSubmit={handleSearch} className="flex gap-2 mb-8">

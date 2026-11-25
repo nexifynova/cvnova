@@ -5,8 +5,12 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase, authedFetch } from '@/lib/supabase';
 import { Building2, Loader2, ArrowLeft, Mail, Eye, EyeOff, ShieldCheck, Users } from 'lucide-react';
+import JobFieldsDropdown from '@/components/JobFieldsDropdown';
 
 type Mode = 'login' | 'register';
+
+// Selected recruiting field survives the email-confirmation round trip.
+const PENDING_FIELD_KEY = 'cvnova_company_field';
 
 export default function CompanyPortal() {
   const router = useRouter();
@@ -16,6 +20,7 @@ export default function CompanyPortal() {
   const [awaitingEmail, setAwaitingEmail] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [fieldId, setFieldId] = useState('');
 
   const [form, setForm] = useState({
     email: '',
@@ -76,14 +81,18 @@ export default function CompanyPortal() {
             website: form.website,
             industry: form.industry,
             country: form.country,
+            fieldId: fieldId || undefined,
           }),
         });
         const payload = await res.json();
         if (!res.ok) throw new Error(payload.error || 'Could not create the company profile');
+        window.localStorage.removeItem(PENDING_FIELD_KEY);
         router.replace('/company/dashboard');
         return;
       }
 
+      // No session yet (email confirmation pending) — remember the field.
+      if (fieldId) window.localStorage.setItem(PENDING_FIELD_KEY, fieldId);
       setAwaitingEmail(true);
     } catch (err: any) {
       setErrorMsg(err.message || 'Signup failed');
@@ -110,10 +119,15 @@ export default function CompanyPortal() {
       }
 
       // Self-heal a missing company row (e.g. email confirmation landed later).
+      const pendingField = window.localStorage.getItem(PENDING_FIELD_KEY) || '';
       await authedFetch('/api/company/register', {
         method: 'POST',
-        body: JSON.stringify({ companyName: data.user?.user_metadata?.company_name || 'Company' }),
+        body: JSON.stringify({
+          companyName: data.user?.user_metadata?.company_name || 'Company',
+          fieldId: pendingField || undefined,
+        }),
       });
+      window.localStorage.removeItem(PENDING_FIELD_KEY);
 
       router.replace('/company/dashboard');
     } catch (err: any) {
@@ -215,6 +229,17 @@ export default function CompanyPortal() {
                       <label className="mb-1 block text-xs font-semibold text-gray-300">Country</label>
                       <input type="text" name="country" value={form.country} onChange={change} placeholder="United Kingdom" className="w-full rounded-xl border border-white/20 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:border-blue-500" />
                     </div>
+                  </div>
+                  <div>
+                    <JobFieldsDropdown
+                      variant="dark"
+                      label="Recruiting field"
+                      value={fieldId}
+                      onSelect={(field) => setFieldId(field?.id ?? '')}
+                    />
+                    <p className="mt-1.5 text-[11px] text-gray-400">
+                      Candidates in this field appear in your company chat and talent pool.
+                    </p>
                   </div>
                   <p className="text-[11px] leading-relaxed text-gray-400">
                     By creating an account you agree to use candidate data only for recruitment and to honour consent withdrawals immediately.

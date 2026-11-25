@@ -44,19 +44,19 @@ export default function CoverLetter() {
       const [{ data: { user } }, doc] = await Promise.all([supabase.auth.getUser(), fetchDocumentRecord(id)]);
 
       if (!doc || !user) {
-        alert('Ye document load nahi ho saka. Dobara dashboard se try karein.');
+        alert('This document could not be loaded. Please try again from the dashboard.');
         window.location.href = '/dashboard';
         return;
       }
 
-      // Ye builder sirf cover letters ke liye hai
+      // This builder is for cover letters only.
       if ((doc.document_type || 'Cover Letter') !== 'Cover Letter') {
         window.location.href = `/view/${id}`;
         return;
       }
 
       if (!ownsDocument(doc, user)) {
-        alert('Ye document aap ke account ka nahi hai, is liye edit nahi ho sakta.');
+        alert('This document does not belong to your account, so it cannot be edited.');
         window.location.href = `/view/${id}`;
         return;
       }
@@ -81,25 +81,26 @@ export default function CoverLetter() {
       setFormData(loaded);
       setTemplate(loadedTemplate);
       setEditingId(doc.id);
-      // Loaded letter hi current state hai — baghair change save par duplicate na bane
+      // The loaded letter is already the current state — saving without edits
+      // must not create a duplicate.
       setLastSavedSnapshot(JSON.stringify({ template: loadedTemplate, formData: loaded }));
     } catch (error) {
       console.error('Load document error:', error);
-      alert('Document load karte waqt error aya.');
+      alert('Something went wrong while loading the document.');
       window.location.href = '/dashboard';
     } finally {
       setLoadingDoc(false);
     }
   };
 
-  // Mount par chalta hai: edit link (?edit=id) ho to saved letter load karo,
-  // warna sample data hi dikhao. State updates effect body ke bahar rakhe gaye
-  // hain taake cascading render na ho.
+  // Runs on mount: load the saved letter when ?edit=id is present, otherwise
+  // show the sample data. State updates stay outside the effect body to avoid
+  // cascading renders.
   useEffect(() => {
     const editId = new URLSearchParams(window.location.search).get('edit');
     if (editId) {
-      // Load async hai — agle frame par start karte hain taake effect
-      // synchronously state update na kare.
+      // Loading is async — start on the next frame so the effect never updates
+      // state synchronously.
       const frame = requestAnimationFrame(() => {
         void loadDocumentForEdit(editId);
       });
@@ -135,7 +136,7 @@ export default function CoverLetter() {
       if (!response.ok) throw new Error(`API Error: Status ${response.status}.`);
       const data = await response.json();
       if (data.body) setFormData({ ...formData, body: data.body });
-      else alert("AI se response nahi mila.");
+      else alert("The AI did not return a response.");
     } catch (error: any) {
       alert("AI Error: " + error.message);
     } finally {
@@ -152,7 +153,7 @@ export default function CoverLetter() {
       userEmail = user.email;
       isLoggedIn = true;
 
-      // Edit mode mein naya document create nahi hota — limit check skip
+      // Edit mode updates the existing document — no limit check needed.
       if (!editingId) {
         const limitCheck = await checkUserLimit(userEmail);
         if (!limitCheck.allowed) {
@@ -162,20 +163,20 @@ export default function CoverLetter() {
         }
       }
     } else {
-      alert("Aap login nahi hain.");
+      alert("You are not signed in.");
       window.location.href = '/login';
       return;
     }
 
     if (actionType === 'save') setIsSaving(true);
 
-    // Same letter dobara save karne se CV/document count double na ho
+    // Re-saving the same letter must not double the document count.
     const snapshot = JSON.stringify({ template, formData });
     const alreadySaved = snapshot === lastSavedSnapshot;
 
     try {
       if (editingId) {
-        // Existing letter ko UPDATE karo — naya document insert na karo
+        // Update the existing letter — never insert a new document.
         if (!alreadySaved) {
           const updated = await updateDocumentRecord(editingId, {
             templateName: template,
@@ -184,7 +185,7 @@ export default function CoverLetter() {
             fullData: formData,
           });
           if (!updated) {
-            alert('Letter update nahi ho saka. Login aur internet connection check karein.');
+            alert('The letter could not be updated. Check your login and internet connection.');
             return;
           }
           setLastSavedSnapshot(snapshot);
@@ -204,10 +205,10 @@ export default function CoverLetter() {
       }
 
       if (actionType === 'save') {
-        // Save/update hone ke baad sahi document dikhao
+        // After saving/updating, send the user to the right document.
         const message = editingId
-          ? "✅ Cover Letter updated! Aap ka wahi dashboard document update ho gaya hai.\n\nDocument dekhein?"
-          : "✅ Cover Letter successfully saved to your Dashboard!\n\nAb My Dashboard kholein?";
+          ? "✅ Cover Letter updated! Your existing dashboard document was updated.\n\nView the document?"
+          : "✅ Cover Letter successfully saved to your Dashboard!\n\nOpen My Dashboard now?";
         if (confirm(message)) {
           window.location.href = editingId ? `/view/${editingId}` : '/dashboard';
         }
@@ -250,7 +251,7 @@ export default function CoverLetter() {
             <div className="flex-1">
               <p className={`text-sm font-medium mb-2 ${editingId ? 'text-amber-900' : 'text-green-800'}`}>
                 {editingId
-                  ? `Aap apna saved cover letter edit kar rahe hain${formData.fullName ? ` — ${formData.fullName}` : ''}. Save karne par yahi letter update hoga.`
+                  ? `You are editing your saved cover letter${formData.fullName ? ` — ${formData.fullName}` : ''}. Saving updates this letter.`
                   : 'Sample letter filled. Replace or clear to start fresh.'}
               </p>
               <div className="flex flex-wrap items-center gap-2">
@@ -317,8 +318,8 @@ export default function CoverLetter() {
             </button>
             <p className="text-[11px] text-gray-500 text-center">
               {editingId
-                ? 'Ye changes aap ke My Dashboard wale isi letter mein save honge.'
-                : <>Ye letter aap ke <strong>My Dashboard</strong> mein save ho jayegi. Print / PDF / Word sirf copy download karne ke liye hain.</>}
+                ? 'These changes are saved to this same letter in My Dashboard.'
+                : <>This letter is saved to your <strong>My Dashboard</strong>. Print / PDF / Word are only for downloading a copy.</>}
             </p>
             <div className="flex gap-2 w-full mt-1">
               <button type="button" onClick={() => handleAction('print')} className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-2 py-3 rounded-xl font-bold text-sm hover:bg-gray-800 transition">

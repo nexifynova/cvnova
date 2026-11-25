@@ -12,23 +12,24 @@ type JobFieldsDropdownProps = {
   variant?: 'light' | 'dark';
   /** "md" = landing/dashboard, "sm" = compact toolbar (company talent pool) */
   size?: 'md' | 'sm';
-  /** Khali string pass karo to label hide ho jata hai (toolbar usage) */
+  /** Pass an empty string to hide the label (toolbar usage) */
   label?: string;
   className?: string;
-  /** Controlled value (field id) — parent state se select control hota hai */
+  /** Controlled value (field id) — lets the parent own the selection */
   value?: string;
   /**
-   * Agar diya jaye to select /chat par navigate nahi karta, sirf callback chalta hai.
-   * Company talent pool isay filter ke tor par use karta hai.
+   * When provided the select no longer navigates to /chat and only fires the
+   * callback. The company talent pool uses this to drive its own filter.
    */
   onSelect?: (field: JobField | null) => void;
-  /** Filter mode: pehla "sab" option (e.g. "All fields"). Diya jaye to selectable hota hai. */
+  /** Filter mode: renders a selectable "all" option (e.g. "All fields"). */
   allOptionLabel?: string;
 };
 
-// Reusable field dropdown: landing, dashboard aur company talent pool par same component.
-// Default behaviour: select karne par us field ke logon ke saath /chat khulta hai.
-// `onSelect` dene par navigation nahi hoti — parent apna filter chalata hai.
+// Reusable field dropdown: landing page, dashboard and the company talent pool
+// all share this component. Default behaviour: picking a field opens /chat with
+// the people in that field. Supplying `onSelect` skips navigation so the parent
+// can run its own filter instead.
 export default function JobFieldsDropdown({
   variant = 'light',
   size = 'md',
@@ -142,7 +143,7 @@ export default function JobFieldsDropdown({
       </div>
       {errorMessage && (
         <p className={`mt-2 text-xs ${isDark ? 'text-red-300' : 'text-red-600'}`}>
-          Fields load nahi hui: {errorMessage}
+          Fields could not be loaded: {errorMessage}
         </p>
       )}
     </div>

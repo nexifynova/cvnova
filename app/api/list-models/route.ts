@@ -4,7 +4,7 @@ export async function GET() {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: 'GEMINI_API_KEY nahi mili' }, { status: 500 });
+      return NextResponse.json({ error: 'GEMINI_API_KEY is missing' }, { status: 500 });
     }
 
     // Google ke mutabiq, models list karne ka endpoint yeh hai (v1beta)

@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
       },
     },
   },
-  // YEH NAYA SECTION ADD KAREIN
+  // Image domain allowlist for Supabase Storage public objects
   images: {
     remotePatterns: [
       {

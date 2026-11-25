@@ -88,8 +88,8 @@ export async function GET(req: Request) {
       rows.push({ doc, profile: profile as ProfileLike });
     }
 
-    // Field filter: profile ka job_field_id, aur fallback ke tor par CV job title
-    // (legacy CVs jinka field abhi backfill nahi hua unhe bhi dikhane ke liye).
+    // Field filter: profile.job_field_id, with the CV job title as a fallback
+    // so legacy CVs that have not been backfilled yet are still visible.
     const scopedRows = field
       ? rows.filter(({ doc, profile }) => {
           if (String(profile.job_field_id || '') === field) return true;

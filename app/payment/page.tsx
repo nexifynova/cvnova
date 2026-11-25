@@ -138,10 +138,10 @@ function PaymentContent() {
         <div className="bg-white/5 p-8 rounded-3xl border border-white/10 text-center max-w-md">
           <CheckCircle className="text-green-500 mx-auto mb-4" size={64} />
           <h2 className="text-2xl font-bold mb-2">Payment Submitted!</h2>
-          <p className="text-gray-400 mb-4">Aapki slip admin ko bhej di gayi hai. Approve hone par aapka account Pro ho jayega.</p>
+          <p className="text-gray-400 mb-4">Your slip has been sent to the admin. Your account becomes Pro as soon as it is approved.</p>
           <div className="bg-yellow-500/20 border border-yellow-500/30 p-4 rounded-xl mb-6 text-left">
             <p className="text-yellow-300 text-sm font-bold flex items-center gap-2 mb-1"><Clock size={16}/> Approval Time:</p>
-            <p className="text-gray-300 text-xs">Admin aapki payment ko <b>30 minutes se 24 hours</b> ke andar approve karega. Approve hone par aapka account automatic Pro ban jayega.</p>
+            <p className="text-gray-300 text-xs">The admin will approve your payment within <b>30 minutes to 24 hours</b>. Your account is upgraded to Pro automatically on approval.</p>
           </div>
           <Link href="/dashboard" className="inline-block bg-blue-600 px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition">Go to Dashboard</Link>
         </div>
@@ -158,7 +158,7 @@ function PaymentContent() {
         
         <div className="bg-white/5 p-8 rounded-3xl border border-white/10">
           <h1 className="text-3xl font-bold mb-2">Complete Your Payment</h1>
-          <p className="text-gray-400 text-sm mb-6">Neeche diye gaye tareeqe se payment karein aur slip upload karein.</p>
+          <p className="text-gray-400 text-sm mb-6">Use one of the methods below to pay, then upload your slip.</p>
           
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
@@ -247,7 +247,7 @@ function PaymentContent() {
 
             <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-xl">
               <p className="text-yellow-300 text-sm font-bold flex items-center gap-2 mb-1"><AlertCircle size={16}/> Important Note:</p>
-              <p className="text-gray-400 text-xs">Payment submit karne ke baad admin aapki slip ko <b>30 minutes se 24 hours</b> ke andar verify karega. Approve hone par aapka account automatic update ho jayega.{isReactivation ? ' Reactivation is applied immediately on approval and resets your Blue ATS counter.' : ' Aap unlimited documents bana sakenge.'}</p>
+              <p className="text-gray-400 text-xs">After you submit, the admin verifies your slip within <b>30 minutes to 24 hours</b>. Your account updates automatically on approval.{isReactivation ? ' Reactivation is applied immediately on approval and resets your Blue ATS counter.' : ' You will be able to create unlimited documents.'}</p>
             </div>
 
             <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-xl font-bold hover:from-blue-500 hover:to-purple-500 transition disabled:opacity-50 flex items-center justify-center gap-2">

@@ -33,10 +33,10 @@ export default function ExperienceLetter() {
   const [template, setTemplate] = useState('modern');
   const [loading, setLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  // "Save on Dashboard" ke liye: loading state + last saved snapshot (duplicate save se bachne ke liye)
+  // For "Save on Dashboard": loading state + last saved snapshot (blocks duplicate saves)
   const [isSaving, setIsSaving] = useState(false);
   const [lastSavedSnapshot, setLastSavedSnapshot] = useState<string | null>(null);
-  // ?edit=<id> — dashboard se aya hua saved letter (edit mode)
+  // ?edit=<id> — saved letter opened from the dashboard (edit mode)
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loadingDoc, setLoadingDoc] = useState(true);
 
@@ -45,19 +45,19 @@ export default function ExperienceLetter() {
       const [{ data: { user } }, doc] = await Promise.all([supabase.auth.getUser(), fetchDocumentRecord(id)]);
 
       if (!doc || !user) {
-        alert('Ye document load nahi ho saka. Dobara dashboard se try karein.');
+        alert('This document could not be loaded. Please try again from the dashboard.');
         window.location.href = '/dashboard';
         return;
       }
 
-      // Ye builder sirf experience letters ke liye hai
+      // This builder is for experience letters only.
       if ((doc.document_type || 'Experience Letter') !== 'Experience Letter') {
         window.location.href = `/view/${id}`;
         return;
       }
 
       if (!ownsDocument(doc, user)) {
-        alert('Ye document aap ke account ka nahi hai, is liye edit nahi ho sakta.');
+        alert('This document does not belong to your account, so it cannot be edited.');
         window.location.href = `/view/${id}`;
         return;
       }
@@ -82,25 +82,26 @@ export default function ExperienceLetter() {
       setFormData(loaded);
       setTemplate(loadedTemplate);
       setEditingId(doc.id);
-      // Loaded letter hi current state hai — baghair change save par duplicate na bane
+      // The loaded letter is already the current state — saving without edits
+      // must not create a duplicate.
       setLastSavedSnapshot(JSON.stringify({ template: loadedTemplate, formData: loaded }));
     } catch (error) {
       console.error('Load document error:', error);
-      alert('Document load karte waqt error aya.');
+      alert('Something went wrong while loading the document.');
       window.location.href = '/dashboard';
     } finally {
       setLoadingDoc(false);
     }
   };
 
-  // Mount par chalta hai: edit link (?edit=id) ho to saved letter load karo,
-  // warna sample data hi dikhao. State updates effect body ke bahar rakhe gaye
-  // hain taake cascading render na ho.
+  // Runs on mount: load the saved letter when ?edit=id is present, otherwise
+  // show the sample data. State updates stay outside the effect body to avoid
+  // cascading renders.
   useEffect(() => {
     const editId = new URLSearchParams(window.location.search).get('edit');
     if (editId) {
-      // Load async hai — agle frame par start karte hain taake effect
-      // synchronously state update na kare.
+      // Loading is async — start on the next frame so the effect never updates
+      // state synchronously.
       const frame = requestAnimationFrame(() => {
         void loadDocumentForEdit(editId);
       });
@@ -130,7 +131,7 @@ export default function ExperienceLetter() {
     setIsGenerating(false);
   };
 
-  // actionType: 'print' = sirf print, 'save' = My Dashboard mein save karke dashboard kholna
+  // actionType: 'print' = print only, 'save' = save to My Dashboard and open it
   const handleAction = async (actionType: 'print' | 'save' = 'print') => {
     if (actionType === 'save') setIsSaving(true); else setLoading(true);
 
@@ -143,7 +144,7 @@ export default function ExperienceLetter() {
       userEmail = user.email;
       isLoggedIn = true;
 
-      // Edit mode mein naya document create nahi hota — limit check skip
+      // Edit mode updates the existing document — no limit check needed.
       if (!editingId) {
         const limitCheck = await checkUserLimit(userEmail);
         if (!limitCheck.allowed) {
@@ -155,21 +156,21 @@ export default function ExperienceLetter() {
         }
       }
     } else if (actionType === 'save') {
-      // Dashboard mein save karne ke liye login zaroori hai
-      alert("Experience Letter apne Dashboard mein save karne ke liye pehle login karein.");
+      // Saving to the dashboard requires a signed-in user.
+      alert("Please sign in first to save the Experience Letter to your Dashboard.");
       window.location.href = '/login';
       setLoading(false);
       setIsSaving(false);
       return;
     }
 
-    // Same letter dobara save karne se document count double na ho
+    // Re-saving the same letter must not double the document count.
     const snapshot = JSON.stringify({ template, formData });
     const alreadySaved = snapshot === lastSavedSnapshot;
 
     try {
       if (editingId) {
-        // Existing letter ko UPDATE karo — naya document insert na karo
+        // Update the existing letter — never insert a new document.
         if (!alreadySaved) {
           const updated = await updateDocumentRecord(editingId, {
             templateName: template,
@@ -178,7 +179,7 @@ export default function ExperienceLetter() {
             fullData: formData,
           });
           if (!updated) {
-            alert('Letter update nahi ho saka. Login aur internet connection check karein.');
+            alert('The letter could not be updated. Check your login and internet connection.');
             return;
           }
           setLastSavedSnapshot(snapshot);
@@ -198,10 +199,10 @@ export default function ExperienceLetter() {
       }
 
       if (actionType === 'save') {
-        // Save/update hone ke baad sahi document dikhao
+        // After saving/updating, send the user to the right document.
         const message = editingId
-          ? "✅ Experience Letter updated! Aap ka wahi dashboard document update ho gaya hai.\n\nDocument dekhein?"
-          : "✅ Experience Letter successfully saved to your Dashboard!\n\nAb My Dashboard kholein?";
+          ? "✅ Experience Letter updated! Your existing dashboard document was updated.\n\nView the document?"
+          : "✅ Experience Letter successfully saved to your Dashboard!\n\nOpen My Dashboard now?";
         if (confirm(message)) {
           window.location.href = editingId ? `/view/${editingId}` : '/dashboard';
         }
@@ -243,7 +244,7 @@ export default function ExperienceLetter() {
             <div className="flex-1">
               <p className={`text-sm font-medium mb-2 ${editingId ? 'text-amber-900' : 'text-green-800'}`}>
                 {editingId
-                  ? `Aap apna saved experience letter edit kar rahe hain${formData.employeeName ? ` — ${formData.employeeName}` : ''}. Save karne par yahi letter update hoga.`
+                  ? `You are editing your saved experience letter${formData.employeeName ? ` — ${formData.employeeName}` : ''}. Saving updates this letter.`
                   : 'Sample letter filled. Replace or clear to start fresh.'}
               </p>
               <div className="flex flex-wrap items-center gap-2">
@@ -306,15 +307,15 @@ export default function ExperienceLetter() {
           </div>
 
           <div className="pt-4 border-t border-gray-200">
-            {/* 🚨 SAVE ON DASHBOARD: ye letter user ke apne profile/dashboard mein save karta hai */}
+            {/* 🚨 SAVE ON DASHBOARD: saves this letter to the user's own profile/dashboard */}
             <button type="button" onClick={() => handleAction('save')} disabled={isSaving} className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white px-3 py-3 rounded-xl font-bold text-sm hover:bg-emerald-700 transition shadow-md disabled:opacity-60">
               {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
               {isSaving ? 'Saving...' : editingId ? 'Update Letter' : 'Save on Dashboard'}
             </button>
             <p className="text-[11px] text-gray-500 text-center mt-2">
               {editingId
-                ? 'Ye changes aap ke My Dashboard wale isi letter mein save honge.'
-                : <>Ye letter aap ke <strong>My Dashboard</strong> mein save ho jayegi. Print / PDF / Word sirf copy download karne ke liye hain.</>}
+                ? 'These changes are saved to this same letter in My Dashboard.'
+                : <>This letter is saved to your <strong>My Dashboard</strong>. Print / PDF / Word are only for downloading a copy.</>}
             </p>
 
             <div className="flex gap-2 mt-3">

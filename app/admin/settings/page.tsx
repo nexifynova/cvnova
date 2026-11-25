@@ -33,6 +33,7 @@ function SettingsContent() {
     contact_phone: '+92 (300) 123-4567', contact_location: 'Karachi, Pakistan',
     site_logo_url: '', site_favicon_url: '', hero_images: [], hero_slider_interval: 4000, nav_menu: [],
     show_job_fields_landing: true, show_job_fields_dashboard: true,
+    show_jobs_on_dashboard: true, enable_company_chat: true,
   });
 
   useEffect(() => {
@@ -62,7 +63,7 @@ function SettingsContent() {
     } catch (err: any) {
       const message = String(err?.message || err);
       const migrationHint = /column|schema|does not exist/i.test(message)
-        ? '\n\nDatabase mein naye columns missing hain. Supabase → SQL Editor mein supabase/cvnova_upgrade.sql chala kar "Run" karein, phir dobara Save karein.'
+        ? '\n\nThe new database columns are missing. Open Supabase → SQL Editor, run supabase/cvnova_upgrade.sql and click "Run", then save again.'
         : '';
       alert('Could not save settings: ' + message + migrationHint);
     } finally {
@@ -399,15 +400,17 @@ function SettingsContent() {
           </div>
         )}
 
-        {/* JOB FIELDS TAB */}
+        {/* JOB FIELDS & JOBS TAB */}
         {activeTab === 'jobfields' && (
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h2 className="text-lg font-bold mb-1 border-b pb-2 flex items-center gap-2"><Briefcase size={20} className="text-indigo-600"/> Job Fields Visibility</h2>
-            <p className="text-xs text-gray-500 mb-5 mt-2">&quot;Select your field&quot; dropdown kahan dikhe, yahan se control karein. Chat room ka field filter hamesha available rehta hai.</p>
+            <h2 className="text-lg font-bold mb-1 border-b pb-2 flex items-center gap-2"><Briefcase size={20} className="text-indigo-600"/> Job Fields &amp; Jobs Visibility</h2>
+            <p className="text-xs text-gray-500 mb-5 mt-2">Control where the &quot;Select your field&quot; dropdown appears and which Phase 2 job features are live. The chat room field filter is always available.</p>
             <div className="space-y-3">
               {[
-                { key: 'show_job_fields_landing', title: 'Landing Page Dropdown', desc: 'Home page hero par job-field dropdown dikhayein.' },
-                { key: 'show_job_fields_dashboard', title: 'Dashboard Dropdown', desc: 'User dashboard par job-field dropdown dikhayein.' },
+                { key: 'show_job_fields_landing', title: 'Landing Page Dropdown', desc: 'Show the job-field dropdown in the home page hero.' },
+                { key: 'show_job_fields_dashboard', title: 'Dashboard Dropdown', desc: 'Show the job-field dropdown on the user dashboard.' },
+                { key: 'show_jobs_on_dashboard', title: 'Jobs on Dashboard', desc: 'Show the latest open roles published by companies on the candidate dashboard.' },
+                { key: 'enable_company_chat', title: 'Company Chat', desc: 'Let companies message matching candidates from their portal and show their company chat ID.' },
               ].map((item) => (
                 <div key={item.key} className="flex items-center justify-between gap-4 rounded-xl border border-gray-100 bg-gray-50 p-4">
                   <div>
@@ -426,7 +429,7 @@ function SettingsContent() {
                 </div>
               ))}
             </div>
-            <p className="mt-4 text-xs text-gray-400">Changes ko permanent karne ke liye upar &quot;Save Changes&quot; dabayein.</p>
+            <p className="mt-4 text-xs text-gray-400">Click &quot;Save Changes&quot; above to make these switches permanent.</p>
           </div>
         )}
 

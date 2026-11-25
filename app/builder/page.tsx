@@ -48,7 +48,7 @@ const emptyData = {
 
 type Row = Record<string, unknown>;
 
-// Saved document ka koi bhi field safely padhne ke liye: object na ho to khaali row.
+// Safely read any field from a saved document: non-objects become an empty row.
 const asRecord = (value: unknown): Row =>
   typeof value === 'object' && value !== null ? (value as Row) : {};
 
@@ -58,12 +58,12 @@ export default function Builder() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingCert, setUploadingCert] = useState<number | null>(null);
-  // "Save on Dashboard" ke liye: loading state + last saved snapshot (duplicate save se bachne ke liye)
+  // For "Save on Dashboard": loading state + last saved snapshot (blocks duplicate saves)
   const [isSaving, setIsSaving] = useState(false);
   const [lastSavedSnapshot, setLastSavedSnapshot] = useState<string | null>(null);
   const [account, setAccount] = useState<any>(null);
   const [pricing, setPricing] = useState<{ open: boolean; reason: PricingReason }>({ open: false, reason: 'upgrade' });
-  // ?edit=<id> — dashboard se aya hua document (edit mode)
+  // ?edit=<id> — document opened from the dashboard (edit mode)
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loadingDoc, setLoadingDoc] = useState(true);
 
@@ -79,13 +79,13 @@ export default function Builder() {
     }
   };
 
-  // Saved document ko builder form ki shape mein laata hai (blank rows included).
+  // Turns a saved document into the shape the builder form expects (blank rows included).
   const toBuilderData = (raw: unknown) => {
     const src = asRecord(raw);
     const str = (value: unknown) => toText(value);
     const list = (value: unknown) => toText(value).trim();
-    // Row items string bhi ho sakte hain aur object bhi (legacy documents), is liye
-    // item ko pehle hi object mein badalna galat tha — mapper khud decide karta hai.
+    // Row items can be strings or objects (legacy documents), so the mapper
+    // decides per item instead of coercing everything to an object first.
     const rows = <T,>(value: unknown, empty: T, map: (item: unknown) => T): T[] => {
       const items = Array.isArray(value) ? value.map(map) : [];
       return items.length ? items : [empty];
@@ -136,19 +136,19 @@ export default function Builder() {
       const [{ data: { user } }, doc] = await Promise.all([supabase.auth.getUser(), fetchDocumentRecord(id)]);
 
       if (!doc || !user) {
-        alert('Ye document load nahi ho saka. Dobara dashboard se try karein.');
+        alert('This document could not be loaded. Please try again from the dashboard.');
         window.location.href = '/dashboard';
         return;
       }
 
-      // Sirf CV builder yahan khulta hai — letter edit apne builder mein hota hai
+      // Only the CV builder opens here — letters are edited in their own builder.
       if ((doc.document_type || 'CV') !== 'CV') {
         window.location.href = `/view/${id}`;
         return;
       }
 
       if (!ownsDocument(doc, user)) {
-        alert('Ye document aap ke account ka nahi hai, is liye edit nahi ho sakta.');
+        alert('This document does not belong to your account, so it cannot be edited.');
         window.location.href = `/view/${id}`;
         return;
       }
@@ -159,27 +159,27 @@ export default function Builder() {
       setFormData(loaded);
       setTemplate(loadedTemplate);
       setEditingId(doc.id);
-      // Loaded document hi current state hai — baghair change save karne par
-      // duplicate record na bane.
+      // The loaded document is already the current state — saving without edits
+      // must not create a duplicate record.
       setLastSavedSnapshot(JSON.stringify({ template: loadedTemplate, formData: loaded }));
     } catch (error) {
       console.error('Load document error:', error);
-      alert('Document load karte waqt error aya.');
+      alert('Something went wrong while loading the document.');
       window.location.href = '/dashboard';
     } finally {
       setLoadingDoc(false);
     }
   };
 
-  // Mount par chalta hai: edit link (?edit=id) ho to saved document load karo,
-  // warna sample/dummy data hi dikhao. State updates effect body ke bahar
-  // rakhe gaye hain taake cascading render na ho.
+  // Runs on mount: load the saved document when ?edit=id is present, otherwise
+  // show the sample data. State updates stay outside the effect body to avoid
+  // cascading renders.
   useEffect(() => {
     refreshAccount();
     const editId = new URLSearchParams(window.location.search).get('edit');
     if (editId) {
-      // Document load async hai — agle frame par start karte hain taake effect
-      // synchronously state update na kare.
+      // Document loading is async — start on the next frame so the effect never
+      // updates state synchronously.
       const frame = requestAnimationFrame(() => {
         void loadDocumentForEdit(editId);
       });
@@ -298,23 +298,23 @@ export default function Builder() {
     }
   };
 
-  // actionType: 'print' = sirf print, 'save' = My Dashboard mein save karke dashboard kholna
+  // actionType: 'print' = print only, 'save' = save to My Dashboard and open it
   const handleAction = async (actionType: 'print' | 'save' = 'print') => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user || !user.email) {
-      alert("Aap login nahi hain.");
+      alert("You are not signed in.");
       window.location.href = '/login';
       return;
     }
 
-    // Same CV ko baar baar save karne se CV count double na ho
+    // Saving the same CV repeatedly must not double the CV count.
     const snapshot = JSON.stringify({ template, formData });
     const alreadySaved = snapshot === lastSavedSnapshot;
     const isEditing = !!editingId;
 
-    // Edit mode mein naya document create nahi hota, is liye template gate aur
-    // document limit check skip hote hain.
-    // Naya document hai to hi limit check karo (already saved document count nahi barhata)
+    // Edit mode updates the existing document, so the template gate and the
+    // document limit check are skipped.
+    // Only new documents are counted (an already saved document adds nothing).
     if (!isEditing && !alreadySaved) {
       // Server-side gate: premium templates, 3 free Blue ATS uses and trial expiry.
       try {
@@ -342,7 +342,7 @@ export default function Builder() {
 
       const limitCheck = await checkUserLimit(user.email);
       if (limitCheck.reason === 'error_fallback') {
-        alert("Profile database mein nahi mili.");
+        alert("Your profile could not be found in the database.");
         return;
       }
       if (!limitCheck.allowed) {
@@ -355,7 +355,7 @@ export default function Builder() {
 
     try {
       if (isEditing) {
-        // Existing document ko UPDATE karo — naya record insert na karo
+        // Update the existing document — never insert a new record.
         if (!alreadySaved) {
           const updated = await updateDocumentRecord(editingId!, {
             templateName: template,
@@ -366,7 +366,7 @@ export default function Builder() {
             templateTier: getTemplate(template).tier,
           });
           if (!updated) {
-            alert('Document update nahi ho saka. Login aur internet connection check karein.');
+            alert('The document could not be updated. Check your login and internet connection.');
             return;
           }
           setLastSavedSnapshot(snapshot);
@@ -385,17 +385,17 @@ export default function Builder() {
         setLastSavedSnapshot(snapshot);
       }
 
-      // Phase 2: job title ko job_fields me upsert karke user ki field link karo.
-      // Fail hone par bhi save/print flow rukna nahi chahiye.
+      // Phase 2: upsert the job title into job_fields and link it to the user.
+      // A failure here must never block the save/print flow.
       if (formData.jobTitle?.trim()) {
         await saveUserJobField(formData.jobTitle);
       }
 
       if (actionType === 'save') {
-        // Save/update hone ke baad user ko sahi document dikhao
+        // After saving/updating, send the user to the right document.
         const message = isEditing
-          ? "✅ CV updated! Aap ka wahi dashboard document update ho gaya hai.\n\nDocument dekhein?"
-          : "✅ CV successfully saved to your Dashboard!\n\nAb My Dashboard kholein?";
+          ? "✅ CV updated! Your existing dashboard document was updated.\n\nView the document?"
+          : "✅ CV successfully saved to your Dashboard!\n\nOpen My Dashboard now?";
         if (confirm(message)) {
           window.location.href = isEditing ? `/view/${editingId}` : '/dashboard';
         }
@@ -480,7 +480,7 @@ export default function Builder() {
           <div className={`mb-6 flex flex-col items-start justify-between gap-4 rounded-xl border p-4 sm:flex-row sm:items-center ${editingId ? 'border-amber-200 bg-amber-50' : 'border-green-200 bg-green-50'}`}>
             <p className={`text-sm font-medium ${editingId ? 'text-amber-900' : 'text-green-800'}`}>
               {editingId
-                ? `Aap apna saved CV edit kar rahe hain${formData.fullName ? ` — ${formData.fullName}` : ''}. Save karne par yahi document update hoga, naya nahi banega.`
+                ? `You are editing your saved CV${formData.fullName ? ` — ${formData.fullName}` : ''}. Saving updates this document instead of creating a new one.`
                 : 'Sample CV is filled. Replace text or clear it.'}
             </p>
             <div className="flex items-center gap-2">
@@ -657,15 +657,15 @@ export default function Builder() {
           </div>
 
           <div className="pt-4 border-t border-gray-200">
-            {/* 🚨 SAVE ON DASHBOARD: ye CV user ke apne profile/dashboard mein save karta hai */}
+            {/* 🚨 SAVE ON DASHBOARD: saves this CV to the user's own profile/dashboard */}
             <button type="button" onClick={() => handleAction('save')} disabled={isSaving} className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white px-3 py-3 rounded-xl font-bold text-sm hover:bg-emerald-700 transition shadow-md disabled:opacity-60">
               {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
               {isSaving ? 'Saving...' : editingId ? 'Update Document' : 'Save on Dashboard'}
             </button>
             <p className="text-[11px] text-gray-500 text-center mt-2">
               {editingId
-                ? 'Ye changes aap ke My Dashboard wale isi document mein save honge.'
-                : 'Ye CV aap ke My Dashboard mein save ho jayegi. Print / PDF / Word sirf copy download karne ke liye hain.'}
+                ? 'These changes are saved to this same document in My Dashboard.'
+                : 'This CV is saved to your My Dashboard. Print / PDF / Word are only for downloading a copy.'}
             </p>
 
             <div className="flex gap-2 mt-3">
