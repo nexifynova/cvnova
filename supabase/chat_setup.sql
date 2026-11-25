@@ -62,6 +62,8 @@ $$;
 CREATE OR REPLACE FUNCTION public.cvnova_set_chat_id()
 RETURNS trigger
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
 AS $$
 BEGIN
   IF NEW.chat_id IS NULL OR btrim(NEW.chat_id) = '' THEN
@@ -75,6 +77,14 @@ DROP TRIGGER IF EXISTS trg_cvnova_set_chat_id ON public.user_profiles;
 CREATE TRIGGER trg_cvnova_set_chat_id
   BEFORE INSERT ON public.user_profiles
   FOR EACH ROW EXECUTE FUNCTION public.cvnova_set_chat_id();
+
+-- Client ko direct generator RPC ki zaroorat nahi — sirf trigger use karta hai.
+REVOKE ALL ON FUNCTION public.cvnova_generate_chat_id(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.cvnova_generate_chat_id(text) FROM anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.cvnova_generate_chat_id(text) TO service_role;
+
+REVOKE ALL ON FUNCTION public.cvnova_set_chat_id() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.cvnova_set_chat_id() FROM anon, authenticated;
 
 -- Backfill existing registered users one row at a time so ids stay unique
 DO $$
