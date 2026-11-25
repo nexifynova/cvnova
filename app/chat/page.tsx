@@ -191,26 +191,20 @@ export default function ChatPage() {
           setFieldName(label);
 
           // Legacy accounts were saved before job fields existed, so match them
-          // through the job title on their latest CV.
-          const { data: cvDocs } = await supabase
-            .from('generated_documents')
-            .select('user_id, email, full_data')
-            .eq('document_type', 'CV')
-            .limit(500);
+          // through the job title on their latest CV. The CV rows are matched
+          // server-side (service role) — generated_documents is not readable
+          // with the anon key any more.
+          try {
+            const res = await authedFetch(`/api/chat/job-field-candidates?field=${encodeURIComponent(requestedField)}`);
+            const data = await res.json();
+            if (!cancelled && res.ok) {
+              setLegacyFieldIds(new Set<string>(Array.isArray(data.userIds) ? data.userIds : []));
+              setLegacyFieldEmails(new Set<string>(Array.isArray(data.emails) ? data.emails : []));
+            }
+          } catch {
+            /* legacy title matching unavailable */
+          }
           if (cancelled) return;
-
-          const wantedTitle = String(label || '').trim().toLowerCase();
-          const ids = new Set<string>();
-          const emails = new Set<string>();
-          ((cvDocs as { user_id?: string | null; email?: string | null; full_data?: any }[] | null) ?? []).forEach((doc) => {
-            const title = String((doc.full_data || {}).jobTitle || '').trim().toLowerCase();
-            if (!title || title !== wantedTitle) return;
-            if (doc.user_id) ids.add(doc.user_id);
-            const email = String(doc.email || '').trim().toLowerCase();
-            if (email && email !== 'n/a') emails.add(email);
-          });
-          setLegacyFieldIds(ids);
-          setLegacyFieldEmails(emails);
         }
       }
 

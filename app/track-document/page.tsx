@@ -23,11 +23,10 @@ export default function TrackDocument() {
     setLoading(true);
     setDocuments(null);
     try {
+      // RLS fix ke baad table direct read nahi hoti — SECURITY DEFINER RPC
+      // exact email match par documents return karta hai.
       const { data, error } = await supabase
-        .from('generated_documents')
-        .select('*')
-        .eq('email', email)
-        .order('created_at', { ascending: false });
+        .rpc('track_documents_by_email', { p_email: email });
 
       if (error) throw error;
       if (!data || data.length === 0) {
@@ -52,12 +51,9 @@ export default function TrackDocument() {
     setLoading(true);
     setDocuments(null);
     try {
+      // Name + 6 character share code lookup (SECURITY DEFINER RPC).
       const { data, error } = await supabase
-        .from('generated_documents')
-        .select('*')
-        .eq('full_name', fullName)
-        .eq('share_code', shareCode)
-        .eq('is_shareable', true);
+        .rpc('track_documents_by_code', { p_full_name: fullName, p_code: shareCode });
 
       if (error) throw error;
       if (!data || data.length === 0) {

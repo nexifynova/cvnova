@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
 import { Search, Loader2, ArrowLeft, Mail, Key, User, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 
@@ -23,14 +22,13 @@ export default function TrackDocument() {
     setLoading(true);
     setDocuments(null);
     try {
-      const { data, error } = await supabase
-        .from('generated_documents')
-        .select('*')
-        .eq('email', email)
-        .order('created_at', { ascending: false });
+      // Admin panel cookie se auth hota hai, is liye service-role API use hoti hai.
+      const res = await fetch(`/api/admin/documents?email=${encodeURIComponent(email)}`, { cache: 'no-store' });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || 'Search failed');
+      const data = Array.isArray(payload.documents) ? payload.documents : [];
 
-      if (error) throw error;
-      if (!data || data.length === 0) {
+      if (data.length === 0) {
         alert("No documents found for this email address.");
         return;
       }
@@ -52,15 +50,13 @@ export default function TrackDocument() {
     setLoading(true);
     setDocuments(null);
     try {
-      const { data, error } = await supabase
-        .from('generated_documents')
-        .select('*')
-        .eq('full_name', fullName)
-        .eq('share_code', shareCode)
-        .eq('is_shareable', true);
+      const params = new URLSearchParams({ full_name: fullName, share_code: shareCode.toUpperCase() });
+      const res = await fetch(`/api/admin/documents?${params.toString()}`, { cache: 'no-store' });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || 'Search failed');
+      const data = Array.isArray(payload.documents) ? payload.documents : [];
 
-      if (error) throw error;
-      if (!data || data.length === 0) {
+      if (data.length === 0) {
         alert("Document not found. Please check your Full Name and Code.");
         return;
       }

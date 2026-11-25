@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, authedFetch } from '@/lib/supabase';
 import { Loader2, ArrowLeft, Printer, Save, LayoutTemplate, Edit } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation'; // <--- YE IMPORTANT HAI
@@ -24,25 +24,33 @@ export function ViewCVClient({ id }: { id: string }) {
   }, [id]);
 
   const fetchDocument = async (docId: string) => {
-    const { data } = await supabase.from('generated_documents').select('*').eq('id', docId).single();
-    if (data) {
-      setDoc(data);
-      setCurrentTemplate(data.template_name || 'classicgray');
+    try {
+      // generated_documents par anon select band hai (supabase/rls_fix.sql),
+      // is liye viewer service-role API se document load karta hai.
+      const res = await fetch(`/api/documents/${docId}`, { cache: 'no-store' });
+      const payload = await res.json().catch(() => ({}));
+      const data = res.ok ? payload.document : null;
+      if (data) {
+        setDoc(data);
+        setCurrentTemplate(data.template_name || 'classicgray');
 
-      // ðŸš¨ PRIVACY: check karo ke viewer is document ka owner hai ya nahi.
-      // Track-document / email se aane wale shared viewers ko owner controls
-      // (Back to Dashboard, Edit, Save) kabhi nahi milna chahiye.
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        const ownerEmail = String(data.email || '').trim().toLowerCase();
-        const myEmail = String(user?.email || '').trim().toLowerCase();
-        const ownedByMe = !!user && (data.user_id
-          ? data.user_id === user.id
-          : (!!myEmail && ownerEmail === myEmail));
-        setIsOwner(ownedByMe);
-      } catch {
-        setIsOwner(false);
+        // 🚨 PRIVACY: check karo ke viewer is document ka owner hai ya nahi.
+        // Track-document / email se aane wale shared viewers ko owner controls
+        // (Back to Dashboard, Edit, Save) kabhi nahi milna chahiye.
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          const ownerEmail = String(data.email || '').trim().toLowerCase();
+          const myEmail = String(user?.email || '').trim().toLowerCase();
+          const ownedByMe = !!user && (data.user_id
+            ? data.user_id === user.id
+            : (!!myEmail && ownerEmail === myEmail));
+          setIsOwner(ownedByMe);
+        } catch {
+          setIsOwner(false);
+        }
       }
+    } catch {
+      /* document not reachable */
     }
     setLoading(false);
   };
@@ -51,10 +59,19 @@ export function ViewCVClient({ id }: { id: string }) {
     // Sirf owner hi document ka design save kar sakta hai
     if (!isOwner) return;
     setSaving(true);
-    const { error } = await supabase.from('generated_documents').update({ template_name: currentTemplate }).eq('id', id);
-    if (error) alert("Error saving template: " + error.message);
-    else alert("Template updated successfully!");
-    setSaving(false);
+    try {
+      const res = await authedFetch(`/api/documents/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ templateName: currentTemplate }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Could not save the design');
+      alert("Template updated successfully!");
+    } catch (error: any) {
+      alert("Error saving template: " + (error?.message || 'unknown error'));
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-blue-600" size={48} /></div>;

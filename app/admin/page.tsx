@@ -30,13 +30,21 @@ export default function AdminPanel() {
 
   const fetchData = async () => {
     setLoading(true);
-    const { data: docData } = await supabase.from('generated_documents').select('*').order('created_at', { ascending: false });
-    if (docData) {
-      setDocuments(docData);
-      const cvs = docData.filter(d => d.document_type === 'CV').length;
-      const covers = docData.filter(d => d.document_type === 'Cover Letter').length;
-      const exps = docData.filter(d => d.document_type === 'Experience Letter').length;
-      setStats({ totalCV: cvs, totalCover: covers, totalExp: exps });
+    // generated_documents anon key se readable nahi raha (RLS fix),
+    // is liye admin/service-role route se list aati hai.
+    try {
+      const res = await fetch('/api/admin/documents', { cache: 'no-store' });
+      const payload = await res.json();
+      const docData = res.ok && Array.isArray(payload.documents) ? payload.documents : null;
+      if (docData) {
+        setDocuments(docData);
+        const cvs = docData.filter((d: any) => d.document_type === 'CV').length;
+        const covers = docData.filter((d: any) => d.document_type === 'Cover Letter').length;
+        const exps = docData.filter((d: any) => d.document_type === 'Experience Letter').length;
+        setStats({ totalCV: cvs, totalCover: covers, totalExp: exps });
+      }
+    } catch {
+      /* documents list unavailable */
     }
     const { data: userData } = await supabase.from('user_profiles').select('*').order('created_at', { ascending: false });
     if (userData) setUsers(userData);

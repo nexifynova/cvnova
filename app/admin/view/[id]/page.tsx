@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
 import { Loader2, ArrowLeft, Printer, LayoutTemplate } from 'lucide-react';
 import Link from 'next/link';
 
@@ -24,10 +23,17 @@ export default function AdminViewCV() {
   }, [id]);
 
   const fetchDocument = async (docId: string) => {
-    const { data, error } = await supabase.from('generated_documents').select('*').eq('id', docId).single();
-    if (data) {
-      setDoc(data);
-      setCurrentTemplate(data.template_name || 'classicgray');
+    try {
+      // Admin cookie auth hai, is liye service-role route se document aata hai.
+      const res = await fetch(`/api/admin/documents?id=${encodeURIComponent(docId)}`, { cache: 'no-store' });
+      const payload = await res.json().catch(() => ({}));
+      const data = res.ok ? payload.document : null;
+      if (data) {
+        setDoc(data);
+        setCurrentTemplate(data.template_name || 'classicgray');
+      }
+    } catch {
+      /* record unavailable */
     }
     setLoading(false);
   };
