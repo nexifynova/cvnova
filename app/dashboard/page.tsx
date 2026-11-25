@@ -339,7 +339,10 @@ export default function Dashboard() {
           <div className="bg-gradient-to-tr from-blue-500 to-purple-600 p-2 rounded-xl"><FileText className="text-white" size={20} /></div>
           <span className="text-xl font-extrabold text-gray-900">{settings?.site_name || 'CVNova'}</span>
         </Link>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <Link href="/chat" className="flex items-center gap-2 rounded-lg bg-indigo-50 px-3 py-1.5 text-sm font-bold text-indigo-700 transition hover:bg-indigo-100">
+            <MessageSquare size={17} /> Chat
+          </Link>
           <span className="text-sm text-gray-600 hidden sm:block">Hi, {profile?.full_name || user.email}</span>
           <button onClick={handleLogout} className="flex items-center gap-2 text-sm font-semibold text-red-600 hover:text-red-700"><LogOut size={18} /> Logout</button>
         </div>
@@ -382,6 +385,7 @@ export default function Dashboard() {
             <Link href="/builder" className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl hover:bg-blue-700 font-bold transition shadow-md text-sm"><Plus size={18} /> New CV</Link>
             <Link href="/cover-letter" className="flex items-center gap-2 bg-green-600 text-white px-5 py-2.5 rounded-xl hover:bg-green-700 font-bold transition shadow-md text-sm"><Mail size={18} /> Cover Letter</Link>
             <Link href="/experience-letter" className="flex items-center gap-2 bg-purple-600 text-white px-5 py-2.5 rounded-xl hover:bg-purple-700 font-bold transition shadow-md text-sm"><Briefcase size={18} /> Experience Letter</Link>
+            <Link href="/chat" className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl hover:bg-indigo-700 font-bold transition shadow-md text-sm"><MessageSquare size={18} /> Chat Room</Link>
             <Link href="/payment" className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-yellow-500 text-white px-5 py-2.5 rounded-xl hover:from-orange-600 hover:to-yellow-600 font-bold transition shadow-lg text-sm animate-pulse"><Crown size={18} /> Buy Packages</Link>
           </div>
         </div>
