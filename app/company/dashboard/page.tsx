@@ -4,11 +4,12 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase, authedFetch } from '@/lib/supabase';
-import { Building2, Loader2, LogOut, Search, Filter, X, Mail, MessageSquare, Send, ShieldCheck, Lock, Eye, Briefcase, Plus, Trash2, MapPin, FileText, RefreshCw, CheckCircle2, Paperclip, Clock, UserCheck } from 'lucide-react';
+import { Building2, Loader2, LogOut, Search, Filter, X, Mail, MessageSquare, Send, ShieldCheck, Lock, Eye, Briefcase, Plus, Trash2, MapPin, FileText, RefreshCw, CheckCircle2, Paperclip, Clock, UserCheck, Users, UserPlus } from 'lucide-react';
 import AtsBadge from '@/components/AtsBadge';
 import JobFieldsDropdown from '@/components/JobFieldsDropdown';
 import CVTemplateRenderer from '@/components/cv/CVTemplateRenderer';
 import ApplicationsSidebar from '@/components/company/ApplicationsSidebar';
+import EmployeeCreateModal from '@/components/company/EmployeeCreateModal';
 import {
   CompanyPackageBanner,
   GracePeriodPopup,
@@ -98,6 +99,9 @@ export default function CompanyDashboard() {
   const [plansOpen, setPlansOpen] = useState(false);
   const [gracePopupOpen, setGracePopupOpen] = useState(false);
   const [gracePopupSeen, setGracePopupSeen] = useState(false);
+
+  // Phase 3 - B2B employee CVs: the talent-pool box opens this modal.
+  const [employeeModalOpen, setEmployeeModalOpen] = useState(false);
 
   useEffect(() => {
     const guard = async () => {
@@ -495,6 +499,8 @@ export default function CompanyDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <Link href="/company/employees" className="hidden text-xs font-bold text-gray-600 hover:text-blue-600 sm:block">Our employees</Link>
+            <Link href="/company/billing" className="hidden text-xs font-bold text-gray-600 hover:text-blue-600 sm:block">Billing</Link>
             <Link href="/" className="hidden text-xs font-bold text-gray-600 hover:text-blue-600 sm:block">Candidate site</Link>
             <button onClick={logout} className="flex items-center gap-1.5 text-sm font-semibold text-red-600 hover:text-red-700"><LogOut size={16} /> Sign out</button>
           </div>
@@ -554,6 +560,33 @@ export default function CompanyDashboard() {
               </select>
             </div>
             <button onClick={() => loadCandidates(query)} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700">Search</button>
+          </div>
+        </div>
+
+        {/* Phase 3 - B2B employee CVs, next to the talent-pool search bar. */}
+        <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-600 to-purple-600 p-5 text-white shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="rounded-xl bg-white/15 p-2"><UserPlus size={20} /></div>
+            <div>
+              <p className="text-sm font-bold sm:text-base">Create your Employees CVs at Nexify Nova</p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-indigo-50 sm:text-xs">
+                Add your team members - each one gets a verified CVNova account, a temporary password and their own dashboard. The Employee ID, joining date and applied field are saved for you.
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <button
+              onClick={() => setEmployeeModalOpen(true)}
+              className="flex items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-xs font-bold text-indigo-700 transition hover:bg-indigo-50"
+            >
+              <UserPlus size={14} /> Create employee
+            </button>
+            <Link
+              href="/company/employees"
+              className="flex items-center gap-1.5 rounded-xl border border-white/40 px-3 py-2 text-xs font-bold text-white transition hover:bg-white/10"
+            >
+              <Users size={14} /> Our employees
+            </Link>
           </div>
         </div>
 
@@ -1114,6 +1147,17 @@ export default function CompanyDashboard() {
           onClose={() => setPlansOpen(false)}
         />
       )}
+
+      {/* Phase 3 - employee CV modal. It stays open after a successful create so
+          the temporary password remains on screen; only the plan state refreshes. */}
+      <EmployeeCreateModal
+        open={employeeModalOpen}
+        locked={!!plan?.readOnly}
+        onClose={() => setEmployeeModalOpen(false)}
+        onCreated={() => {
+          void loadPlan();
+        }}
+      />
     </div>
   );
 }
