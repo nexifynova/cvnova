@@ -11,6 +11,7 @@ type ChatProfile = {
   full_name: string | null;
   email: string | null;
   chat_id: string | null;
+  job_field_id: string | null;
   is_online: boolean | null;
   last_seen_at: string | null;
 };
@@ -82,6 +83,8 @@ export default function ChatPage() {
   const [unread, setUnread] = useState<Record<string, number>>({});
   const [clock, setClock] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fieldFilter, setFieldFilter] = useState<string | null>(null);
+  const [fieldName, setFieldName] = useState<string | null>(null);
 
   const clockRef = useRef<number | null>(null);
   const selectedIdRef = useRef<string | null>(null);
@@ -119,9 +122,22 @@ export default function ChatPage() {
       activeUserId = user.id;
       setUserId(user.id);
 
+      // Phase 2: /chat?field=<uuid> aaye to usi job field ke users dikhado.
+      const requestedField = new URLSearchParams(window.location.search).get('field');
+      if (requestedField) {
+        setFieldFilter(requestedField);
+        const { data: fieldRow } = await supabase
+          .from('job_fields')
+          .select('id, field_name')
+          .eq('id', requestedField)
+          .maybeSingle();
+        if (cancelled) return;
+        if (fieldRow) setFieldName((fieldRow as { field_name: string }).field_name);
+      }
+
       const { data: myData } = await supabase
         .from('user_profiles')
-        .select('id, full_name, email, chat_id, is_online, last_seen_at')
+        .select('id, full_name, email, chat_id, job_field_id, is_online, last_seen_at')
         .eq('id', user.id)
         .maybeSingle();
 
@@ -137,7 +153,7 @@ export default function ChatPage() {
       const [profilesResult, unreadResult] = await Promise.all([
         supabase
           .from('user_profiles')
-          .select('id, full_name, email, chat_id, is_online, last_seen_at')
+          .select('id, full_name, email, chat_id, job_field_id, is_online, last_seen_at')
           .neq('id', user.id),
         supabase
           .from('messages')
@@ -214,6 +230,7 @@ export default function ChatPage() {
             full_name: row.full_name ?? null,
             email: row.email ?? null,
             chat_id: row.chat_id ?? null,
+            job_field_id: row.job_field_id ?? null,
             is_online: row.is_online ?? false,
             last_seen_at: row.last_seen_at ?? null,
           };
@@ -382,7 +399,13 @@ export default function ChatPage() {
     bottomRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
   }, [messages]);
 
-  const sortedProfiles = useMemo(() => sortProfiles(profiles, clock), [profiles, clock]);
+  // Phase 2: field filter lagne par sirf usi field ke professionals.
+  const fieldProfiles = useMemo(
+    () => (fieldFilter ? profiles.filter((profile) => profile.job_field_id === fieldFilter) : profiles),
+    [profiles, fieldFilter]
+  );
+
+  const sortedProfiles = useMemo(() => sortProfiles(fieldProfiles, clock), [fieldProfiles, clock]);
 
   const visibleProfiles = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -396,8 +419,8 @@ export default function ChatPage() {
   }, [sortedProfiles, searchTerm]);
 
   const onlineCount = useMemo(
-    () => profiles.filter((profile) => isOnlineNow(profile, clock)).length,
-    [profiles, clock]
+    () => fieldProfiles.filter((profile) => isOnlineNow(profile, clock)).length,
+    [fieldProfiles, clock]
   );
 
   const totalUnread = useMemo(
@@ -452,9 +475,15 @@ export default function ChatPage() {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-extrabold text-gray-900">Chat Room</h1>
-            <p className="text-sm text-gray-500">
-              Real-time messages — page refresh ki zaroorat nahi.
-            </p>
+            {fieldName ? (
+              <p className="text-sm font-semibold text-indigo-600">
+                Field: {fieldName} — sirf isi field ke professionals dikh rahe hain.
+              </p>
+            ) : (
+              <p className="text-sm text-gray-500">
+                Real-time messages — page refresh ki zaroorat nahi.
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <span className="flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1.5 text-xs font-bold text-green-700">
@@ -465,6 +494,14 @@ export default function ChatPage() {
               <span className="flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1.5 text-xs font-bold text-white">
                 {totalUnread} unread
               </span>
+            )}
+            {fieldFilter && (
+              <Link
+                href="/chat"
+                className="flex items-center gap-1.5 rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100"
+              >
+                {fieldName || 'Field'} <span aria-hidden="true">×</span>
+              </Link>
             )}
           </div>
         </div>

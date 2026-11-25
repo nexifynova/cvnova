@@ -225,3 +225,18 @@ export const incrementUserCount = async (_userEmail?: string) => {
 
   if (error) console.error("Increment Error:", error);
 };
+
+// Phase 2 — Job/Fields: CV builder ka "Job Title" job_fields table mein upsert
+// karta hai (case-insensitive dedup DB par hota hai) aur current user ki
+// profile me job_field_id set karta hai. Error par UI block nahi hona chahiye.
+export const saveUserJobField = async (jobTitle: string) => {
+  const title = String(jobTitle || '').trim();
+  if (!title) return null;
+
+  const { data, error } = await supabase.rpc('save_user_job_field', { p_name: title });
+  if (error) {
+    console.error('Job field save error:', error);
+    return null;
+  }
+  return (data as string | null) ?? null;
+};

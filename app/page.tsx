@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { FileText, Sparkles, ArrowRight, Mail, Briefcase, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import JobFieldsDropdown from '@/components/JobFieldsDropdown';
 import Navbar from '@/components/Navbar';
 import useEmblaCarousel from 'embla-carousel-react';
 import Autoplay from 'embla-carousel-autoplay';
@@ -65,6 +66,11 @@ export default function Home() {
                 <Search size={20} /> Track Document
               </Link>
             </div>
+            {settings?.show_job_fields_landing !== false && (
+              <div className="mt-10 flex justify-center lg:justify-start">
+                <JobFieldsDropdown variant="dark" label="Find people in your field" />
+              </div>
+            )}
           </div>
 
           <div className="flex-1 relative w-full max-w-lg lg:max-w-none">

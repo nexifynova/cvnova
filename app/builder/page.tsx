@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { Sparkles, ArrowLeft, Download, Printer, Plus, Trash2, Loader2, Camera, Upload, RefreshCw, Save, Lock, Crown } from 'lucide-react';
 import Link from 'next/link';
-import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount, authedFetch, fetchDocumentRecord, updateDocumentRecord, ownsDocument } from '@/lib/supabase';
+import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount, authedFetch, fetchDocumentRecord, updateDocumentRecord, ownsDocument, saveUserJobField } from '@/lib/supabase';
 import { downloadAsWord, downloadAsPDF } from '@/lib/download-utils';
 import CVTemplateRenderer from '@/components/cv/CVTemplateRenderer';
 import { toText } from '@/components/cv/shared';
@@ -383,6 +383,12 @@ export default function Builder() {
 
         await incrementUserCount(user.email);
         setLastSavedSnapshot(snapshot);
+      }
+
+      // Phase 2: job title ko job_fields me upsert karke user ki field link karo.
+      // Fail hone par bhi save/print flow rukna nahi chahiye.
+      if (formData.jobTitle?.trim()) {
+        await saveUserJobField(formData.jobTitle);
       }
 
       if (actionType === 'save') {

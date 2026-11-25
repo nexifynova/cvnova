@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { Save, Loader2, Upload, Plus, Trash2, ArrowUp, ArrowDown, Image as ImageIcon, Link as LinkIcon, IndianRupee, Package, Phone, Mail, MapPin, Type } from 'lucide-react';
+import { Save, Loader2, Upload, Plus, Trash2, ArrowUp, ArrowDown, Image as ImageIcon, Link as LinkIcon, IndianRupee, Package, Phone, Mail, MapPin, Type, Briefcase } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useSearchParams } from 'next/navigation';
 
@@ -32,6 +32,7 @@ function SettingsContent() {
     contact_email1: 'info@nexifynova.co.uk', contact_email2: 'support@nexifynova.co.uk',
     contact_phone: '+92 (300) 123-4567', contact_location: 'Karachi, Pakistan',
     site_logo_url: '', site_favicon_url: '', hero_images: [], hero_slider_interval: 4000, nav_menu: [],
+    show_job_fields_landing: true, show_job_fields_dashboard: true,
   });
 
   useEffect(() => {
@@ -395,6 +396,37 @@ function SettingsContent() {
                 <input type="text" name="contact_location" value={settings.contact_location} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border" />
               </div>
             </div>
+          </div>
+        )}
+
+        {/* JOB FIELDS TAB */}
+        {activeTab === 'jobfields' && (
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <h2 className="text-lg font-bold mb-1 border-b pb-2 flex items-center gap-2"><Briefcase size={20} className="text-indigo-600"/> Job Fields Visibility</h2>
+            <p className="text-xs text-gray-500 mb-5 mt-2">&quot;Select your field&quot; dropdown kahan dikhe, yahan se control karein. Chat room ka field filter hamesha available rehta hai.</p>
+            <div className="space-y-3">
+              {[
+                { key: 'show_job_fields_landing', title: 'Landing Page Dropdown', desc: 'Home page hero par job-field dropdown dikhayein.' },
+                { key: 'show_job_fields_dashboard', title: 'Dashboard Dropdown', desc: 'User dashboard par job-field dropdown dikhayein.' },
+              ].map((item) => (
+                <div key={item.key} className="flex items-center justify-between gap-4 rounded-xl border border-gray-100 bg-gray-50 p-4">
+                  <div>
+                    <p className="text-sm font-bold text-gray-900">{item.title}</p>
+                    <p className="text-xs text-gray-500">{item.desc}</p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={!!settings[item.key]}
+                    onClick={() => setSettings({ ...settings, [item.key]: !settings[item.key] })}
+                    className={`relative inline-flex h-7 w-12 flex-shrink-0 items-center rounded-full transition ${settings[item.key] ? 'bg-blue-600' : 'bg-gray-300'}`}
+                  >
+                    <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${settings[item.key] ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <p className="mt-4 text-xs text-gray-400">Changes ko permanent karne ke liye upar &quot;Save Changes&quot; dabayein.</p>
           </div>
         )}
 

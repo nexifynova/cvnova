@@ -8,6 +8,7 @@ import Link from 'next/link';
 import AtsBadge from '@/components/AtsBadge';
 import PlanBadge from '@/components/PlanBadge';
 import { getTemplate } from '@/lib/templates';
+import JobFieldsDropdown from '@/components/JobFieldsDropdown';
 
 // Plan ka naam -> app_settings mein us plan ke CVs wala column
 const PLAN_CV_SETTING_KEY: Record<string, string> = {
@@ -389,6 +390,16 @@ export default function Dashboard() {
             <Link href="/payment" className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-yellow-500 text-white px-5 py-2.5 rounded-xl hover:from-orange-600 hover:to-yellow-600 font-bold transition shadow-lg text-sm animate-pulse"><Crown size={18} /> Buy Packages</Link>
           </div>
         </div>
+
+        {settings?.show_job_fields_dashboard !== false && (
+          <div className="mb-8 flex flex-col gap-3 rounded-2xl border border-indigo-100 bg-indigo-50 p-4 sm:flex-row sm:items-end sm:justify-between sm:p-5">
+            <div>
+              <p className="text-sm font-bold text-indigo-900">Find people in your field</p>
+              <p className="text-xs text-indigo-700">Pick a field to open the chat room with matching professionals.</p>
+            </div>
+            <JobFieldsDropdown variant="light" label="Your field" />
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">

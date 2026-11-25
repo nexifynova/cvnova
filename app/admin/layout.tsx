@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Settings, CreditCard, MessageSquare, ArrowLeft, Image as ImageIcon, Link as LinkIcon, IndianRupee, Phone, LogOut, Key, X, Loader2, Eye, EyeOff, Headphones, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, Settings, CreditCard, MessageSquare, ArrowLeft, Image as ImageIcon, Link as LinkIcon, IndianRupee, Phone, LogOut, Key, X, Loader2, Eye, EyeOff, Headphones, TrendingUp, Briefcase } from 'lucide-react';
 import { Suspense, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
@@ -42,6 +42,7 @@ function SidebarNavigation() {
     { name: 'Navbar Menu', href: '/admin/settings?tab=menu', icon: LinkIcon },
     { name: 'Pricing', href: '/admin/settings?tab=pricing', icon: IndianRupee },
     { name: 'Contact Us', href: '/admin/settings?tab=contact', icon: Phone },
+    { name: 'Job Fields', href: '/admin/settings?tab=jobfields', icon: Briefcase },
   ];
 
   const handleLogout = async () => {
