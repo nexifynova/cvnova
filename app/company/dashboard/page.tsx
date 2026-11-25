@@ -10,6 +10,17 @@ import JobFieldsDropdown from '@/components/JobFieldsDropdown';
 import CVTemplateRenderer from '@/components/cv/CVTemplateRenderer';
 import ApplicationsSidebar from '@/components/company/ApplicationsSidebar';
 import {
+  CompanyPackageBanner,
+  GracePeriodPopup,
+  PackagePlansModal,
+} from '@/components/company/CompanyPackageNotice';
+import {
+  CHAT_LOCKED_MESSAGE,
+  JOB_POST_LOCKED_MESSAGE,
+  type CompanyAccess,
+  type CompanyPackage,
+} from '@/lib/company-access';
+import {
   APPLICATION_STATUS_META,
   normalizeApplicationStatus,
   type ApplicationStatus,
@@ -80,6 +91,14 @@ export default function CompanyDashboard() {
   const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
   const [statusBusyId, setStatusBusyId] = useState<string | null>(null);
 
+  // Phase 2 — package / free trial / grace period. The whole gate is derived
+  // from the server snapshot, so the UI and the API routes always agree.
+  const [plan, setPlan] = useState<CompanyAccess | null>(null);
+  const [planPackages, setPlanPackages] = useState<CompanyPackage[]>([]);
+  const [plansOpen, setPlansOpen] = useState(false);
+  const [gracePopupOpen, setGracePopupOpen] = useState(false);
+  const [gracePopupSeen, setGracePopupSeen] = useState(false);
+
   useEffect(() => {
     const guard = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -95,6 +114,7 @@ export default function CompanyDashboard() {
       loadJobs();
       loadChatCandidates();
       loadApplications();
+      loadPlan();
     };
     guard();
   }, [router]);
@@ -159,6 +179,20 @@ export default function CompanyDashboard() {
     }
   };
 
+  // Phase 2: package snapshot for the banner, grace popup and plan list. Kept
+  // apart from the CV list so a slow access call never blocks the talent pool.
+  const loadPlan = async () => {
+    try {
+      const res = await authedFetch('/api/company/access');
+      const data = await res.json();
+      if (!res.ok) return;
+      if (data.access) setPlan(data.access as CompanyAccess);
+      setPlanPackages(Array.isArray(data.packages) ? (data.packages as CompanyPackage[]) : []);
+    } catch {
+      /* access API unavailable — keep the current view */
+    }
+  };
+
   // Confirms the CV reached the company. The candidate gets an automatic chat
   // message so they know their application was seen.
   const markReceived = async (application: any) => {
@@ -180,7 +214,7 @@ export default function CompanyDashboard() {
       // If this candidate's thread is already open, refresh it so the
       // automatic "document received" message appears immediately.
       if (activeCandidate?.id && activeCandidate.id === application.candidateUserId) {
-        await openCandidateChat(activeCandidate);
+        await openCandidateChat(activeCandidate, { silent: true });
       }
     } catch (err: any) {
       alert(err.message);
@@ -250,7 +284,11 @@ export default function CompanyDashboard() {
         body: JSON.stringify(jobForm),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error === 'job_title_required' ? 'Enter a job title.' : (data.error || 'Could not post the job'));
+      if (!res.ok) {
+        // A locked package must read the server's wording, not a generic error.
+        if (data.error === 'package_expired') throw new Error(data.message || JOB_POST_LOCKED_MESSAGE);
+        throw new Error(data.error === 'job_title_required' ? 'Enter a job title.' : (data.error || 'Could not post the job'));
+      }
       setJobForm({ title: '', location: '', description: '' });
       setJobModalOpen(false);
       await loadJobs();
@@ -276,7 +314,18 @@ export default function CompanyDashboard() {
     }
   };
 
-  const openCandidateChat = async (candidate: any) => {
+  const openCandidateChat = async (candidate: any, options: { silent?: boolean } = {}) => {
+    // Phase 2: expired packages keep read-only access — the thread still loads,
+    // but starting a conversation is blocked with the purchase message.
+    if (plan && !plan.canChat && !options.silent) {
+      alert(CHAT_LOCKED_MESSAGE);
+    }
+    // While the grace window is open chat works; warn once per visit that it is
+    // about to close (the popup only exists when the admin kept grace enabled).
+    if (plan?.status === 'grace' && !options.silent && !gracePopupSeen) {
+      setGracePopupSeen(true);
+      setGracePopupOpen(true);
+    }
     setActiveCandidate(candidate);
     setDmMessages([]);
     setDmDraft('');
@@ -292,6 +341,11 @@ export default function CompanyDashboard() {
   const sendDirectMessage = async () => {
     const body = dmDraft.trim();
     if (!body || !activeCandidate?.id || dmSending) return;
+    // Phase 2: sending needs a live package or an open grace window.
+    if (plan && !plan.canChat) {
+      alert(CHAT_LOCKED_MESSAGE);
+      return;
+    }
     setDmSending(true);
     try {
       const res = await authedFetch('/api/company/messages', {
@@ -299,7 +353,10 @@ export default function CompanyDashboard() {
         body: JSON.stringify({ candidateUserId: activeCandidate.id, body }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error === 'contact_consent_required' ? 'This candidate has not allowed company contact.' : (data.error || 'Message failed'));
+      if (!res.ok) {
+        if (data.error === 'package_expired') throw new Error(data.message || CHAT_LOCKED_MESSAGE);
+        throw new Error(data.error === 'contact_consent_required' ? 'This candidate has not allowed company contact.' : (data.error || 'Message failed'));
+      }
       setDmDraft('');
       await openCandidateChat(activeCandidate);
     } catch (err: any) {
@@ -363,6 +420,11 @@ export default function CompanyDashboard() {
     const body = chatDraft.trim();
     const candidateUserId = cvDoc?.candidate?.id;
     if (!body || !candidateUserId) return;
+    // Phase 2: same package gate as the direct-message box.
+    if (plan && !plan.canChat) {
+      alert(CHAT_LOCKED_MESSAGE);
+      return;
+    }
     setSendingChat(true);
     try {
       const res = await authedFetch('/api/company/messages', {
@@ -370,7 +432,10 @@ export default function CompanyDashboard() {
         body: JSON.stringify({ candidateUserId, documentId: cvDoc?.document?.id, body }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error === 'contact_consent_required' ? 'This candidate has not allowed company contact.' : (data.error || 'Message failed'));
+      if (!res.ok) {
+        if (data.error === 'package_expired') throw new Error(data.message || CHAT_LOCKED_MESSAGE);
+        throw new Error(data.error === 'contact_consent_required' ? 'This candidate has not allowed company contact.' : (data.error || 'Message failed'));
+      }
       setChatDraft('');
       await loadChat(candidateUserId);
     } catch (err: any) {
@@ -436,7 +501,11 @@ export default function CompanyDashboard() {
         </div>
       </nav>
 
-      <div className="mx-auto flex max-w-[1500px] flex-col gap-6 px-4 py-8 lg:flex-row lg:items-start">
+      <div className="mx-auto max-w-[1500px] px-4 pt-6">
+        <CompanyPackageBanner access={plan} onViewPlans={() => setPlansOpen(true)} />
+      </div>
+
+      <div className="mx-auto flex max-w-[1500px] flex-col gap-6 px-4 pb-8 pt-4 lg:flex-row lg:items-start">
         <ApplicationsSidebar
           applications={applications}
           selectedId={selectedApplicationId}
@@ -625,7 +694,18 @@ export default function CompanyDashboard() {
                 <Briefcase className="text-blue-600" size={19} />
                 <h2 className="text-lg font-bold text-gray-900">Your job posts</h2>
               </div>
-              <button onClick={() => setJobModalOpen(true)} className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700">
+              <button
+                onClick={() => {
+                  // Phase 2: job posting is closed once the package (and the
+                  // grace window) has expired — read-only access remains.
+                  if (plan && !plan.canPostJobs) {
+                    alert(JOB_POST_LOCKED_MESSAGE);
+                    return;
+                  }
+                  setJobModalOpen(true);
+                }}
+                className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700"
+              >
                 <Plus size={14} /> Post a Job
               </button>
             </div>
@@ -687,6 +767,25 @@ export default function CompanyDashboard() {
                 ? `Applicants plus candidates in ${chatFieldName}. Messaging unlocks when a candidate allows company contact — applicants can always be messaged.`
                 : 'Applicants are listed here. Set a recruiting field on your company account to add field-matched candidates.'}
             </p>
+
+            {plan && !plan.canChat && (
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-semibold text-red-800">
+                <span className="flex items-center gap-1.5"><Lock size={12} /> {plan.chatMessage}</span>
+                <button
+                  type="button"
+                  onClick={() => setPlansOpen(true)}
+                  className="rounded-lg bg-red-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-red-700"
+                >
+                  View plans
+                </button>
+              </div>
+            )}
+
+            {plan?.status === 'grace' && (
+              <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-900">
+                {plan.graceMessage}
+              </div>
+            )}
 
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
               <div className="rounded-xl border border-gray-100 bg-gray-50 p-2 lg:col-span-1">
@@ -762,16 +861,18 @@ export default function CompanyDashboard() {
                         value={dmDraft}
                         onChange={(e) => setDmDraft(e.target.value)}
                         placeholder={
-                          activeCandidate.canChat === false
-                            ? 'This candidate has not allowed company contact yet.'
-                            : `Message ${activeCandidate.fullName}...`
+                          plan && !plan.canChat
+                            ? CHAT_LOCKED_MESSAGE
+                            : activeCandidate.canChat === false
+                              ? 'This candidate has not allowed company contact yet.'
+                              : `Message ${activeCandidate.fullName}...`
                         }
-                        disabled={activeCandidate.canChat === false}
+                        disabled={activeCandidate.canChat === false || (plan ? !plan.canChat : false)}
                         className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-50 disabled:text-gray-400"
                       />
                       <button
                         onClick={sendDirectMessage}
-                        disabled={dmSending || !dmDraft.trim() || activeCandidate.canChat === false}
+                        disabled={dmSending || !dmDraft.trim() || activeCandidate.canChat === false || (plan ? !plan.canChat : false)}
                         className="flex items-center gap-1 rounded-lg bg-purple-600 px-3 py-2 text-xs font-bold text-white hover:bg-purple-700 disabled:opacity-50"
                       >
                         {dmSending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
@@ -972,12 +1073,13 @@ export default function CompanyDashboard() {
                     <input
                       value={chatDraft}
                       onChange={(e) => setChatDraft(e.target.value)}
-                      placeholder="Write a message..."
-                      className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-purple-500"
+                      placeholder={plan && !plan.canChat ? CHAT_LOCKED_MESSAGE : 'Write a message...'}
+                      disabled={plan ? !plan.canChat : false}
+                      className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-50 disabled:text-gray-400"
                     />
                     <button
                       onClick={sendChat}
-                      disabled={sendingChat || !chatDraft.trim() || !cvDoc.document?.canContact}
+                      disabled={sendingChat || !chatDraft.trim() || !cvDoc.document?.canContact || (plan ? !plan.canChat : false)}
                       className="rounded-lg bg-purple-600 px-3 py-2 text-xs font-bold text-white hover:bg-purple-700 disabled:opacity-50"
                     >
                       {sendingChat ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
@@ -992,6 +1094,25 @@ export default function CompanyDashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {gracePopupOpen && plan?.status === 'grace' && (
+        <GracePeriodPopup
+          access={plan}
+          onClose={() => setGracePopupOpen(false)}
+          onViewPlans={() => {
+            setGracePopupOpen(false);
+            setPlansOpen(true);
+          }}
+        />
+      )}
+
+      {plansOpen && (
+        <PackagePlansModal
+          access={plan}
+          packages={planPackages}
+          onClose={() => setPlansOpen(false)}
+        />
       )}
     </div>
   );

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient, getUserFromRequest, isCompanyUser } from '@/lib/supabase-admin';
+import { buildTrialWindow, loadCompanySettings } from '@/lib/company-access';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -40,6 +41,15 @@ export async function POST(req: Request) {
     const admin = createAdminClient();
     const jobFieldId = await resolveJobFieldId(admin, fieldId || fieldName);
 
+    // Phase 2: a brand-new company starts on the admin-configured free trial.
+    // Existing rows are only healed when they carry no expiry at all, so this
+    // login-time self-heal call can never overwrite a paid plan.
+    const { data: existing } = await admin
+      .from('companies')
+      .select('id, package_expiry')
+      .eq('id', user.id)
+      .maybeSingle();
+
     const patch: Record<string, unknown> = {
       id: user.id,
       company_name: String(companyName).trim(),
@@ -52,6 +62,13 @@ export async function POST(req: Request) {
     // Only overwrite the field when the caller actually supplied one, so the
     // login-time self-heal call never wipes an existing selection.
     if (jobFieldId) patch.job_field_id = jobFieldId;
+
+    if (!existing || !existing.package_expiry) {
+      const trial = buildTrialWindow(await loadCompanySettings(admin));
+      patch.package_type = trial.packageType;
+      patch.package_expiry = trial.packageExpiry;
+      patch.grace_expiry = trial.graceExpiry;
+    }
 
     const { data, error } = await admin
       .from('companies')

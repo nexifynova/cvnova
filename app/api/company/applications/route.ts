@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { resolveCompany } from '@/lib/company-server';
 import { isApplicationStatus, normalizeApplicationStatus } from '@/lib/application-status';
+import { loadCompanyAccess } from '@/lib/company-access';
 
 /**
  * Applications received by the signed-in company. Each row carries the CV the
@@ -103,15 +104,21 @@ export async function POST(req: Request) {
     if (updateError) throw updateError;
 
     if (application.candidate_user_id) {
-      await ctx.admin.from('company_messages').insert([
-        {
-          company_id: ctx.user.id,
-          candidate_user_id: application.candidate_user_id,
-          document_id: application.document_id || null,
-          sender: 'company',
-          body: 'Your document has been received by the company.',
-        },
-      ]);
+      // Phase 2: the receipt note is a message from the company, so it follows
+      // the same package gate as the chat box. The received flag above still
+      // updates, which keeps the ATS usable in read-only mode.
+      const access = await loadCompanyAccess(ctx.admin, ctx.company);
+      if (access.canChat) {
+        await ctx.admin.from('company_messages').insert([
+          {
+            company_id: ctx.user.id,
+            candidate_user_id: application.candidate_user_id,
+            document_id: application.document_id || null,
+            sender: 'company',
+            body: 'Your document has been received by the company.',
+          },
+        ]);
+      }
     }
 
     return NextResponse.json({ success: true, receivedAt });

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient, getUserFromRequest, isCompanyUser } from '@/lib/supabase-admin';
 import { getConsent } from '@/lib/account-status';
+import { loadCompanyAccess } from '@/lib/company-access';
 
 
 async function candidateName(admin: any, id: string) {
@@ -133,6 +134,18 @@ export async function POST(req: Request) {
       if (!company || company.is_approved === false) {
         return NextResponse.json({ error: 'company_not_approved' }, { status: 403 });
       }
+
+      // Phase 2: sending chat messages needs a live package. During the grace
+      // window chat stays available; afterwards the thread is read-only, while
+      // GET above keeps history and the talent pool visible.
+      const access = await loadCompanyAccess(admin, company);
+      if (!access.canChat) {
+        return NextResponse.json(
+          { error: 'package_expired', message: access.chatMessage, packageStatus: access.status },
+          { status: 402 },
+        );
+      }
+
       if (!candidateUserId) return NextResponse.json({ error: 'candidate_required' }, { status: 400 });
 
       const { data: profile } = await admin.from('user_profiles').select('*').eq('id', candidateUserId).maybeSingle();

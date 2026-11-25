@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { resolveCompany } from '@/lib/company-server';
+import { loadCompanyAccess } from '@/lib/company-access';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -38,6 +39,16 @@ export async function POST(req: Request) {
   if (!ctx.ok) return NextResponse.json({ error: ctx.error }, { status: ctx.status });
 
   try {
+    // Phase 2: posting jobs needs a live package (trial or paid). The grace
+    // period only keeps chat open, so expired packages are read-only here.
+    const access = await loadCompanyAccess(ctx.admin, ctx.company);
+    if (!access.canPostJobs) {
+      return NextResponse.json(
+        { error: 'package_expired', message: access.jobMessage, packageStatus: access.status },
+        { status: 402 },
+      );
+    }
+
     const body = await req.json();
     const title = String(body?.title || '').trim();
     if (title.length < 2) {
