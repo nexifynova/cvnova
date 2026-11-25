@@ -217,9 +217,6 @@ export default function Home() {
         </div>
 
         <p className="text-xs text-gray-600">© 2026 CVNova. All rights reserved.</p>
-        <p className="mt-3 text-xs">
-          <Link href="/company" className="font-semibold text-blue-400 hover:underline">Recruiter? Open the company portal →</Link>
-        </p>
       </footer>
     </div>
   );

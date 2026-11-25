@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ChangeEvent } from 'react';
+import { useEffect, useId, useState, type ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -10,18 +10,36 @@ export type JobField = { id: string; field_name: string };
 type JobFieldsDropdownProps = {
   /** "dark" = landing page (navy bg), "light" = dashboard / in-app */
   variant?: 'light' | 'dark';
+  /** "md" = landing/dashboard, "sm" = compact toolbar (company talent pool) */
+  size?: 'md' | 'sm';
+  /** Khali string pass karo to label hide ho jata hai (toolbar usage) */
   label?: string;
   className?: string;
+  /** Controlled value (field id) — parent state se select control hota hai */
+  value?: string;
+  /**
+   * Agar diya jaye to select /chat par navigate nahi karta, sirf callback chalta hai.
+   * Company talent pool isay filter ke tor par use karta hai.
+   */
+  onSelect?: (field: JobField | null) => void;
+  /** Filter mode: pehla "sab" option (e.g. "All fields"). Diya jaye to selectable hota hai. */
+  allOptionLabel?: string;
 };
 
-// Reusable field dropdown: landing + dashboard par same component.
-// Select karne par us field ke logon ke saath /chat khulta hai.
+// Reusable field dropdown: landing, dashboard aur company talent pool par same component.
+// Default behaviour: select karne par us field ke logon ke saath /chat khulta hai.
+// `onSelect` dene par navigation nahi hoti — parent apna filter chalata hai.
 export default function JobFieldsDropdown({
   variant = 'light',
+  size = 'md',
   label = 'Select your field',
   className = '',
+  value,
+  onSelect,
+  allOptionLabel,
 }: JobFieldsDropdownProps) {
   const router = useRouter();
+  const selectId = `job-field-select-${useId().replace(/:/g, '')}`;
   const [fields, setFields] = useState<JobField[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -51,39 +69,57 @@ export default function JobFieldsDropdown({
   }, []);
 
   const isDark = variant === 'dark';
+  const isFilter = allOptionLabel !== undefined || onSelect !== undefined;
+  const isDisabled = loading || (fields.length === 0 && !isFilter);
 
   const handleChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    const value = event.target.value;
-    if (value) router.push(`/chat?field=${value}`);
+    const next = event.target.value;
+    const selected = next ? fields.find((field) => field.id === next) ?? null : null;
+    if (onSelect) {
+      onSelect(selected);
+      return;
+    }
+    if (next) router.push(`/chat?field=${next}`);
   };
 
   return (
-    <div className={`w-full max-w-sm ${className}`}>
-      <label
-        htmlFor="job-field-select"
-        className={`mb-2 block text-xs font-bold uppercase tracking-wider ${isDark ? 'text-blue-300' : 'text-indigo-600'}`}
-      >
-        {label}
-      </label>
+    <div className={`${size === 'sm' ? 'w-full sm:w-44' : 'w-full max-w-sm'} ${className}`}>
+      {label && (
+        <label
+          htmlFor={selectId}
+          className={`mb-2 block text-xs font-bold uppercase tracking-wider ${isDark ? 'text-blue-300' : 'text-indigo-600'}`}
+        >
+          {label}
+        </label>
+      )}
       <div className="relative">
         <select
-          id="job-field-select"
-          defaultValue=""
+          id={selectId}
+          {...(value === undefined ? { defaultValue: '' } : { value })}
           onChange={handleChange}
-          disabled={loading || fields.length === 0}
-          className={`w-full appearance-none rounded-xl border px-4 py-3 pr-10 text-sm font-semibold outline-none transition disabled:cursor-not-allowed disabled:opacity-70 ${
+          disabled={isDisabled}
+          aria-label={label ? undefined : allOptionLabel || 'Select a field'}
+          className={`w-full appearance-none rounded-xl border font-semibold outline-none transition disabled:cursor-not-allowed disabled:opacity-70 ${
+            size === 'sm' ? 'px-3 py-2 pr-8 text-xs' : 'px-4 py-3 pr-10 text-sm'
+          } ${
             isDark
               ? 'border-white/15 bg-white/10 text-white focus:border-blue-400'
               : 'border-indigo-200 bg-white text-gray-800 focus:border-indigo-500'
           }`}
         >
-          <option value="" disabled className={isDark ? 'text-gray-900' : 'text-gray-500'}>
-            {loading
-              ? 'Loading fields…'
-              : fields.length === 0
-                ? 'No fields yet — save a CV to create one'
-                : 'Choose a field'}
-          </option>
+          {allOptionLabel !== undefined ? (
+            <option value="" className="text-gray-900">
+              {allOptionLabel}
+            </option>
+          ) : (
+            <option value="" disabled className={isDark ? 'text-gray-900' : 'text-gray-500'}>
+              {loading
+                ? 'Loading fields…'
+                : fields.length === 0
+                  ? 'No fields yet — save a CV to create one'
+                  : 'Choose a field'}
+            </option>
+          )}
           {fields.map((field) => (
             <option key={field.id} value={field.id} className="text-gray-900">
               {field.field_name}

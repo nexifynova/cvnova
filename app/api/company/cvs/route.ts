@@ -4,7 +4,7 @@ import { assertExposable, redactCv, resolveCompany } from '@/lib/company-server'
 import { getTemplate } from '@/lib/templates';
 
 
-type Row = { doc: any; profile: ProfileLike };
+type Row = { doc: any; profile: ProfileLike & { job_field_id?: string | null } };
 
 const findProfile = (rows: ProfileLike[], doc: any): ProfileLike | null => {
   if (doc.user_id) {
@@ -24,6 +24,25 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const search = (url.searchParams.get('q') || '').trim().toLowerCase();
     const ats = (url.searchParams.get('ats') || '').trim().toLowerCase();
+    const field = (url.searchParams.get('field') || '').trim();
+
+    // Optional job-field filter (company talent pool dropdown).
+    let fieldName = '';
+    if (field) {
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(field)) {
+        return NextResponse.json({ candidates: [], total: 0, consentPolicyVersion: 'v1', notice: 'Unknown job field.' });
+      }
+      const { data: fieldRow, error: fieldError } = await ctx.admin
+        .from('job_fields')
+        .select('id, field_name')
+        .eq('id', field)
+        .maybeSingle();
+      if (fieldError) throw fieldError;
+      if (!fieldRow) {
+        return NextResponse.json({ candidates: [], total: 0, consentPolicyVersion: 'v1', notice: 'Unknown job field.' });
+      }
+      fieldName = String(fieldRow.field_name || '').trim().toLowerCase();
+    }
 
     const { data: docs, error } = await ctx.admin
       .from('generated_documents')
@@ -69,7 +88,17 @@ export async function GET(req: Request) {
       rows.push({ doc, profile: profile as ProfileLike });
     }
 
-    const enriched = rows.map(({ doc, profile }) => {
+    // Field filter: profile ka job_field_id, aur fallback ke tor par CV job title
+    // (legacy CVs jinka field abhi backfill nahi hua unhe bhi dikhane ke liye).
+    const scopedRows = field
+      ? rows.filter(({ doc, profile }) => {
+          if (String(profile.job_field_id || '') === field) return true;
+          const title = String((doc.full_data || {}).jobTitle || '').trim().toLowerCase();
+          return !!fieldName && title === fieldName;
+        })
+      : rows;
+
+    const enriched = scopedRows.map(({ doc, profile }) => {
       const consent = getConsent(profile);
       const meta = getTemplate(doc.template_name);
       const full = doc.full_data || {};

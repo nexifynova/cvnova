@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, Fragment } from 'react';
 import Link from 'next/link';
-import { FileText, LogOut, LayoutDashboard, ChevronDown, User, Search } from 'lucide-react';
+import { FileText, LogOut, LayoutDashboard, ChevronDown, User, Search, Building2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
@@ -109,6 +109,16 @@ export default function Navbar() {
       </div>
 
       <div className="flex gap-4 items-center">
+        {/* Recruiter CTA — pehle footer mein tha, ab header navbar mein visible hai */}
+        <Link
+          href="/company"
+          title="Recruiter? Open the company portal"
+          aria-label="Recruiter? Open the company portal"
+          className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-blue-400/40 bg-blue-500/10 px-3 py-2 text-xs font-bold text-blue-200 transition hover:border-blue-400/70 hover:bg-blue-500/20 hover:text-white"
+        >
+          <Building2 size={15} className="shrink-0" />
+          <span className="hidden sm:inline">Recruiter? Company portal</span>
+        </Link>
         {user ? (
           <div className="relative py-2" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
             <button className="flex items-center gap-2 bg-white/10 text-white px-4 py-2 rounded-full border border-white/20 hover:bg-white/20 transition">

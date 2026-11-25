@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { supabase, authedFetch } from '@/lib/supabase';
 import { Building2, Loader2, LogOut, Search, Filter, X, Mail, MessageSquare, Send, ShieldCheck, Lock, Eye } from 'lucide-react';
 import AtsBadge from '@/components/AtsBadge';
+import JobFieldsDropdown from '@/components/JobFieldsDropdown';
 import CVTemplateRenderer from '@/components/cv/CVTemplateRenderer';
 import type { AtsTier } from '@/lib/templates';
 
@@ -36,6 +37,7 @@ export default function CompanyDashboard() {
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState('');
   const [ats, setAts] = useState('');
+  const [fieldId, setFieldId] = useState('');
   const [notice, setNotice] = useState('');
 
   const [cvDoc, setCvDoc] = useState<any>(null);
@@ -63,12 +65,13 @@ export default function CompanyDashboard() {
     guard();
   }, [router]);
 
-  const loadCandidates = async (search: string, atsFilter = ats) => {
+  const loadCandidates = async (search: string, atsFilter = ats, fieldFilter = fieldId) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (search) params.set('q', search);
       if (atsFilter) params.set('ats', atsFilter);
+      if (fieldFilter) params.set('field', fieldFilter);
       const res = await authedFetch(`/api/company/cvs?${params.toString()}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error === 'company_profile_missing' ? 'Company profile missing — sign out and register again.' : (data.error || 'Could not load candidates'));
@@ -195,6 +198,18 @@ export default function CompanyDashboard() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
               <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name, skill, title..." className="w-56 rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
             </form>
+            <JobFieldsDropdown
+              variant="light"
+              size="sm"
+              label=""
+              allOptionLabel="All fields"
+              value={fieldId}
+              onSelect={(field) => {
+                const next = field?.id ?? '';
+                setFieldId(next);
+                loadCandidates(query, ats, next);
+              }}
+            />
             <div className="relative">
               <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
               <select
@@ -221,7 +236,7 @@ export default function CompanyDashboard() {
         {!loading && candidates.length === 0 && (
           <div className="rounded-2xl border border-gray-100 bg-white p-12 text-center">
             <Eye className="mx-auto mb-3 text-gray-300" size={40} />
-            <p className="font-bold text-gray-800">No opted-in CVs match this search</p>
+            <p className="font-bold text-gray-800">No opted-in CVs match these filters</p>
             <p className="mt-1 text-sm text-gray-500">Candidates appear here as soon as they enable sharing.</p>
           </div>
         )}
