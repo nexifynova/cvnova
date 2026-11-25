@@ -15,7 +15,7 @@ type JobFieldsDropdownProps = {
 };
 
 // Reusable field dropdown: landing + dashboard par same component.
-// Select karne par us field ke logo ke saath /chat khulta hai.
+// Select karne par us field ke logon ke saath /chat khulta hai.
 export default function JobFieldsDropdown({
   variant = 'light',
   label = 'Select your field',

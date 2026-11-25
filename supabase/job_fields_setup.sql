@@ -123,7 +123,7 @@ WHERE p.id = d.user_id
   AND p.job_field_id IS NULL;
 
 
--- 6) Verification (optional) ----------------------------------------
+-- 7) Verification (optional) ----------------------------------------
 -- SELECT * FROM public.job_fields ORDER BY field_name;
 -- SELECT column_name FROM information_schema.columns
 --  WHERE table_name='user_profiles' AND column_name='job_field_id';
