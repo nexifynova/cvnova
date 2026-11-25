@@ -8,6 +8,37 @@ async function candidateName(admin: any, id: string) {
   return data?.full_name || (data?.email ? String(data.email).split('@')[0] : 'Candidate');
 }
 
+/** Document title shown in chat — never the UUID. */
+function documentLabelFromRow(doc: any): string {
+  const type = String(doc?.document_type || 'CV');
+  const title = String((doc?.full_data as any)?.jobTitle || doc?.full_name || '').trim() || type;
+  return type === 'CV' ? `${title} CV` : `${title} · ${type}`;
+}
+
+/**
+ * Human label for a document that is shared inside chat. The transcript must
+ * show the document name, never its UUID — so the name is snapshotted on the
+ * message row instead of being resolved in the browser.
+ *
+ * Returns null when the document does not belong to the caller.
+ */
+async function documentShareLabel(admin: any, documentId: string, userId: string): Promise<string | null> {
+  const { data: doc } = await admin
+    .from('generated_documents')
+    .select('id, user_id, email, full_name, document_type, template_name, full_data')
+    .eq('id', documentId)
+    .maybeSingle();
+  if (!doc) return null;
+
+  const { data: profile } = await admin.from('user_profiles').select('email').eq('id', userId).maybeSingle();
+  const ownerEmail = String(doc.email || '').trim().toLowerCase();
+  const myEmail = String(profile?.email || '').trim().toLowerCase();
+  const owns = doc.user_id ? doc.user_id === userId : !!myEmail && ownerEmail === myEmail;
+  if (!owns) return null;
+
+  return documentLabelFromRow(doc);
+}
+
 export async function GET(req: Request) {
   const user = await getUserFromRequest(req);
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
@@ -121,10 +152,21 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'contact_consent_required' }, { status: 403 });
       }
 
+      let documentName: string | null = null;
+      if (documentId) {
+        const { data: sharedDoc } = await admin
+          .from('generated_documents')
+          .select('full_name, document_type, full_data')
+          .eq('id', documentId)
+          .maybeSingle();
+        if (sharedDoc) documentName = documentLabelFromRow(sharedDoc);
+      }
+
       const { data, error } = await admin.from('company_messages').insert([{
         company_id: user.id,
         candidate_user_id: candidateUserId,
         document_id: documentId || null,
+        document_name: documentName,
         sender: 'company',
         body: text,
       }]).select('*').maybeSingle();
@@ -136,10 +178,19 @@ export async function POST(req: Request) {
     const { data: company } = await admin.from('companies').select('id').eq('id', companyId).maybeSingle();
     if (!company) return NextResponse.json({ error: 'company_not_found' }, { status: 404 });
 
+    // Sharing a saved document: label is resolved server-side so the chat
+    // transcript shows the name instead of the document UUID.
+    let documentName: string | null = null;
+    if (documentId) {
+      documentName = await documentShareLabel(admin, String(documentId), user.id);
+      if (!documentName) return NextResponse.json({ error: 'document_not_found' }, { status: 403 });
+    }
+
     const { data, error } = await admin.from('company_messages').insert([{
       company_id: companyId,
       candidate_user_id: user.id,
       document_id: documentId || null,
+      document_name: documentName,
       sender: 'candidate',
       body: text,
     }]).select('*').maybeSingle();

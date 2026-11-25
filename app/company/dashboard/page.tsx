@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase, authedFetch } from '@/lib/supabase';
-import { Building2, Loader2, LogOut, Search, Filter, X, Mail, MessageSquare, Send, ShieldCheck, Lock, Eye, Briefcase, Plus, Trash2, MapPin, FileText, RefreshCw } from 'lucide-react';
+import { Building2, Loader2, LogOut, Search, Filter, X, Mail, MessageSquare, Send, ShieldCheck, Lock, Eye, Briefcase, Plus, Trash2, MapPin, FileText, RefreshCw, CheckCircle2, Paperclip } from 'lucide-react';
 import AtsBadge from '@/components/AtsBadge';
 import JobFieldsDropdown from '@/components/JobFieldsDropdown';
 import CVTemplateRenderer from '@/components/cv/CVTemplateRenderer';
@@ -67,6 +67,7 @@ export default function CompanyDashboard() {
   const [dmDraft, setDmDraft] = useState('');
   const [dmSending, setDmSending] = useState(false);
   const [applications, setApplications] = useState<any[]>([]);
+  const [receivingId, setReceivingId] = useState<string | null>(null);
 
   useEffect(() => {
     const guard = async () => {
@@ -137,6 +138,36 @@ export default function CompanyDashboard() {
       if (res.ok && Array.isArray(data.applications)) setApplications(data.applications);
     } catch {
       /* applications API unavailable */
+    }
+  };
+
+  // Confirms the CV reached the company. The candidate gets an automatic chat
+  // message so they know their application was seen.
+  const markReceived = async (application: any) => {
+    if (!application?.id || receivingId) return;
+    setReceivingId(application.id);
+    try {
+      const res = await authedFetch('/api/company/applications', {
+        method: 'POST',
+        body: JSON.stringify({ id: application.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not mark this application as received');
+
+      const receivedAt = data.receivedAt || new Date().toISOString();
+      setApplications((prev) =>
+        prev.map((item) => (item.id === application.id ? { ...item, receivedAt } : item)),
+      );
+
+      // If this candidate's thread is already open, refresh it so the
+      // automatic "document received" message appears immediately.
+      if (activeCandidate?.id && activeCandidate.id === application.candidateUserId) {
+        await openCandidateChat(activeCandidate);
+      }
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setReceivingId(null);
     }
   };
 
@@ -392,34 +423,63 @@ export default function CompanyDashboard() {
               No applications yet. Candidates can send a CV from the jobs listed on their dashboard.
             </p>
           ) : (
-            <div className="max-h-64 space-y-2 overflow-y-auto">
+            <div className="max-h-80 space-y-2 overflow-y-auto">
               {applications.map((application: any) => (
                 <div
                   key={application.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gray-100 bg-gray-50 p-3"
+                  className="rounded-xl border border-gray-100 bg-gray-50 p-3"
                 >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-gray-900">{application.candidateName}</p>
-                    <p className="text-[11px] text-gray-600">
-                      {application.jobTitle} · {application.cvLabel}
-                    </p>
-                    <p className="font-mono text-[10px] text-gray-500">
-                      {application.chatId || 'Chat ID pending'}
-                    </p>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-gray-900">{application.candidateName}</p>
+                      <p className="text-[11px] text-gray-600">
+                        {application.jobTitle} · {application.cvLabel}
+                        {application.applyCount > 1 ? ` · applied ${application.applyCount}×` : ''}
+                      </p>
+                      <p className="font-mono text-[10px] text-gray-500">
+                        {application.chatId || 'Chat ID pending'}
+                      </p>
+                    </div>
+                    {application.receivedAt && (
+                      <span className="flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                        <CheckCircle2 size={11} /> Received
+                      </span>
+                    )}
                   </div>
-                  <button
-                    onClick={() =>
-                      openCandidateChat({
-                        id: application.candidateUserId,
-                        fullName: application.candidateName,
-                        chatId: application.chatId,
-                        appliedFor: application.jobTitle,
-                      })
-                    }
-                    className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-purple-700"
-                  >
-                    <MessageSquare size={12} /> Chat
-                  </button>
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <button
+                      onClick={() => openCandidate(application.documentId)}
+                      disabled={!application.documentId || cvLoading}
+                      className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-[11px] font-bold text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+                    >
+                      <FileText size={12} /> View CV
+                    </button>
+                    <button
+                      onClick={() => markReceived(application)}
+                      disabled={receivingId === application.id || !!application.receivedAt}
+                      className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+                    >
+                      {receivingId === application.id ? (
+                        <Loader2 size={12} className="animate-spin" />
+                      ) : (
+                        <CheckCircle2 size={12} />
+                      )}
+                      {application.receivedAt ? 'Received' : 'Mark as Received'}
+                    </button>
+                    <button
+                      onClick={() =>
+                        openCandidateChat({
+                          id: application.candidateUserId,
+                          fullName: application.candidateName,
+                          chatId: application.chatId,
+                          appliedFor: application.jobTitle,
+                        })
+                      }
+                      className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-purple-700"
+                    >
+                      <MessageSquare size={12} /> Chat
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -551,9 +611,18 @@ export default function CompanyDashboard() {
                     <div className="mb-2 max-h-56 flex-1 space-y-1.5 overflow-y-auto rounded-lg bg-gray-50 p-2">
                       {dmMessages.length === 0 && <p className="p-2 text-[11px] text-gray-400">No messages yet.</p>}
                       {dmMessages.map((m: any) => (
-                        <p key={m.id} className={`text-[11px] ${m.sender === 'company' ? 'text-right' : ''}`}>
+                        <div key={m.id} className={`text-[11px] ${m.sender === 'company' ? 'text-right' : ''}`}>
                           <span className={`inline-block rounded-lg px-2 py-1 ${m.sender === 'company' ? 'bg-purple-100 text-purple-800' : 'border border-gray-200 bg-white text-gray-700'}`}>{m.body}</span>
-                        </p>
+                          {m.document_id && (
+                            <button
+                              type="button"
+                              onClick={() => openCandidate(m.document_id)}
+                              className={`mt-0.5 flex items-center gap-1 text-[10px] font-bold text-blue-600 hover:underline ${m.sender === 'company' ? 'justify-end' : ''}`}
+                            >
+                              <Paperclip size={10} /> {m.document_name || 'Shared document'}
+                            </button>
+                          )}
+                        </div>
                       ))}
                     </div>
                     <div className="flex gap-2">
@@ -752,9 +821,18 @@ export default function CompanyDashboard() {
                   <div className="mb-2 max-h-48 space-y-1.5 overflow-y-auto rounded-xl border border-gray-100 bg-gray-50 p-2">
                     {chat.length === 0 && <p className="p-2 text-[11px] text-gray-400">No messages yet.</p>}
                     {chat.map((m: any) => (
-                      <p key={m.id} className={`text-[11px] ${m.sender === 'company' ? 'text-right' : ''}`}>
+                      <div key={m.id} className={`text-[11px] ${m.sender === 'company' ? 'text-right' : ''}`}>
                         <span className={`inline-block rounded-lg px-2 py-1 ${m.sender === 'company' ? 'bg-purple-100 text-purple-800' : 'border border-gray-200 bg-white text-gray-700'}`}>{m.body}</span>
-                      </p>
+                        {m.document_id && (
+                          <button
+                            type="button"
+                            onClick={() => openCandidate(m.document_id)}
+                            className={`mt-0.5 flex items-center gap-1 text-[10px] font-bold text-blue-600 hover:underline ${m.sender === 'company' ? 'justify-end' : ''}`}
+                          >
+                            <Paperclip size={10} /> {m.document_name || 'Shared document'}
+                          </button>
+                        )}
+                      </div>
                     ))}
                   </div>
                   <div className="flex gap-2">

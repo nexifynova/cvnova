@@ -12,7 +12,7 @@ export async function GET(req: Request) {
   try {
     const { data: rows, error } = await ctx.admin
       .from('job_applications')
-      .select('id, job_id, job_title, candidate_user_id, candidate_chat_id, candidate_email, document_id, email_status, created_at')
+      .select('id, job_id, job_title, candidate_user_id, candidate_chat_id, candidate_email, document_id, email_status, received_at, apply_count, created_at')
       .eq('company_id', ctx.user.id)
       .order('created_at', { ascending: false })
       .limit(200);
@@ -53,6 +53,8 @@ export async function GET(req: Request) {
         documentId: row.document_id,
         cvLabel: String(full.jobTitle || doc?.template_name || 'CV'),
         emailStatus: row.email_status || '',
+        applyCount: Number(row.apply_count) || 1,
+        receivedAt: row.received_at || null,
         createdAt: row.created_at,
       };
     });
@@ -60,5 +62,58 @@ export async function GET(req: Request) {
     return NextResponse.json({ applications });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || 'applications_load_failed' }, { status: 500 });
+  }
+}
+
+/**
+ * Company confirms an application was received. The candidate is told inside
+ * their company chat thread (which also surfaces on their dashboard inbox).
+ */
+export async function POST(req: Request) {
+  const ctx = await resolveCompany(req);
+  if (!ctx.ok) return NextResponse.json({ error: ctx.error }, { status: ctx.status });
+
+  try {
+    const { id } = await req.json();
+    if (!id) return NextResponse.json({ error: 'application_required' }, { status: 400 });
+
+    const { data: application, error } = await ctx.admin
+      .from('job_applications')
+      .select('id, job_title, candidate_user_id, document_id, received_at')
+      .eq('id', id)
+      .eq('company_id', ctx.user.id)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!application) return NextResponse.json({ error: 'application_not_found' }, { status: 404 });
+
+    // Idempotent: a second click never spams the candidate with a duplicate.
+    if (application.received_at) {
+      return NextResponse.json({ success: true, alreadyReceived: true, receivedAt: application.received_at });
+    }
+
+    const receivedAt = new Date().toISOString();
+    const { error: updateError } = await ctx.admin
+      .from('job_applications')
+      .update({ received_at: receivedAt })
+      .eq('id', application.id)
+      .eq('company_id', ctx.user.id);
+    if (updateError) throw updateError;
+
+    if (application.candidate_user_id) {
+      await ctx.admin.from('company_messages').insert([
+        {
+          company_id: ctx.user.id,
+          candidate_user_id: application.candidate_user_id,
+          document_id: application.document_id || null,
+          sender: 'company',
+          body: 'Your document has been received by the company.',
+        },
+      ]);
+    }
+
+    return NextResponse.json({ success: true, receivedAt });
+  } catch (error: any) {
+    return NextResponse.json({ error: error?.message || 'application_update_failed' }, { status: 500 });
   }
 }

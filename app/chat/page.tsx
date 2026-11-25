@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase, authedFetch } from '@/lib/supabase';
-import { ArrowLeft, Building2, Loader2, MessageSquare, Search, Send, Users } from 'lucide-react';
+import { ArrowLeft, Building2, FileText, Loader2, MessageSquare, Paperclip, Search, Send, Users, X } from 'lucide-react';
 
 type ChatProfile = {
   id: string;
@@ -32,6 +32,7 @@ type CompanyMessage = {
   sender: 'company' | 'candidate' | 'system';
   body: string;
   document_id?: string | null;
+  document_name?: string | null;
   created_at: string;
 };
 
@@ -41,6 +42,18 @@ type ChatMessage = {
   receiver_id: string;
   message_text: string;
   is_read: boolean;
+  document_id?: string | null;
+  document_name?: string | null;
+  created_at: string;
+};
+
+// A saved document the candidate can send inside a chat instead of retyping.
+type SavedDocument = {
+  id: string;
+  full_name: string | null;
+  document_type: string | null;
+  template_name: string | null;
+  full_data: any;
   created_at: string;
 };
 
@@ -86,6 +99,13 @@ const getInitials = (profile: ChatProfile | null) => {
 const formatTime = (value: string) =>
   new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+// Document title shown in chat — never the UUID.
+const documentLabel = (doc: SavedDocument) => {
+  const type = String(doc?.document_type || 'CV');
+  const title = String(doc?.full_data?.jobTitle || doc?.full_name || '').trim() || type;
+  return type === 'CV' ? `${title} CV` : `${title} · ${type}`;
+};
+
 export default function ChatPage() {
   const router = useRouter();
 
@@ -115,6 +135,10 @@ export default function ChatPage() {
   const [companyMessagesLoading, setCompanyMessagesLoading] = useState(false);
   const [companyDraft, setCompanyDraft] = useState('');
   const [companySending, setCompanySending] = useState(false);
+  // Saved documents + the paperclip picker used to share them in chat.
+  const [documents, setDocuments] = useState<SavedDocument[]>([]);
+  const [docPickerOpen, setDocPickerOpen] = useState(false);
+  const [sharingDocId, setSharingDocId] = useState<string | null>(null);
 
   const clockRef = useRef<number | null>(null);
   const selectedIdRef = useRef<string | null>(null);
@@ -190,6 +214,13 @@ export default function ChatPage() {
         }
       }
 
+      // A company chat ID can be passed from the dashboard "Listed Companies"
+      // box (/chat?company=@ChatID). The auto-open effect picks it up.
+      const requestedCompany = new URLSearchParams(window.location.search).get('company');
+      if (requestedCompany) {
+        setSearchTerm(requestedCompany.startsWith('@') ? requestedCompany : `@${requestedCompany}`);
+      }
+
       const { data: myData } = await supabase
         .from('user_profiles')
         .select('id, full_name, email, chat_id, job_field_id, is_online, last_seen_at')
@@ -239,6 +270,17 @@ export default function ChatPage() {
         if (!cancelled && res.ok && Array.isArray(data.companies)) setCompanies(data.companies);
       } catch {
         /* company chat not enabled */
+      }
+
+      // Saved documents for the paperclip (share) picker.
+      if (user.email) {
+        const { data: myDocs } = await supabase
+          .from('generated_documents')
+          .select('id, full_name, document_type, template_name, full_data, created_at')
+          .eq('email', user.email)
+          .order('created_at', { ascending: false })
+          .limit(100);
+        if (!cancelled && myDocs) setDocuments(myDocs as SavedDocument[]);
       }
 
       if (cancelled) return;
@@ -539,6 +581,60 @@ export default function ChatPage() {
       setErrorMessage(`Message could not be sent: ${err?.message || err}`);
     } finally {
       setCompanySending(false);
+    }
+  };
+
+  // Sends one saved document into the open conversation. Only the document
+  // name travels in the message body — the UUID stays in the reference column.
+  const shareDocument = async (doc: SavedDocument) => {
+    if (!userId || sharingDocId) return;
+
+    const label = documentLabel(doc);
+    setSharingDocId(doc.id);
+    setErrorMessage(null);
+
+    try {
+      if (selectedCompany) {
+        const res = await authedFetch('/api/company/messages', {
+          method: 'POST',
+          body: JSON.stringify({
+            companyId: selectedCompany.id,
+            documentId: doc.id,
+            body: `Shared document: "${label}"`,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Document could not be shared');
+        await loadCompanyMessages(selectedCompany.id);
+      } else if (selectedUser) {
+        const { data, error } = await supabase
+          .from('messages')
+          .insert({
+            sender_id: userId,
+            receiver_id: selectedUser.id,
+            message_text: `Shared document: "${label}"`,
+            document_id: doc.id,
+            document_name: label,
+          })
+          .select('*')
+          .single();
+        if (error) throw error;
+        if (data) {
+          const sent = data as ChatMessage;
+          setMessages((prev) =>
+            prev.some((item) => item.id === sent.id) ? prev : mergeMessages(prev, [sent])
+          );
+        }
+      } else {
+        setDocPickerOpen(false);
+        return;
+      }
+
+      setDocPickerOpen(false);
+    } catch (err: any) {
+      setErrorMessage(`Document could not be shared: ${err?.message || err}`);
+    } finally {
+      setSharingDocId(null);
     }
   };
 
@@ -885,6 +981,20 @@ export default function ChatPage() {
                             <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">
                               {message.message_text}
                             </p>
+                            {message.document_id && (
+                              <a
+                                href={`/view/${message.document_id}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className={`mt-1.5 flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-bold ${
+                                  mine
+                                    ? 'bg-white/20 text-white hover:bg-white/30'
+                                    : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                                }`}
+                              >
+                                <Paperclip size={12} /> {message.document_name || 'Shared document'}
+                              </a>
+                            )}
                             <p
                               className={`mt-1 text-[10px] ${
                                 mine ? 'text-right text-blue-100' : 'text-gray-400'
@@ -905,6 +1015,16 @@ export default function ChatPage() {
                   className="border-t border-gray-100 bg-white p-3"
                 >
                   <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setDocPickerOpen(true)}
+                      disabled={documents.length === 0}
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-200 text-gray-500 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-300"
+                      aria-label="Share a saved document"
+                      title={documents.length === 0 ? 'No saved documents yet' : 'Share a saved document'}
+                    >
+                      <Paperclip size={18} />
+                    </button>
                     <input
                       type="text"
                       value={draft}
@@ -984,6 +1104,20 @@ export default function ChatPage() {
                             }`}
                           >
                             <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{message.body}</p>
+                            {message.document_id && (
+                              <a
+                                href={`/view/${message.document_id}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className={`mt-1.5 flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-bold ${
+                                  mine
+                                    ? 'bg-white/20 text-white hover:bg-white/30'
+                                    : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                                }`}
+                              >
+                                <Paperclip size={12} /> {message.document_name || 'Shared document'}
+                              </a>
+                            )}
                             <p
                               className={`mt-1 text-[10px] ${
                                 mine ? 'text-right text-blue-100' : 'text-gray-400'
@@ -1000,6 +1134,16 @@ export default function ChatPage() {
 
                 <form onSubmit={handleSendToCompany} className="border-t border-gray-100 bg-white p-3">
                   <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setDocPickerOpen(true)}
+                      disabled={documents.length === 0}
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-200 text-gray-500 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-300"
+                      aria-label="Share a saved document"
+                      title={documents.length === 0 ? 'No saved documents yet' : 'Share a saved document'}
+                    >
+                      <Paperclip size={18} />
+                    </button>
                     <input
                       type="text"
                       value={companyDraft}
@@ -1042,6 +1186,64 @@ export default function ChatPage() {
           </section>
         </div>
       </main>
+
+      {docPickerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-3 border-b border-gray-100 px-5 py-3">
+              <div>
+                <p className="text-sm font-bold text-gray-900">Share a document</p>
+                <p className="text-[11px] text-gray-500">
+                  Pick a saved document — the chat shows its name, not its ID.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDocPickerOpen(false)}
+                className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100"
+                aria-label="Close document picker"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="max-h-80 overflow-y-auto p-3">
+              {documents.length === 0 ? (
+                <p className="p-4 text-center text-xs text-gray-500">
+                  No saved documents yet. Create a CV first, then share it here.
+                </p>
+              ) : (
+                documents.map((doc) => (
+                  <button
+                    key={doc.id}
+                    type="button"
+                    onClick={() => void shareDocument(doc)}
+                    disabled={sharingDocId !== null}
+                    className="mb-1.5 flex w-full items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3 text-left transition hover:bg-white disabled:opacity-60"
+                  >
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                      <FileText size={15} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-bold text-gray-900">
+                        {documentLabel(doc)}
+                      </span>
+                      <span className="block text-[10px] text-gray-500">
+                        {doc.document_type || 'CV'} · {new Date(doc.created_at).toLocaleDateString()}
+                      </span>
+                    </span>
+                    {sharingDocId === doc.id ? (
+                      <Loader2 size={14} className="animate-spin text-blue-600" />
+                    ) : (
+                      <Paperclip size={14} className="text-gray-400" />
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

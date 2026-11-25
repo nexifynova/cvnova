@@ -34,6 +34,7 @@ function SettingsContent() {
     site_logo_url: '', site_favicon_url: '', hero_images: [], hero_slider_interval: 4000, nav_menu: [],
     show_job_fields_landing: true, show_job_fields_dashboard: true,
     show_jobs_on_dashboard: true, enable_company_chat: true, show_company_portal: true,
+    show_listed_companies: true,
   });
 
   useEffect(() => {
@@ -410,6 +411,7 @@ function SettingsContent() {
                 { key: 'show_job_fields_landing', title: 'Landing Page Dropdown', desc: 'Show the job-field dropdown in the home page hero.' },
                 { key: 'show_job_fields_dashboard', title: 'Dashboard Dropdown', desc: 'Show the job-field dropdown on the user dashboard.' },
                 { key: 'show_jobs_on_dashboard', title: 'Jobs on Dashboard', desc: 'Show the latest open roles published by companies on the candidate dashboard.' },
+                { key: 'show_listed_companies', title: 'Show Listed Companies', desc: 'Show the "Listed Companies" box (company names + chat IDs) beside the latest jobs on the candidate dashboard.' },
                 { key: 'enable_company_chat', title: 'Company Chat', desc: 'Let companies message matching candidates from their portal and show their company chat ID.' },
                 { key: 'show_company_portal', title: 'Recruiter / Company Portal Button', desc: 'Show the "Recruiter? Company portal" button and the "For Companies" link in the site navigation.' },
               ].map((item) => (

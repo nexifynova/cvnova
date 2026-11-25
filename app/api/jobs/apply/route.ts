@@ -86,6 +86,16 @@ export async function POST(req: Request) {
     const candidateChatId = String(profile?.chat_id || '');
     const candidateEmail = String(profile?.email || doc.email || user.email || '').trim();
 
+    // Re-applying is counted so the candidate dashboard can show
+    // "Applied (2)" instead of pretending the first send never happened.
+    const { data: previous } = await admin
+      .from('job_applications')
+      .select('apply_count')
+      .eq('job_id', job.id)
+      .eq('candidate_user_id', user.id)
+      .maybeSingle();
+    const applyCount = (Number(previous?.apply_count) || 0) + 1;
+
     const { data: application, error: appError } = await admin
       .from('job_applications')
       .upsert(
@@ -98,6 +108,7 @@ export async function POST(req: Request) {
             candidate_chat_id: candidateChatId,
             candidate_email: candidateEmail,
             job_title: job.title,
+            apply_count: applyCount,
             created_at: new Date().toISOString(),
           },
         ],

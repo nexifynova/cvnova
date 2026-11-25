@@ -29,15 +29,19 @@ export async function GET(req: Request) {
     if (error) throw error;
     if (!jobs || jobs.length === 0) return NextResponse.json({ jobs: [], enabled: true });
 
-    // Which of these jobs has the caller already applied to?
-    const applied = new Map<string, string | null>();
+    // Which of these jobs has the caller already applied to, and how many times?
+    const applied = new Map<string, { documentId: string | null; count: number }>();
     const { data: applications } = await admin
       .from('job_applications')
-      .select('job_id, document_id')
+      .select('job_id, document_id, apply_count')
       .eq('candidate_user_id', user.id)
       .limit(200);
     (applications || []).forEach((row: any) => {
-      if (row.job_id) applied.set(String(row.job_id), row.document_id ? String(row.document_id) : null);
+      if (!row.job_id) return;
+      applied.set(String(row.job_id), {
+        documentId: row.document_id ? String(row.document_id) : null,
+        count: Math.max(1, Number(row.apply_count) || 1),
+      });
     });
 
     const companyIds = Array.from(new Set(jobs.map((job: any) => job.company_id).filter(Boolean)));
@@ -68,7 +72,8 @@ export async function GET(req: Request) {
           country: company.country || '',
           website: company.website || '',
           companyChatId: company.chat_id || '',
-          appliedDocumentId: applied.has(job.id) ? applied.get(job.id) ?? null : null,
+          appliedDocumentId: applied.get(job.id)?.documentId ?? null,
+          appliedCount: applied.get(job.id)?.count ?? 0,
         };
       });
 

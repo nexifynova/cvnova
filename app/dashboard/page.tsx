@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase, authedFetch } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import { FileText, LogOut, Plus, ExternalLink, Loader2, Mail, Briefcase, CreditCard, Clock, CheckCircle2, XCircle, ShieldCheck, Crown, Search, Filter, Calendar, Edit2, X, Share2, RefreshCw, Trash2, Send, EyeOff, MessageSquare, AlertTriangle } from 'lucide-react';
+import { FileText, LogOut, Plus, ExternalLink, Loader2, Mail, Briefcase, CreditCard, Clock, CheckCircle2, XCircle, ShieldCheck, Crown, Search, Filter, Calendar, Edit2, X, Share2, RefreshCw, Trash2, Send, EyeOff, MessageSquare, AlertTriangle, Building2 } from 'lucide-react';
 import Link from 'next/link';
 import AtsBadge from '@/components/AtsBadge';
 import PlanBadge from '@/components/PlanBadge';
@@ -37,6 +37,7 @@ export default function Dashboard() {
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [replySending, setReplySending] = useState<string | null>(null);
   const [jobs, setJobs] = useState<any[]>([]);
+  const [companies, setCompanies] = useState<any[]>([]);
   const [applyingJob, setApplyingJob] = useState<string | null>(null);
   const [jobCvChoice, setJobCvChoice] = useState<Record<string, string>>({});
 
@@ -109,7 +110,7 @@ export default function Dashboard() {
     const { data: pays } = await supabase.from('payments').select('*').eq('user_id', user.id).eq('status', 'approved').order('created_at', { ascending: false });
     if (pays) setPayments(pays);
 
-    await Promise.all([loadAccountState(), loadInbox(), loadJobs()]);
+    await Promise.all([loadAccountState(), loadInbox(), loadJobs(), loadCompanies()]);
     
     setLoading(false);
   };
@@ -259,6 +260,17 @@ export default function Dashboard() {
     }
   };
 
+  // Registered companies shown beside the latest jobs (admin-toggleable).
+  const loadCompanies = async () => {
+    try {
+      const res = await authedFetch('/api/companies');
+      const data = await res.json();
+      if (res.ok && Array.isArray(data.companies)) setCompanies(data.companies);
+    } catch {
+      /* listed-companies box not enabled */
+    }
+  };
+
   // Sends the selected CV to the company, adds it to their talent pool and
   // notifies them by email.
   const applyToJob = async (job: any) => {
@@ -292,7 +304,15 @@ export default function Dashboard() {
       }
 
       setJobs((prev) =>
-        prev.map((item) => (item.id === job.id ? { ...item, appliedDocumentId: documentId } : item)),
+        prev.map((item) =>
+          item.id === job.id
+            ? {
+                ...item,
+                appliedDocumentId: documentId,
+                appliedCount: (Number(item.appliedCount) || 0) + 1,
+              }
+            : item,
+        ),
       );
       setDocuments((docs) => docs.map((doc) => (doc.id === documentId ? { ...doc, is_public: true } : doc)));
       alert(`Your CV was sent to ${job.companyName}. They were notified by email and can reply in their company chat.`);
@@ -436,8 +456,58 @@ export default function Dashboard() {
           </div>
         )}
 
-        {settings?.show_jobs_on_dashboard !== false && (
-          <div className="mb-8 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
+        {(settings?.show_jobs_on_dashboard !== false || settings?.show_listed_companies !== false) && (
+          <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
+            {settings?.show_listed_companies !== false && (
+              <aside className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+                <div className="mb-3 flex items-center justify-between gap-2 border-b border-gray-100 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="text-purple-600" size={20} />
+                    <h2 className="text-lg font-bold text-gray-900">Listed Companies</h2>
+                  </div>
+                  <span className="text-[11px] font-semibold text-gray-500">{companies.length}</span>
+                </div>
+
+                {companies.length === 0 ? (
+                  <p className="text-sm text-gray-500">
+                    No companies listed yet. Registered recruiters appear here with their chat IDs.
+                  </p>
+                ) : (
+                  <div className="max-h-96 space-y-2 overflow-y-auto pr-1">
+                    {companies.map((company: any) => (
+                      <div key={company.id} className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                        <p className="truncate text-sm font-bold text-gray-900">{company.companyName}</p>
+                        <p className="truncate font-mono text-[11px] text-gray-500">
+                          {company.chatId || 'Chat ID pending'}
+                        </p>
+                        {company.industry && (
+                          <p className="truncate text-[10px] font-semibold text-purple-600">{company.industry}</p>
+                        )}
+                        {company.chatId && (
+                          <Link
+                            href={`/chat?company=${encodeURIComponent(company.chatId)}`}
+                            className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 hover:underline"
+                          >
+                            <MessageSquare size={10} /> Message
+                          </Link>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <p className="mt-3 text-[10px] leading-relaxed text-gray-400">
+                  Search a company chat ID in the Chat Room to talk to their recruiter.
+                </p>
+              </aside>
+            )}
+
+            {settings?.show_jobs_on_dashboard !== false && (
+              <div
+                className={`rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6 ${
+                  settings?.show_listed_companies !== false ? 'lg:col-span-2' : 'lg:col-span-3'
+                }`}
+              >
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
               <div className="flex items-center gap-2">
                 <Briefcase className="text-blue-600" size={20} />
@@ -456,7 +526,15 @@ export default function Dashboard() {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {jobs.slice(0, 6).map((job: any) => (
                   <div key={job.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-                    <p className="text-sm font-bold text-gray-900">{job.title}</p>
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-bold text-gray-900">{job.title}</p>
+                      {job.appliedCount > 0 && (
+                        <span className="flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                          <CheckCircle2 size={11} />
+                          {job.appliedCount > 1 ? `Applied (${job.appliedCount})` : 'Applied'}
+                        </span>
+                      )}
+                    </div>
                     <p className="mt-0.5 text-xs font-semibold text-indigo-700">
                       {job.companyName}
                       {job.location ? ` · ${job.location}` : ''}
@@ -516,6 +594,8 @@ export default function Dashboard() {
             <p className="mt-3 text-[11px] text-gray-500">
               Open the Chat Room and search a company&apos;s chat ID to message the recruiter directly.
             </p>
+              </div>
+            )}
           </div>
         )}
 
