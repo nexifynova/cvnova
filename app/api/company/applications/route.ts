@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { resolveCompany } from '@/lib/company-server';
+import { isApplicationStatus, normalizeApplicationStatus } from '@/lib/application-status';
 
 /**
  * Applications received by the signed-in company. Each row carries the CV the
@@ -12,7 +13,7 @@ export async function GET(req: Request) {
   try {
     const { data: rows, error } = await ctx.admin
       .from('job_applications')
-      .select('id, job_id, job_title, candidate_user_id, candidate_chat_id, candidate_email, document_id, email_status, received_at, apply_count, created_at')
+      .select('id, job_id, job_title, candidate_user_id, candidate_chat_id, candidate_email, document_id, email_status, received_at, apply_count, created_at, status')
       .eq('company_id', ctx.user.id)
       .order('created_at', { ascending: false })
       .limit(200);
@@ -56,6 +57,7 @@ export async function GET(req: Request) {
         applyCount: Number(row.apply_count) || 1,
         receivedAt: row.received_at || null,
         createdAt: row.created_at,
+        status: normalizeApplicationStatus(row.status),
       };
     });
 
@@ -115,5 +117,42 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, receivedAt });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || 'application_update_failed' }, { status: 500 });
+  }
+}
+
+/**
+ * Moves one of the company's applications between the ATS sidebar boxes:
+ * `interview`, `pending`, `trash` (soft delete) or back to `received`.
+ *
+ * Only the owning company can patch a row — the update is always filtered by
+ * both id and company_id, so a forged id from another tenant returns 404.
+ */
+export async function PATCH(req: Request) {
+  const ctx = await resolveCompany(req);
+  if (!ctx.ok) return NextResponse.json({ error: ctx.error }, { status: ctx.status });
+
+  try {
+    const body = await req.json().catch(() => ({} as any));
+    const id = typeof body?.id === 'string' ? body.id.trim() : '';
+    if (!id) return NextResponse.json({ error: 'application_required' }, { status: 400 });
+    if (!isApplicationStatus(body?.status)) {
+      return NextResponse.json({ error: 'invalid_status' }, { status: 400 });
+    }
+
+    const status = normalizeApplicationStatus(body.status);
+    const { data: updated, error } = await ctx.admin
+      .from('job_applications')
+      .update({ status })
+      .eq('id', id)
+      .eq('company_id', ctx.user.id)
+      .select('id, status')
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!updated) return NextResponse.json({ error: 'application_not_found' }, { status: 404 });
+
+    return NextResponse.json({ success: true, id: updated.id, status: normalizeApplicationStatus(updated.status) });
+  } catch (error: any) {
+    return NextResponse.json({ error: error?.message || 'application_status_failed' }, { status: 500 });
   }
 }

@@ -4,10 +4,17 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase, authedFetch } from '@/lib/supabase';
-import { Building2, Loader2, LogOut, Search, Filter, X, Mail, MessageSquare, Send, ShieldCheck, Lock, Eye, Briefcase, Plus, Trash2, MapPin, FileText, RefreshCw, CheckCircle2, Paperclip } from 'lucide-react';
+import { Building2, Loader2, LogOut, Search, Filter, X, Mail, MessageSquare, Send, ShieldCheck, Lock, Eye, Briefcase, Plus, Trash2, MapPin, FileText, RefreshCw, CheckCircle2, Paperclip, Clock, UserCheck } from 'lucide-react';
 import AtsBadge from '@/components/AtsBadge';
 import JobFieldsDropdown from '@/components/JobFieldsDropdown';
 import CVTemplateRenderer from '@/components/cv/CVTemplateRenderer';
+import ApplicationsSidebar from '@/components/company/ApplicationsSidebar';
+import {
+  APPLICATION_STATUS_META,
+  normalizeApplicationStatus,
+  type ApplicationStatus,
+  type JobApplicationRow,
+} from '@/lib/application-status';
 import type { AtsTier } from '@/lib/templates';
 
 type Candidate = {
@@ -66,8 +73,12 @@ export default function CompanyDashboard() {
   const [dmMessages, setDmMessages] = useState<any[]>([]);
   const [dmDraft, setDmDraft] = useState('');
   const [dmSending, setDmSending] = useState(false);
-  const [applications, setApplications] = useState<any[]>([]);
+  const [applications, setApplications] = useState<JobApplicationRow[]>([]);
   const [receivingId, setReceivingId] = useState<string | null>(null);
+  // Phase 1 — recruiter ATS: which card is mirrored in the sidebar and which
+  // row is mid-flight to the status endpoint.
+  const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
+  const [statusBusyId, setStatusBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     const guard = async () => {
@@ -135,7 +146,14 @@ export default function CompanyDashboard() {
     try {
       const res = await authedFetch('/api/company/applications');
       const data = await res.json();
-      if (res.ok && Array.isArray(data.applications)) setApplications(data.applications);
+      if (res.ok && Array.isArray(data.applications)) {
+        setApplications(
+          (data.applications as JobApplicationRow[]).map((application) => ({
+            ...application,
+            status: normalizeApplicationStatus(application.status),
+          })),
+        );
+      }
     } catch {
       /* applications API unavailable */
     }
@@ -169,6 +187,57 @@ export default function CompanyDashboard() {
     } finally {
       setReceivingId(null);
     }
+  };
+
+  /**
+   * Sorts an application into the Interviewed / Pending / Trash boxes.
+   * `received` is also the restore target, so this one function handles both
+   * "Delete" (trash) and "Restore" from the sidebar.
+   */
+  const updateApplicationStatus = async (application: JobApplicationRow, status: ApplicationStatus) => {
+    if (!application?.id || statusBusyId) return;
+    setStatusBusyId(application.id);
+    try {
+      const res = await authedFetch('/api/company/applications', {
+        method: 'PATCH',
+        body: JSON.stringify({ id: application.id, status }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(
+          data.error === 'invalid_status'
+            ? 'That status is not supported.'
+            : data.error === 'application_not_found'
+              ? 'This application no longer exists.'
+              : data.error || 'Could not move this application',
+        );
+      }
+
+      const nextStatus = normalizeApplicationStatus(data.status || status);
+      setApplications((prev) =>
+        prev.map((item) => (item.id === application.id ? { ...item, status: nextStatus } : item)),
+      );
+      setSelectedApplicationId(application.id);
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setStatusBusyId(null);
+    }
+  };
+
+  const openApplicationCv = (application: JobApplicationRow) => {
+    setSelectedApplicationId(application.id);
+    if (application.documentId) void openCandidate(application.documentId);
+  };
+
+  const openApplicationChat = (application: JobApplicationRow) => {
+    setSelectedApplicationId(application.id);
+    void openCandidateChat({
+      id: application.candidateUserId,
+      fullName: application.candidateName,
+      chatId: application.chatId,
+      appliedFor: application.jobTitle,
+    });
   };
 
   const createJob = async (e: React.FormEvent) => {
@@ -340,6 +409,11 @@ export default function CompanyDashboard() {
     router.replace('/company');
   };
 
+  // Trashed applications live only inside the sidebar's Trash box.
+  const visibleApplications = applications.filter(
+    (application) => normalizeApplicationStatus(application.status) !== 'trash',
+  );
+
   if (checking) {
     return <div className="min-h-screen bg-[#0B1120] flex items-center justify-center"><Loader2 className="animate-spin text-blue-500" size={48} /></div>;
   }
@@ -362,7 +436,19 @@ export default function CompanyDashboard() {
         </div>
       </nav>
 
-      <main className="mx-auto max-w-6xl px-4 py-8">
+      <div className="mx-auto flex max-w-[1500px] flex-col gap-6 px-4 py-8 lg:flex-row lg:items-start">
+        <ApplicationsSidebar
+          applications={applications}
+          selectedId={selectedApplicationId}
+          busyId={statusBusyId}
+          cvLoading={cvLoading}
+          onSelect={(application) => setSelectedApplicationId(application.id)}
+          onStatusChange={updateApplicationStatus}
+          onViewCv={openApplicationCv}
+          onChat={openApplicationChat}
+        />
+
+        <main className="min-w-0 flex-1">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Talent pool</h1>
@@ -414,20 +500,33 @@ export default function CompanyDashboard() {
               <h2 className="text-lg font-bold text-gray-900">Applications</h2>
             </div>
             <span className="text-xs font-semibold text-gray-500">
-              {applications.length} application{applications.length === 1 ? '' : 's'} received
+              {visibleApplications.length} in the inbox · {applications.length} total
             </span>
           </div>
+
+          <p className="mb-3 text-[11px] text-gray-500">
+            Click a card to mirror it in the sidebar, or sort it straight into Interviewed, Pending or Trash.
+          </p>
 
           {applications.length === 0 ? (
             <p className="text-sm text-gray-500">
               No applications yet. Candidates can send a CV from the jobs listed on their dashboard.
             </p>
+          ) : visibleApplications.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              Every application is in the sidebar. Deleted ones stay in the Trash box until you restore them.
+            </p>
           ) : (
-            <div className="max-h-80 space-y-2 overflow-y-auto">
-              {applications.map((application: any) => (
+            <div className="max-h-96 space-y-2 overflow-y-auto">
+              {visibleApplications.map((application) => (
                 <div
                   key={application.id}
-                  className="rounded-xl border border-gray-100 bg-gray-50 p-3"
+                  onClick={() => setSelectedApplicationId(application.id)}
+                  className={`cursor-pointer rounded-xl border bg-gray-50 p-3 transition ${
+                    selectedApplicationId === application.id
+                      ? 'border-blue-300 ring-2 ring-blue-100'
+                      : 'border-gray-100 hover:border-gray-200'
+                  }`}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -440,15 +539,25 @@ export default function CompanyDashboard() {
                         {application.chatId || 'Chat ID pending'}
                       </p>
                     </div>
-                    {application.receivedAt && (
-                      <span className="flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                        <CheckCircle2 size={11} /> Received
-                      </span>
-                    )}
+                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+                      {application.status !== 'received' && (
+                        <span
+                          className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${APPLICATION_STATUS_META[application.status].badge}`}
+                        >
+                          <span className={`h-1.5 w-1.5 rounded-full ${APPLICATION_STATUS_META[application.status].dot}`} />
+                          {APPLICATION_STATUS_META[application.status].label}
+                        </span>
+                      )}
+                      {application.receivedAt && (
+                        <span className="flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                          <CheckCircle2 size={11} /> Received
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                     <button
-                      onClick={() => openCandidate(application.documentId)}
+                      onClick={() => openApplicationCv(application)}
                       disabled={!application.documentId || cvLoading}
                       className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-[11px] font-bold text-blue-700 hover:bg-blue-100 disabled:opacity-50"
                     >
@@ -467,17 +576,40 @@ export default function CompanyDashboard() {
                       {application.receivedAt ? 'Received' : 'Mark as Received'}
                     </button>
                     <button
-                      onClick={() =>
-                        openCandidateChat({
-                          id: application.candidateUserId,
-                          fullName: application.candidateName,
-                          chatId: application.chatId,
-                          appliedFor: application.jobTitle,
-                        })
-                      }
+                      onClick={() => openApplicationChat(application)}
                       className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-purple-700"
                     >
                       <MessageSquare size={12} /> Chat
+                    </button>
+                    <button
+                      onClick={() => updateApplicationStatus(application, 'interview')}
+                      disabled={statusBusyId === application.id}
+                      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-bold transition disabled:opacity-50 ${
+                        application.status === 'interview'
+                          ? `${APPLICATION_STATUS_META.interview.action} ring-2 ring-indigo-200`
+                          : APPLICATION_STATUS_META.interview.actionSoft
+                      }`}
+                    >
+                      {statusBusyId === application.id ? <Loader2 size={12} className="animate-spin" /> : <UserCheck size={12} />} Interview
+                    </button>
+                    <button
+                      onClick={() => updateApplicationStatus(application, 'pending')}
+                      disabled={statusBusyId === application.id}
+                      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-bold transition disabled:opacity-50 ${
+                        application.status === 'pending'
+                          ? `${APPLICATION_STATUS_META.pending.action} ring-2 ring-amber-200`
+                          : APPLICATION_STATUS_META.pending.actionSoft
+                      }`}
+                    >
+                      {statusBusyId === application.id ? <Loader2 size={12} className="animate-spin" /> : <Clock size={12} />} Pending
+                    </button>
+                    <button
+                      onClick={() => updateApplicationStatus(application, 'trash')}
+                      disabled={statusBusyId === application.id}
+                      title="Move to trash"
+                      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-bold transition disabled:opacity-50 ${APPLICATION_STATUS_META.trash.actionSoft}`}
+                    >
+                      {statusBusyId === application.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />} Delete
                     </button>
                   </div>
                 </div>
@@ -711,7 +843,8 @@ export default function CompanyDashboard() {
             ))}
           </div>
         )}
-      </main>
+        </main>
+      </div>
 
 
       {jobModalOpen && (
