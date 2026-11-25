@@ -5,6 +5,7 @@ import { ArrowLeft, Printer, Download, Loader2, RefreshCw, Info, Sparkles, Save 
 import Link from 'next/link';
 import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount, fetchDocumentRecord, updateDocumentRecord, ownsDocument } from '@/lib/supabase';
 import { downloadAsWord, downloadAsPDF } from '@/lib/download-utils';
+import { toText } from '@/components/cv/shared';
 
 const EXPERIENCE_LETTER_TEMPLATES = ['modern', 'classic', 'corporate', 'modernDark'];
 
@@ -62,7 +63,7 @@ export default function ExperienceLetter() {
       }
 
       const src = doc.full_data || {};
-      const str = (value: unknown) => (typeof value === 'string' ? value : value == null ? '' : String(value));
+      const str = (value: unknown) => toText(value);
       const loaded = {
         companyName: str(src.companyName),
         companyAddress: str(src.companyAddress),

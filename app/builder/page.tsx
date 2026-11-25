@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount, authedFetch, fetchDocumentRecord, updateDocumentRecord, ownsDocument } from '@/lib/supabase';
 import { downloadAsWord, downloadAsPDF } from '@/lib/download-utils';
 import CVTemplateRenderer from '@/components/cv/CVTemplateRenderer';
+import { toText } from '@/components/cv/shared';
 import AtsBadge from '@/components/AtsBadge';
 import PlanBadge from '@/components/PlanBadge';
 import PricingModal, { type PricingReason } from '@/components/PricingModal';
@@ -81,10 +82,13 @@ export default function Builder() {
   // Saved document ko builder form ki shape mein laata hai (blank rows included).
   const toBuilderData = (raw: unknown) => {
     const src = asRecord(raw);
-    const str = (value: unknown) => (typeof value === 'string' ? value : value == null ? '' : String(value));
-    const rows = <T,>(value: unknown, empty: T, map: (item: Row) => T): T[] => {
-      const list = Array.isArray(value) ? value.map((item) => map(asRecord(item))) : [];
-      return list.length ? list : [empty];
+    const str = (value: unknown) => toText(value);
+    const list = (value: unknown) => toText(value).trim();
+    // Row items string bhi ho sakte hain aur object bhi (legacy documents), is liye
+    // item ko pehle hi object mein badalna galat tha — mapper khud decide karta hai.
+    const rows = <T,>(value: unknown, empty: T, map: (item: unknown) => T): T[] => {
+      const items = Array.isArray(value) ? value.map(map) : [];
+      return items.length ? items : [empty];
     };
 
     return {
@@ -102,13 +106,28 @@ export default function Builder() {
       maritalStatus: str(src.maritalStatus),
       placeOfBirth: str(src.placeOfBirth),
       nationality: str(src.nationality),
-      skills: rows(src.skills, '', (s) => str(s)),
-      education: rows(src.education, { degree: '', school: '', year: '' }, (e) => ({ degree: str(e?.degree), school: str(e?.school), year: str(e?.year) })),
-      experience: rows(src.experience, { role: '', company: '', duration: '', desc: '' }, (e) => ({ role: str(e?.role), company: str(e?.company), duration: str(e?.duration), desc: str(e?.desc) })),
-      languages: rows(src.languages, { language: '', proficiency: '' }, (l) => ({ language: str(l?.language), proficiency: str(l?.proficiency) })),
-      certifications: rows(src.certifications, { name: '', year: '', fileUrl: '' }, (c) => ({ name: str(c?.name), year: str(c?.year), fileUrl: str(c?.fileUrl) })),
-      hobbies: rows(src.hobbies, '', (h) => str(h)),
-      references: rows(src.references, { name: '', role: '', contact: '' }, (r) => ({ name: str(r?.name), role: str(r?.role), contact: str(r?.contact) })),
+      skills: rows(src.skills, '', (s) => list(s)),
+      education: rows(src.education, { degree: '', school: '', year: '' }, (e) => {
+        const item = asRecord(e);
+        return { degree: str(item.degree), school: str(item.school), year: str(item.year) };
+      }),
+      experience: rows(src.experience, { role: '', company: '', duration: '', desc: '' }, (e) => {
+        const item = asRecord(e);
+        return { role: str(item.role), company: str(item.company), duration: str(item.duration), desc: str(item.desc) };
+      }),
+      languages: rows(src.languages, { language: '', proficiency: '' }, (l) => {
+        const item = asRecord(l);
+        return { language: str(item.language), proficiency: str(item.proficiency) };
+      }),
+      certifications: rows(src.certifications, { name: '', year: '', fileUrl: '' }, (c) => {
+        const item = asRecord(c);
+        return { name: str(item.name), year: str(item.year), fileUrl: str(item.fileUrl) };
+      }),
+      hobbies: rows(src.hobbies, '', (h) => list(h)),
+      references: rows(src.references, { name: '', role: '', contact: '' }, (r) => {
+        const item = asRecord(r);
+        return { name: str(item.name), role: str(item.role), contact: str(item.contact) };
+      }),
     };
   };
 

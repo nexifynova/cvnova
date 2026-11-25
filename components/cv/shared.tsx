@@ -41,7 +41,35 @@ export const emptyCV: CVData = {
   references: [{ name: '', role: '', contact: '' }],
 };
 
-const asString = (value: unknown): string => (typeof value === 'string' ? value : value == null ? '' : String(value));
+// Legacy documents mein kabhi kabhi text field object ki shakal mein save ho jata hai
+// (e.g. skills: [{ name: 'React' }]). Object ko seedha String() karein to CV par
+// "[object Object]" chhap jata hai — is liye readable text nikalte hain.
+const TEXT_KEYS = [
+  'name', 'skill', 'title', 'label', 'value', 'text',
+  'language', 'degree', 'hobby', 'interest', 'role', 'company', 'desc',
+] as const;
+
+export const toText = (value: unknown): string => {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (value == null) return '';
+  if (Array.isArray(value)) return value.map(toText).filter(Boolean).join(', ');
+  if (typeof value !== 'object') return '';
+
+  const record = value as Record<string, unknown>;
+  for (const key of TEXT_KEYS) {
+    const candidate = record[key];
+    if (typeof candidate === 'string' && candidate.trim()) return candidate;
+  }
+  // Fallback: object ki pehli non-empty string value (nested ho to andar tak)
+  for (const candidate of Object.values(record)) {
+    const nested = toText(candidate);
+    if (nested) return nested;
+  }
+  return '';
+};
+
+const asString = (value: unknown): string => toText(value).trim();
 
 const asArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : []);
 
