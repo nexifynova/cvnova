@@ -174,7 +174,7 @@ export default function Signup() {
                 className="mt-0.5 w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
               />
               <span className="text-xs text-gray-600 leading-relaxed">
-                <strong className="text-gray-800">Show my CV to companies.</strong> Only CVs you also mark public in your dashboard appear in the company portal. You can turn this off any time.
+                <strong className="text-gray-800">Show my CV to companies.</strong> Companies in your field can then find your CVs in their talent pool. You can turn this off any time.
               </span>
             </label>
             <label className={`flex items-start gap-2 ${consent.shareCv ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>

@@ -16,6 +16,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const role = isCompanyUser(user) ? 'company' : 'candidate';
   const candidateFilter = url.searchParams.get('candidateId');
+  const companyFilter = url.searchParams.get('companyId');
 
   if (role === 'company') {
     const { data: company } = await admin.from('companies').select('*').eq('id', user.id).maybeSingle();
@@ -51,21 +52,26 @@ export async function GET(req: Request) {
     });
   }
 
-  const { data: messages, error } = await admin
+  let candidateQuery = admin
     .from('company_messages')
     .select('*')
     .eq('candidate_user_id', user.id)
     .order('created_at', { ascending: true })
     .limit(300);
+  if (companyFilter) candidateQuery = candidateQuery.eq('company_id', companyFilter);
+
+  const { data: messages, error } = await candidateQuery;
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  await admin
+  let markQuery = admin
     .from('company_messages')
     .update({ is_read: true })
     .eq('candidate_user_id', user.id)
     .eq('sender', 'company')
     .eq('is_read', false);
+  if (companyFilter) markQuery = markQuery.eq('company_id', companyFilter);
+  await markQuery;
 
   const companyIds = Array.from(new Set((messages || []).map((m: any) => m.company_id).filter(Boolean)));
   const companies: Record<string, string> = {};
@@ -99,7 +105,19 @@ export async function POST(req: Request) {
       if (!candidateUserId) return NextResponse.json({ error: 'candidate_required' }, { status: 400 });
 
       const { data: profile } = await admin.from('user_profiles').select('*').eq('id', candidateUserId).maybeSingle();
-      if (!profile || !getConsent(profile).allowContact || profile.is_deactivated) {
+      if (!profile || profile.is_deactivated) {
+        return NextResponse.json({ error: 'candidate_not_found' }, { status: 404 });
+      }
+      // Consent is the default gate. A candidate who applied to one of this
+      // company's jobs has already invited the conversation, so the company can
+      // answer inside the same thread even before turning contact consent on.
+      const { data: application } = await admin
+        .from('job_applications')
+        .select('id')
+        .eq('company_id', user.id)
+        .eq('candidate_user_id', candidateUserId)
+        .maybeSingle();
+      if (!getConsent(profile).allowContact && !application) {
         return NextResponse.json({ error: 'contact_consent_required' }, { status: 403 });
       }
 

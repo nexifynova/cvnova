@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase, authedFetch } from '@/lib/supabase';
-import { Building2, Loader2, LogOut, Search, Filter, X, Mail, MessageSquare, Send, ShieldCheck, Lock, Eye, Briefcase, Plus, Trash2, MapPin } from 'lucide-react';
+import { Building2, Loader2, LogOut, Search, Filter, X, Mail, MessageSquare, Send, ShieldCheck, Lock, Eye, Briefcase, Plus, Trash2, MapPin, FileText, RefreshCw } from 'lucide-react';
 import AtsBadge from '@/components/AtsBadge';
 import JobFieldsDropdown from '@/components/JobFieldsDropdown';
 import CVTemplateRenderer from '@/components/cv/CVTemplateRenderer';
@@ -66,6 +66,7 @@ export default function CompanyDashboard() {
   const [dmMessages, setDmMessages] = useState<any[]>([]);
   const [dmDraft, setDmDraft] = useState('');
   const [dmSending, setDmSending] = useState(false);
+  const [applications, setApplications] = useState<any[]>([]);
 
   useEffect(() => {
     const guard = async () => {
@@ -81,6 +82,7 @@ export default function CompanyDashboard() {
       loadFeatureFlags();
       loadJobs();
       loadChatCandidates();
+      loadApplications();
     };
     guard();
   }, [router]);
@@ -125,6 +127,16 @@ export default function CompanyDashboard() {
       /* chat API unavailable */
     } finally {
       setChatCandidatesLoading(false);
+    }
+  };
+
+  const loadApplications = async () => {
+    try {
+      const res = await authedFetch('/api/company/applications');
+      const data = await res.json();
+      if (res.ok && Array.isArray(data.applications)) setApplications(data.applications);
+    } catch {
+      /* applications API unavailable */
     }
   };
 
@@ -361,7 +373,57 @@ export default function CompanyDashboard() {
 
         <div className="mb-6 flex items-start gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-[11px] text-blue-800">
           <ShieldCheck className="mt-0.5 shrink-0" size={14} />
-          <p>{notice || 'Only candidates who opted in to CV sharing and marked an individual CV public are listed. Contact details are hidden unless the candidate separately allowed company contact.'}</p>
+          <p>{notice || 'Only candidates who turned on "Show my CV to companies" are listed. Contact details stay hidden unless the candidate separately allowed company contact.'}</p>
+        </div>
+
+        <div className="mb-6 rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
+            <div className="flex items-center gap-2">
+              <FileText className="text-emerald-600" size={19} />
+              <h2 className="text-lg font-bold text-gray-900">Applications</h2>
+            </div>
+            <span className="text-xs font-semibold text-gray-500">
+              {applications.length} application{applications.length === 1 ? '' : 's'} received
+            </span>
+          </div>
+
+          {applications.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              No applications yet. Candidates can send a CV from the jobs listed on their dashboard.
+            </p>
+          ) : (
+            <div className="max-h-64 space-y-2 overflow-y-auto">
+              {applications.map((application: any) => (
+                <div
+                  key={application.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gray-100 bg-gray-50 p-3"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-gray-900">{application.candidateName}</p>
+                    <p className="text-[11px] text-gray-600">
+                      {application.jobTitle} · {application.cvLabel}
+                    </p>
+                    <p className="font-mono text-[10px] text-gray-500">
+                      {application.chatId || 'Chat ID pending'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() =>
+                      openCandidateChat({
+                        id: application.candidateUserId,
+                        fullName: application.candidateName,
+                        chatId: application.chatId,
+                        appliedFor: application.jobTitle,
+                      })
+                    }
+                    className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-purple-700"
+                  >
+                    <MessageSquare size={12} /> Chat
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {featureFlags.show_jobs_on_dashboard !== false && (
@@ -412,17 +474,26 @@ export default function CompanyDashboard() {
                 <MessageSquare className="text-purple-600" size={19} />
                 <h2 className="text-lg font-bold text-gray-900">Company chat</h2>
               </div>
-              <span className="flex items-center gap-1.5 rounded-full border border-purple-100 bg-purple-50 px-3 py-1 font-mono text-xs font-bold text-purple-700">
-                <MessageSquare size={12} /> {companyChatId || 'Chat ID pending'}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1.5 rounded-full border border-purple-100 bg-purple-50 px-3 py-1 font-mono text-xs font-bold text-purple-700">
+                  <MessageSquare size={12} /> {companyChatId || 'Chat ID pending'}
+                </span>
+                <button
+                  onClick={() => {
+                    void loadChatCandidates();
+                    void loadApplications();
+                  }}
+                  className="flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-[11px] font-bold text-gray-600 hover:bg-gray-50"
+                >
+                  <RefreshCw size={12} /> Refresh
+                </button>
+              </div>
             </div>
 
             <p className="mb-3 text-[11px] text-gray-500">
               {chatFieldName
-                ? `Showing candidates in ${chatFieldName} who allowed company contact.`
-                : recruitingFieldId
-                  ? 'No contactable candidates in your recruiting field yet.'
-                  : 'Set a recruiting field on your company account to unlock field-matched candidates.'}
+                ? `Applicants plus candidates in ${chatFieldName}. Messaging unlocks when a candidate allows company contact — applicants can always be messaged.`
+                : 'Applicants are listed here. Set a recruiting field on your company account to add field-matched candidates.'}
             </p>
 
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -447,6 +518,17 @@ export default function CompanyDashboard() {
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-xs font-bold text-gray-900">{candidate.fullName}</span>
                         <span className="block truncate font-mono text-[10px] text-gray-500">{candidate.chatId || 'Chat ID pending'}</span>
+                        {candidate.appliedFor ? (
+                          <span className="block truncate text-[10px] font-bold text-emerald-600">
+                            Applied · {candidate.appliedFor}
+                          </span>
+                        ) : candidate.canChat ? (
+                          <span className="block truncate text-[10px] font-semibold text-purple-600">Field match</span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-[10px] text-gray-400">
+                            <Lock size={9} /> Contact locked
+                          </span>
+                        )}
                       </span>
                     </button>
                   ))}
@@ -456,7 +538,14 @@ export default function CompanyDashboard() {
                 {activeCandidate ? (
                   <>
                     <div className="mb-2 flex items-center justify-between gap-2 border-b border-gray-100 pb-2">
-                      <p className="truncate text-sm font-bold text-gray-900">{activeCandidate.fullName}</p>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-gray-900">{activeCandidate.fullName}</p>
+                        {activeCandidate.appliedFor && (
+                          <p className="truncate text-[10px] font-bold text-emerald-600">
+                            Applied · {activeCandidate.appliedFor}
+                          </p>
+                        )}
+                      </div>
                       <span className="font-mono text-[10px] text-gray-500">{activeCandidate.chatId || 'Chat ID pending'}</span>
                     </div>
                     <div className="mb-2 max-h-56 flex-1 space-y-1.5 overflow-y-auto rounded-lg bg-gray-50 p-2">
@@ -471,12 +560,17 @@ export default function CompanyDashboard() {
                       <input
                         value={dmDraft}
                         onChange={(e) => setDmDraft(e.target.value)}
-                        placeholder={`Message ${activeCandidate.fullName}...`}
-                        className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-purple-500"
+                        placeholder={
+                          activeCandidate.canChat === false
+                            ? 'This candidate has not allowed company contact yet.'
+                            : `Message ${activeCandidate.fullName}...`
+                        }
+                        disabled={activeCandidate.canChat === false}
+                        className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-50 disabled:text-gray-400"
                       />
                       <button
                         onClick={sendDirectMessage}
-                        disabled={dmSending || !dmDraft.trim()}
+                        disabled={dmSending || !dmDraft.trim() || activeCandidate.canChat === false}
                         className="flex items-center gap-1 rounded-lg bg-purple-600 px-3 py-2 text-xs font-bold text-white hover:bg-purple-700 disabled:opacity-50"
                       >
                         {dmSending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}

@@ -29,6 +29,17 @@ export async function GET(req: Request) {
     if (error) throw error;
     if (!jobs || jobs.length === 0) return NextResponse.json({ jobs: [], enabled: true });
 
+    // Which of these jobs has the caller already applied to?
+    const applied = new Map<string, string | null>();
+    const { data: applications } = await admin
+      .from('job_applications')
+      .select('job_id, document_id')
+      .eq('candidate_user_id', user.id)
+      .limit(200);
+    (applications || []).forEach((row: any) => {
+      if (row.job_id) applied.set(String(row.job_id), row.document_id ? String(row.document_id) : null);
+    });
+
     const companyIds = Array.from(new Set(jobs.map((job: any) => job.company_id).filter(Boolean)));
 
     const { data: companies } = await admin
@@ -57,6 +68,7 @@ export async function GET(req: Request) {
           country: company.country || '',
           website: company.website || '',
           companyChatId: company.chat_id || '',
+          appliedDocumentId: applied.has(job.id) ? applied.get(job.id) ?? null : null,
         };
       });
 

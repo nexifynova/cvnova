@@ -33,7 +33,7 @@ function SettingsContent() {
     contact_phone: '+92 (300) 123-4567', contact_location: 'Karachi, Pakistan',
     site_logo_url: '', site_favicon_url: '', hero_images: [], hero_slider_interval: 4000, nav_menu: [],
     show_job_fields_landing: true, show_job_fields_dashboard: true,
-    show_jobs_on_dashboard: true, enable_company_chat: true,
+    show_jobs_on_dashboard: true, enable_company_chat: true, show_company_portal: true,
   });
 
   useEffect(() => {
@@ -411,6 +411,7 @@ function SettingsContent() {
                 { key: 'show_job_fields_dashboard', title: 'Dashboard Dropdown', desc: 'Show the job-field dropdown on the user dashboard.' },
                 { key: 'show_jobs_on_dashboard', title: 'Jobs on Dashboard', desc: 'Show the latest open roles published by companies on the candidate dashboard.' },
                 { key: 'enable_company_chat', title: 'Company Chat', desc: 'Let companies message matching candidates from their portal and show their company chat ID.' },
+                { key: 'show_company_portal', title: 'Recruiter / Company Portal Button', desc: 'Show the "Recruiter? Company portal" button and the "For Companies" link in the site navigation.' },
               ].map((item) => (
                 <div key={item.key} className="flex items-center justify-between gap-4 rounded-xl border border-gray-100 bg-gray-50 p-4">
                   <div>

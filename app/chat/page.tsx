@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
-import { ArrowLeft, Loader2, MessageSquare, Search, Send, Users } from 'lucide-react';
+import { supabase, authedFetch } from '@/lib/supabase';
+import { ArrowLeft, Building2, Loader2, MessageSquare, Search, Send, Users } from 'lucide-react';
 
 type ChatProfile = {
   id: string;
@@ -14,6 +14,25 @@ type ChatProfile = {
   job_field_id: string | null;
   is_online: boolean | null;
   last_seen_at: string | null;
+};
+
+type ChatCompany = {
+  id: string;
+  companyName: string;
+  chatId: string;
+  industry: string;
+  country: string;
+  jobFieldId: string | null;
+};
+
+type CompanyMessage = {
+  id: string;
+  company_id: string;
+  candidate_user_id: string;
+  sender: 'company' | 'candidate' | 'system';
+  body: string;
+  document_id?: string | null;
+  created_at: string;
 };
 
 type ChatMessage = {
@@ -89,6 +108,13 @@ export default function ChatPage() {
   // job title stored on their saved CV.
   const [legacyFieldIds, setLegacyFieldIds] = useState<Set<string>>(() => new Set());
   const [legacyFieldEmails, setLegacyFieldEmails] = useState<Set<string>>(() => new Set());
+  // Company side of the chat room: search a company chat ID to talk directly.
+  const [companies, setCompanies] = useState<ChatCompany[]>([]);
+  const [selectedCompany, setSelectedCompany] = useState<ChatCompany | null>(null);
+  const [companyMessages, setCompanyMessages] = useState<CompanyMessage[]>([]);
+  const [companyMessagesLoading, setCompanyMessagesLoading] = useState(false);
+  const [companyDraft, setCompanyDraft] = useState('');
+  const [companySending, setCompanySending] = useState(false);
 
   const clockRef = useRef<number | null>(null);
   const selectedIdRef = useRef<string | null>(null);
@@ -206,6 +232,16 @@ export default function ChatPage() {
         setUnread(counts);
       }
 
+      // Companies a candidate can message directly from the chat room.
+      try {
+        const res = await authedFetch('/api/chat/companies');
+        const data = await res.json();
+        if (!cancelled && res.ok && Array.isArray(data.companies)) setCompanies(data.companies);
+      } catch {
+        /* company chat not enabled */
+      }
+
+      if (cancelled) return;
       setLoading(false);
     };
 
@@ -343,6 +379,9 @@ export default function ChatPage() {
       if (!userId) return;
 
       setSelectedUser(profile);
+      setSelectedCompany(null);
+      setCompanyMessages([]);
+      setCompanyDraft('');
       setMessages([]);
       setMessagesLoading(true);
       setErrorMessage(null);
@@ -421,7 +460,87 @@ export default function ChatPage() {
     setSending(false);
   };
 
-  const handleBackToList = () => setSelectedUser(null);
+  const handleBackToList = () => {
+    setSelectedUser(null);
+    setSelectedCompany(null);
+    setCompanyMessages([]);
+    setCompanyDraft('');
+    setSearchTerm('');
+  };
+
+  const loadCompanyMessages = useCallback(async (companyId: string) => {
+    try {
+      const res = await authedFetch(`/api/company/messages?companyId=${encodeURIComponent(companyId)}`);
+      const data = await res.json();
+      if (res.ok && Array.isArray(data.messages)) {
+        setCompanyMessages(
+          (data.messages as CompanyMessage[]).filter((message) => message.company_id === companyId),
+        );
+      }
+    } catch {
+      /* company thread unavailable */
+    }
+  }, []);
+
+  const openCompanyConversation = useCallback(
+    async (company: ChatCompany) => {
+      setSelectedUser(null);
+      setMessages([]);
+      setSelectedCompany(company);
+      setCompanyMessages([]);
+      setCompanyDraft('');
+      setCompanyMessagesLoading(true);
+      setErrorMessage(null);
+      await loadCompanyMessages(company.id);
+      setCompanyMessagesLoading(false);
+    },
+    [loadCompanyMessages]
+  );
+
+  // Keep the company thread fresh: replies and new applications arrive through
+  // the API, so a light poll keeps the conversation live.
+  useEffect(() => {
+    if (!selectedCompany) return;
+    const interval = window.setInterval(() => {
+      void loadCompanyMessages(selectedCompany.id);
+    }, 8000);
+    return () => window.clearInterval(interval);
+  }, [selectedCompany, loadCompanyMessages]);
+
+  // Typing a company chat ID (for example @Nexify6902939) opens that company.
+  useEffect(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return;
+    const normalized = term.startsWith('@') ? term : `@${term}`;
+    const match = companies.find((company) => company.chatId.toLowerCase() === normalized);
+    if (match && selectedCompany?.id !== match.id) void openCompanyConversation(match);
+  }, [searchTerm, companies, selectedCompany, openCompanyConversation]);
+
+  const handleSendToCompany = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedCompany || companySending) return;
+
+    const text = companyDraft.trim();
+    if (!text) return;
+
+    setCompanySending(true);
+    setCompanyDraft('');
+    setErrorMessage(null);
+    try {
+      const res = await authedFetch('/api/company/messages', {
+        method: 'POST',
+        body: JSON.stringify({ companyId: selectedCompany.id, body: text }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Message could not be sent');
+      await loadCompanyMessages(selectedCompany.id);
+    } catch (err: any) {
+      setCompanyDraft(text);
+      setErrorMessage(`Message could not be sent: ${err?.message || err}`);
+    } finally {
+      setCompanySending(false);
+    }
+  };
 
   // Scroll to the bottom whenever a new message arrives.
   useEffect(() => {
@@ -452,6 +571,17 @@ export default function ChatPage() {
         (profile.email || '').toLowerCase().includes(term)
     );
   }, [sortedProfiles, searchTerm]);
+
+  const visibleCompanies = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return companies;
+    return companies.filter(
+      (company) =>
+        company.companyName.toLowerCase().includes(term) ||
+        company.chatId.toLowerCase().includes(term) ||
+        (company.industry || '').toLowerCase().includes(term)
+    );
+  }, [companies, searchTerm]);
 
   const onlineCount = useMemo(
     () => fieldProfiles.filter((profile) => isOnlineNow(profile, clock)).length,
@@ -550,7 +680,7 @@ export default function ChatPage() {
         <div className="flex h-[72vh] min-h-[520px] overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
           {/* LEFT: registered users + online dots */}
           <aside
-            className={`${selectedUser ? 'hidden md:flex' : 'flex'} w-full flex-col border-r border-gray-100 md:w-80 md:min-w-[20rem]`}
+            className={`${selectedUser || selectedCompany ? 'hidden md:flex' : 'flex'} w-full flex-col border-r border-gray-100 md:w-80 md:min-w-[20rem]`}
           >
             <div className="border-b border-gray-100 p-3">
               <div className="mb-2 flex items-center justify-between px-1">
@@ -567,11 +697,46 @@ export default function ChatPage() {
                   type="text"
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder="Search by name, email or chat ID"
+                  placeholder="Search by name, email or company chat ID"
                   className="w-full rounded-xl border border-gray-200 py-2 pl-9 pr-3 text-sm text-gray-800 outline-none transition focus:border-blue-500"
                 />
               </div>
             </div>
+
+            {visibleCompanies.length > 0 && (
+              <div className="border-b border-gray-100 px-3 py-2">
+                <p className="mb-1 flex items-center gap-1.5 px-1 text-[11px] font-bold uppercase tracking-wide text-gray-500">
+                  <Building2 size={13} /> Companies
+                </p>
+                <div className="max-h-40 space-y-1 overflow-y-auto">
+                  {visibleCompanies.map((company) => {
+                    const isActive = selectedCompany?.id === company.id;
+                    return (
+                      <button
+                        key={company.id}
+                        type="button"
+                        onClick={() => void openCompanyConversation(company)}
+                        className={`flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-gray-50 ${
+                          isActive ? 'bg-purple-50 ring-1 ring-purple-200' : ''
+                        }`}
+                      >
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-purple-500 to-indigo-600 text-white">
+                          <Building2 size={16} />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-bold text-gray-900">
+                            {company.companyName}
+                          </span>
+                          <span className="mt-0.5 block truncate font-mono text-[11px] text-gray-500">
+                            {company.chatId}
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <div className="flex-1 overflow-y-auto">
               {visibleProfiles.length === 0 ? (
@@ -641,7 +806,7 @@ export default function ChatPage() {
 
           {/* RIGHT: active conversation */}
           <section
-            className={`${selectedUser ? 'flex' : 'hidden md:flex'} min-w-0 flex-1 flex-col bg-white`}
+            className={`${selectedUser || selectedCompany ? 'flex' : 'hidden md:flex'} min-w-0 flex-1 flex-col bg-white`}
           >
             {activeProfile ? (
               <>
@@ -767,6 +932,97 @@ export default function ChatPage() {
                   </p>
                 </form>
               </>
+            ) : selectedCompany ? (
+              <div className="flex h-full flex-col">
+                <header className="flex items-center gap-3 border-b border-gray-100 px-3 py-3 sm:px-4">
+                  <button
+                    type="button"
+                    onClick={handleBackToList}
+                    className="rounded-lg p-1.5 text-gray-500 transition hover:bg-gray-100 md:hidden"
+                    aria-label="Back to list"
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-purple-500 to-indigo-600 text-white">
+                    <Building2 size={18} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-gray-900">{selectedCompany.companyName}</p>
+                    <p className="truncate font-mono text-[11px] text-gray-500">{selectedCompany.chatId}</p>
+                  </div>
+                  <span className="rounded-full bg-purple-50 px-2.5 py-1 text-[11px] font-bold text-purple-700">
+                    Company
+                  </span>
+                </header>
+
+                <div className="flex-1 space-y-3 overflow-y-auto bg-gray-50/70 p-4">
+                  {companyMessagesLoading ? (
+                    <div className="flex h-full items-center justify-center gap-2 text-sm text-gray-500">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Loading conversation…
+                    </div>
+                  ) : companyMessages.length === 0 ? (
+                    <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-50 text-purple-600">
+                        <Building2 size={22} />
+                      </div>
+                      <p className="text-sm font-bold text-gray-700">No messages yet</p>
+                      <p className="max-w-xs text-xs text-gray-500">
+                        Send the first message — {selectedCompany.companyName} replies from their
+                        company dashboard.
+                      </p>
+                    </div>
+                  ) : (
+                    companyMessages.map((message) => {
+                      const mine = message.sender === 'candidate';
+                      return (
+                        <div key={message.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                          <div
+                            className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm shadow-sm sm:max-w-[70%] ${
+                              mine
+                                ? 'rounded-br-md bg-blue-600 text-white'
+                                : 'rounded-bl-md border border-gray-200 bg-white text-gray-800'
+                            }`}
+                          >
+                            <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{message.body}</p>
+                            <p
+                              className={`mt-1 text-[10px] ${
+                                mine ? 'text-right text-blue-100' : 'text-gray-400'
+                              }`}
+                            >
+                              {formatTime(message.created_at)}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                <form onSubmit={handleSendToCompany} className="border-t border-gray-100 bg-white p-3">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={companyDraft}
+                      onChange={(event) => setCompanyDraft(event.target.value)}
+                      placeholder={`Message ${selectedCompany.companyName}...`}
+                      maxLength={2000}
+                      autoComplete="off"
+                      className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm text-gray-800 outline-none transition focus:border-purple-500"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!companyDraft.trim() || companySending}
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-purple-600 text-white transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+                      aria-label="Send message to company"
+                    >
+                      {companySending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                    </button>
+                  </div>
+                  <p className="mt-1.5 px-1 text-[10px] text-gray-400">
+                    The company receives this in their company chat and dashboard.
+                  </p>
+                </form>
+              </div>
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-3 bg-gray-50/50 px-6 text-center">
                 <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-blue-600">
@@ -777,8 +1033,8 @@ export default function ChatPage() {
                     Select a user to start chatting
                   </p>
                   <p className="mx-auto mt-1 max-w-sm text-sm text-gray-500">
-                    Every registered user is listed in the left sidebar. A green dot means the
-                    user is online; red means offline.
+                    Every registered user is listed in the left sidebar. Search a company chat ID
+                    (for example @Nexify6902939) to message a recruiter directly.
                   </p>
                 </div>
               </div>

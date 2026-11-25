@@ -47,10 +47,9 @@ export async function GET(req: Request) {
     const { data: docs, error } = await ctx.admin
       .from('generated_documents')
       .select('id, user_id, document_type, template_name, full_name, email, phone, full_data, created_at, is_public, ats_tier')
-      .eq('is_public', true)
       .eq('document_type', 'CV')
       .order('created_at', { ascending: false })
-      .limit(300);
+      .limit(500);
 
     if (error) throw error;
     if (!docs || docs.length === 0) {
@@ -136,7 +135,7 @@ export async function GET(req: Request) {
       candidates: filtered,
       total: filtered.length,
       consentPolicyVersion: 'v1',
-      notice: 'Only candidates who opted in to CV sharing and marked an individual CV public are listed. Contact details are hidden unless the candidate separately allowed company contact.',
+      notice: 'Only candidates who turned on "Show my CV to companies" are listed. Contact details stay hidden unless the candidate separately allowed company contact.',
     });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || 'candidate_list_failed' }, { status: 500 });

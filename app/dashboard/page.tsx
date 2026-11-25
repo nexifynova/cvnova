@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase, authedFetch } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import { FileText, LogOut, Plus, ExternalLink, Loader2, Mail, Briefcase, CreditCard, Clock, CheckCircle2, XCircle, ShieldCheck, Crown, Search, Filter, Calendar, Edit2, X, Share2, RefreshCw, Trash2, Send, Eye, EyeOff, MessageSquare, AlertTriangle } from 'lucide-react';
+import { FileText, LogOut, Plus, ExternalLink, Loader2, Mail, Briefcase, CreditCard, Clock, CheckCircle2, XCircle, ShieldCheck, Crown, Search, Filter, Calendar, Edit2, X, Share2, RefreshCw, Trash2, Send, EyeOff, MessageSquare, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import AtsBadge from '@/components/AtsBadge';
 import PlanBadge from '@/components/PlanBadge';
@@ -32,13 +32,13 @@ export default function Dashboard() {
   const [account, setAccount] = useState<any>(null);
   const [consent, setConsent] = useState({ shareCv: false, allowContact: false, marketing: false });
   const [consentSaving, setConsentSaving] = useState(false);
-  const [consentFlash, setConsentFlash] = useState(false);
-  const [visibilitySaving, setVisibilitySaving] = useState<string | null>(null);
   const [inbox, setInbox] = useState<any[]>([]);
   const [inboxOpen, setInboxOpen] = useState(false);
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [replySending, setReplySending] = useState<string | null>(null);
   const [jobs, setJobs] = useState<any[]>([]);
+  const [applyingJob, setApplyingJob] = useState<string | null>(null);
+  const [jobCvChoice, setJobCvChoice] = useState<Record<string, string>>({});
 
   // Filters & Modals State
   const [searchTerm, setSearchTerm] = useState('');
@@ -215,6 +215,14 @@ export default function Dashboard() {
     return true;
   });
 
+  // Only CVs can be sent to a company.
+  const cvDocuments = documents.filter((doc) => (doc.document_type || 'CV') === 'CV');
+  const cvLabel = (doc: any) => {
+    const title = String(doc?.full_data?.jobTitle || doc?.template_name || 'My CV').trim();
+    const created = doc?.created_at ? new Date(doc.created_at).toLocaleDateString() : '';
+    return `${title} CV${created ? ` (${created})` : ''}`;
+  };
+
   const loadAccountState = async () => {
     try {
       const res = await authedFetch('/api/account/status');
@@ -251,7 +259,52 @@ export default function Dashboard() {
     }
   };
 
-  const saveConsent = async (patch: Partial<typeof consent>) => {
+  // Sends the selected CV to the company, adds it to their talent pool and
+  // notifies them by email.
+  const applyToJob = async (job: any) => {
+    if (applyingJob) return;
+
+    const documentId = jobCvChoice[job.id] || cvDocuments[0]?.id;
+    if (!documentId) {
+      alert('Create a CV first — then you can send it to companies.');
+      return;
+    }
+
+    setApplyingJob(job.id);
+    try {
+      // Sending a CV needs "Show my CV to companies". Turning it on here is
+      // visible in the Privacy & Consent Centre, so nothing happens silently.
+      if (!consent.shareCv) {
+        const enabled = await saveConsent({ shareCv: true });
+        if (!enabled) return;
+      }
+
+      const res = await authedFetch('/api/jobs/apply', {
+        method: 'POST',
+        body: JSON.stringify({ jobId: job.id, documentId }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (data.error === 'consent_required') throw new Error('Turn on "Show my CV to companies" to send your CV.');
+        if (data.error === 'company_not_approved') throw new Error('This company is not accepting applications right now.');
+        throw new Error(data.error || 'Could not send your CV');
+      }
+
+      setJobs((prev) =>
+        prev.map((item) => (item.id === job.id ? { ...item, appliedDocumentId: documentId } : item)),
+      );
+      setDocuments((docs) => docs.map((doc) => (doc.id === documentId ? { ...doc, is_public: true } : doc)));
+      alert(`Your CV was sent to ${job.companyName}. They were notified by email and can reply in their company chat.`);
+      await loadJobs();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setApplyingJob(null);
+    }
+  };
+
+  const saveConsent = async (patch: Partial<typeof consent>): Promise<boolean> => {
     const previous = consent;
     const next = { ...consent, ...patch };
     // Contact consent is meaningless without CV sharing consent.
@@ -269,6 +322,7 @@ export default function Dashboard() {
         setDocuments((docs) => docs.map((d) => ({ ...d, is_public: false })));
       }
       await loadAccountState();
+      return true;
     } catch (err: any) {
       // Roll the checkbox back so the UI never shows a state that wasn't saved.
       setConsent(previous);
@@ -277,40 +331,9 @@ export default function Dashboard() {
         ? '\n\nNew database columns are missing. Open Supabase → SQL Editor, run supabase/cvnova_upgrade.sql and click "Run", then try again.'
         : '';
       alert("Consent could not be saved. " + message + migrationHint);
+      return false;
     } finally {
       setConsentSaving(false);
-    }
-  };
-
-  const toggleDocVisibility = async (doc: any) => {
-    if (doc.document_type && doc.document_type !== 'CV') {
-      alert("Only CVs can be shared with companies.");
-      return;
-    }
-    if (!consent.shareCv) {
-      // Instead of a dead-end alert, guide the user straight to the privacy centre.
-      setConsentFlash(true);
-      document.getElementById('consent-centre')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      window.setTimeout(() => setConsentFlash(false), 2600);
-      return;
-    }
-    const next = doc.is_public !== true;
-    setVisibilitySaving(doc.id);
-    try {
-      const res = await authedFetch('/api/documents/visibility', {
-        method: 'POST',
-        body: JSON.stringify({ documentId: doc.id, isPublic: next }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error === 'consent_required' ? "Turn on CV sharing consent first." : (data.error || 'Could not update visibility'));
-        return;
-      }
-      setDocuments((docs) => docs.map((d) => (d.id === doc.id ? { ...d, is_public: next } : d)));
-    } catch (err: any) {
-      alert("Error: " + err.message);
-    } finally {
-      setVisibilitySaving(null);
     }
   };
 
@@ -443,6 +466,48 @@ export default function Dashboard() {
                       <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-gray-600">{job.description}</p>
                     )}
                     <p className="mt-2 font-mono text-[11px] text-gray-500">{job.companyChatId || 'Chat ID pending'}</p>
+
+                    <div className="mt-3 space-y-2 border-t border-gray-200 pt-3">
+                      <label className="block text-[10px] font-bold uppercase tracking-wide text-gray-500">
+                        Choose your CV
+                      </label>
+                      <select
+                        value={jobCvChoice[job.id] || cvDocuments[0]?.id || ''}
+                        onChange={(event) =>
+                          setJobCvChoice((prev) => ({ ...prev, [job.id]: event.target.value }))
+                        }
+                        className="w-full rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-xs text-gray-700 outline-none focus:border-blue-500"
+                      >
+                        {cvDocuments.length === 0 && <option value="">No saved CV yet</option>}
+                        {cvDocuments.map((doc: any) => (
+                          <option key={doc.id} value={doc.id}>
+                            {cvLabel(doc)}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => void applyToJob(job)}
+                        disabled={applyingJob === job.id || cvDocuments.length === 0}
+                        className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+                      >
+                        {applyingJob === job.id ? (
+                          <Loader2 size={13} className="animate-spin" />
+                        ) : (
+                          <Send size={13} />
+                        )}
+                        {job.appliedDocumentId ? 'Send CV again' : 'Send CV'}
+                      </button>
+                      {job.appliedDocumentId ? (
+                        <p className="text-center text-[10px] font-bold text-emerald-600">
+                          Application sent — the company can reply in their chat.
+                        </p>
+                      ) : (
+                        <p className="text-center text-[10px] text-gray-400">
+                          Sending a CV turns on &quot;Show my CV to companies&quot;.
+                        </p>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -476,7 +541,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div id="consent-centre" className={`bg-white p-6 rounded-2xl shadow-sm border mb-6 transition-all ${consentFlash ? 'border-blue-400 ring-2 ring-blue-300' : 'border-gray-100'}`}>
+        <div id="consent-centre" className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6 transition-all">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
             <div className="flex items-center gap-2"><ShieldCheck className="text-blue-600" size={20} /><h2 className="text-lg font-bold text-gray-900">Privacy &amp; Consent Centre</h2></div>
             <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Policy {account?.consent?.version || 'v1'}</span>
@@ -486,7 +551,7 @@ export default function Dashboard() {
             <label className="flex cursor-pointer items-start justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50 p-4">
               <span>
                 <span className="block text-sm font-bold text-gray-900">Show my CV to companies</span>
-                <span className="block text-xs text-gray-500 mt-0.5">Off by default. Companies only see CVs you additionally mark public.</span>
+                <span className="block text-xs text-gray-500 mt-0.5">Off by default. While this is on, companies in your field can find every CV you save here.</span>
               </span>
               <input type="checkbox" checked={consent.shareCv} disabled={consentSaving} onChange={(e) => saveConsent({ shareCv: e.target.checked })} className="mt-1 h-5 w-5 shrink-0 rounded text-blue-600 focus:ring-blue-500" />
             </label>
@@ -607,15 +672,19 @@ export default function Dashboard() {
                     <td className="px-6 py-4">{doc.document_type === 'CV' ? <AtsBadge tier={getTemplate(doc.template_name).ats} size="xs" /> : <span className="text-xs text-gray-400">—</span>}</td>
                     <td className="px-6 py-4">
                       {doc.document_type === 'CV' ? (
-                        <button
-                          onClick={() => toggleDocVisibility(doc)}
-                          disabled={visibilitySaving === doc.id}
-                          title={doc.is_public ? 'Visible to companies — click to hide' : 'Hidden from companies — click to show'}
-                          className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold transition disabled:opacity-50 ${doc.is_public ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                        <span
+                          title={
+                            consent.shareCv
+                              ? 'Visible to companies in your field'
+                              : 'Turn on "Show my CV to companies" in the Privacy & Consent Centre to share your CVs'
+                          }
+                          className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold ${
+                            consent.shareCv ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'
+                          }`}
                         >
-                          {visibilitySaving === doc.id ? <Loader2 size={12} className="animate-spin" /> : doc.is_public ? <Eye size={12} /> : <EyeOff size={12} />}
-                          {doc.is_public ? 'Public' : 'Private'}
-                        </button>
+                          {consent.shareCv ? <ShieldCheck size={12} /> : <EyeOff size={12} />}
+                          {consent.shareCv ? 'Shared' : 'Hidden'}
+                        </span>
                       ) : (
                         <span className="text-xs text-gray-400">N/A</span>
                       )}

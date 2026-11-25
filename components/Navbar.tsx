@@ -21,7 +21,7 @@ export default function Navbar() {
     checkUser();
 
     const fetchSettings = async () => {
-      const { data } = await supabase.from('app_settings').select('site_logo_url, site_name, nav_menu').eq('id', 1).single();
+      const { data } = await supabase.from('app_settings').select('site_logo_url, site_name, nav_menu, show_company_portal').eq('id', 1).single();
       if (data) setSettings(data);
     };
     fetchSettings();
@@ -61,9 +61,13 @@ export default function Navbar() {
     { label: 'Pricing', href: '/#pricing', visible: true },
   ];
 
-  const activeMenu = settings?.nav_menu && settings.nav_menu.length > 0 
+  // Admin switch: hide every recruiter / company portal entry point at once.
+  const showCompanyPortal = settings?.show_company_portal !== false;
+
+  const activeMenu = (settings?.nav_menu && settings.nav_menu.length > 0 
     ? settings.nav_menu.filter((m: any) => m.visible) 
-    : defaultMenu;
+    : defaultMenu
+  ).filter((m: any) => showCompanyPortal || m.href !== '/company');
 
   // Dedicated "Track Document" button — always rendered as a highlighted pill
   // right before the "Payment" link so it stands out in the top navbar.
@@ -110,15 +114,17 @@ export default function Navbar() {
 
       <div className="flex gap-4 items-center">
         {/* Recruiter CTA — pehle footer mein tha, ab header navbar mein visible hai */}
-        <Link
-          href="/company"
-          title="Recruiter? Open the company portal"
-          aria-label="Recruiter? Open the company portal"
-          className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-blue-400/40 bg-blue-500/10 px-3 py-2 text-xs font-bold text-blue-200 transition hover:border-blue-400/70 hover:bg-blue-500/20 hover:text-white"
-        >
-          <Building2 size={15} className="shrink-0" />
-          <span className="hidden sm:inline">Recruiter? Company portal</span>
-        </Link>
+        {showCompanyPortal && (
+          <Link
+            href="/company"
+            title="Recruiter? Open the company portal"
+            aria-label="Recruiter? Open the company portal"
+            className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-blue-400/40 bg-blue-500/10 px-3 py-2 text-xs font-bold text-blue-200 transition hover:border-blue-400/70 hover:bg-blue-500/20 hover:text-white"
+          >
+            <Building2 size={15} className="shrink-0" />
+            <span className="hidden sm:inline">Recruiter? Company portal</span>
+          </Link>
+        )}
         {user ? (
           <div className="relative py-2" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
             <button className="flex items-center gap-2 bg-white/10 text-white px-4 py-2 rounded-full border border-white/20 hover:bg-white/20 transition">

@@ -121,7 +121,13 @@ export function getConsent(profile?: ProfileLike | null): ConsentState {
   };
 }
 
-/** A CV is only exposed to companies when the user + CV consent both pass. */
+/**
+ * A CV is exposed to companies when the candidate turned on
+ * "Show my CV to companies". The per-CV `is_public` flag is only a shortcut
+ * that the dashboard/apply flow switches on — it must never hide a CV from a
+ * candidate who already gave account-level consent, otherwise the talent pool
+ * stays empty for every legacy account.
+ */
 export function canExposeDocument(
   profile: ProfileLike | null | undefined,
   doc: { is_public?: boolean | null; document_type?: string | null },
@@ -129,7 +135,6 @@ export function canExposeDocument(
   if (!profile) return false;
   if (profile.is_deactivated === true) return false;
   if (getConsent(profile).shareCv !== true) return false;
-  if (doc.is_public !== true) return false;
   if ((doc.document_type || 'CV') !== 'CV') return false;
   return true;
 }
