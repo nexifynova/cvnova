@@ -6,30 +6,25 @@ import Navbar from '@/components/Navbar';
 import {
   ArrowRight,
   BadgeCheck,
-  Building2,
   Check,
   Clock3,
   CreditCard,
-  Crown,
-  Gem,
   Loader2,
-  Rocket,
   ShieldCheck,
-  Sparkles,
   UserRound,
   Users,
-  Zap,
   type LucideIcon,
 } from 'lucide-react';
 import type { IndividualPlan, PublicCompanyPlan, PublicPaymentMethods, PublicPricing } from '@/lib/public-pricing';
 
 /**
- * Phase 4 - public pricing page (/pricing).
+ * Phase 5 - public pricing page (/pricing).
  *
- * Two tabs: "For Individuals" (CV builder packages from app_settings) and
- * "For Companies / Talent Pool" (recruiter plans from company_packages). Both
- * catalogues come from /api/pricing, so an admin price change shows up here
- * without touching any code.
+ * Both audiences are shown on one page, one under the other, instead of behind
+ * tabs: "For CV Maker Users" (individual plans from app_settings) followed by
+ * "For Company Prices" (recruiter plans from company_packages). Company cards
+ * use exactly the same card layout as the individual ones, so the two halves of
+ * the page look like one product. Every price still comes from /api/pricing.
  */
 
 type Status = 'loading' | 'ready' | 'error';
@@ -38,16 +33,6 @@ const compactMoney = (value: number) => {
   const rounded = Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
   return `$${Number.isInteger(rounded) ? rounded : rounded.toFixed(2)}`;
 };
-
-const TIER_ICONS: Record<string, LucideIcon> = {
-  free_trial: Sparkles,
-  '1_month': Zap,
-  '3_months': Building2,
-  '9_months': Crown,
-  '2_years': Gem,
-};
-
-const tierIcon = (code: string): LucideIcon => TIER_ICONS[code] || Rocket;
 
 const individualFeatures = (plan: IndividualPlan): string[] => [
   `${plan.cvs} CV / cover letter documents included`,
@@ -66,8 +51,6 @@ const paymentChips = (payments: PublicPaymentMethods | undefined): string[] =>
     payments?.bank && 'Bank transfer',
   ].filter((chip): chip is string => Boolean(chip));
 
-export type PricingTab = 'individuals' | 'companies';
-
 async function fetchPricing(): Promise<PublicPricing> {
   const res = await fetch('/api/pricing', { cache: 'no-store' });
   const payload = (await res.json()) as PublicPricing & { error?: string };
@@ -78,8 +61,7 @@ async function fetchPricing(): Promise<PublicPricing> {
 const errorMessage = (err: unknown) =>
   err instanceof Error && err.message ? err.message : 'Unable to load the price list.';
 
-export default function PricingView({ initialTab = 'individuals' }: { initialTab?: PricingTab }) {
-  const [tab, setTab] = useState<PricingTab>(initialTab);
+export default function PricingView() {
   const [status, setStatus] = useState<Status>('loading');
   const [error, setError] = useState('');
   const [data, setData] = useState<PublicPricing | null>(null);
@@ -144,44 +126,6 @@ export default function PricingView({ initialTab = 'individuals' }: { initialTab
             </p>
           </div>
 
-          {/* Audience tabs */}
-          <div
-            role="tablist"
-            aria-label="Pricing audience"
-            className="mx-auto mt-9 flex w-full max-w-xl gap-1 rounded-2xl border border-white/10 bg-white/5 p-1.5 backdrop-blur"
-          >
-            <button
-              type="button"
-              role="tab"
-              id="pricing-tab-individuals"
-              aria-selected={tab === 'individuals'}
-              aria-controls="pricing-panel-individuals"
-              onClick={() => setTab('individuals')}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold transition sm:text-sm ${
-                tab === 'individuals'
-                  ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-900/40'
-                  : 'text-gray-300 hover:bg-white/5 hover:text-white'
-              }`}
-            >
-              <UserRound size={16} /> For Individuals
-            </button>
-            <button
-              type="button"
-              role="tab"
-              id="pricing-tab-companies"
-              aria-selected={tab === 'companies'}
-              aria-controls="pricing-panel-companies"
-              onClick={() => setTab('companies')}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-center text-xs font-bold leading-tight transition sm:text-sm ${
-                tab === 'companies'
-                  ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-900/40'
-                  : 'text-gray-300 hover:bg-white/5 hover:text-white'
-              }`}
-            >
-              <Users size={16} className="shrink-0" /> For Companies / Talent Pool
-            </button>
-          </div>
-
           {status === 'loading' && <PricingSkeleton />}
 
           {status === 'error' && (
@@ -197,26 +141,35 @@ export default function PricingView({ initialTab = 'individuals' }: { initialTab
             </div>
           )}
 
-          {status === 'ready' && data && tab === 'individuals' && (
-            <IndividualPanel data={data} />
-          )}
+          {status === 'ready' && data && (
+            <>
+              <IndividualSection data={data} />
+              <CompanySection plans={data.company} />
 
-          {status === 'ready' && data && tab === 'companies' && (
-            <CompanyPanel plans={data.company} />
-          )}
+              <div className="mt-14 grid gap-4 sm:grid-cols-3">
+                <TrustCard
+                  icon={ShieldCheck}
+                  title="Secure checkout"
+                  body="Manual verification on every payment, no card details stored."
+                />
+                <TrustCard
+                  icon={Clock3}
+                  title="Fast activation"
+                  body="Individual plans unlock on approval; company plans activate the moment the slip is verified."
+                />
+                <TrustCard
+                  icon={BadgeCheck}
+                  title="Real people on support"
+                  body="WhatsApp and email support for billing and account questions."
+                />
+              </div>
 
-          {status === 'ready' && (
-            <div className="mt-12 grid gap-4 sm:grid-cols-3">
-              <TrustCard icon={ShieldCheck} title="Secure checkout" body="Manual verification on every payment, no card details stored." />
-              <TrustCard icon={Clock3} title="Instant activation" body="Documents unlock the moment your payment is approved." />
-              <TrustCard icon={BadgeCheck} title="Real people on support" body="WhatsApp and email support for billing and account questions." />
-            </div>
-          )}
-
-          {status === 'ready' && chips.length > 0 && (
-            <p className="mt-8 text-center text-xs text-gray-500">
-              We accept {chips.join(' · ')}. Prices are in USD.
-            </p>
+              {chips.length > 0 && (
+                <p className="mt-8 text-center text-xs text-gray-500">
+                  We accept {chips.join(' · ')}. Prices are in USD.
+                </p>
+              )}
+            </>
           )}
         </section>
       </main>
@@ -224,15 +177,43 @@ export default function PricingView({ initialTab = 'individuals' }: { initialTab
   );
 }
 
-function IndividualPanel({ data }: { data: PublicPricing }) {
+
+function SectionHeading({
+  id,
+  icon: Icon,
+  badge,
+  title,
+  subtitle,
+}: {
+  id: string;
+  icon: LucideIcon;
+  badge: string;
+  title: string;
+  subtitle: string;
+}) {
   return (
-    <div
-      role="tabpanel"
-      id="pricing-panel-individuals"
-      aria-labelledby="pricing-tab-individuals"
-      className="mt-10"
-    >
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+    <div id={id} className="mt-14 scroll-mt-24 text-center">
+      <span className="inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-blue-200">
+        <Icon size={13} /> {badge}
+      </span>
+      <h2 className="mt-3 text-2xl font-extrabold tracking-tight sm:text-3xl">{title}</h2>
+      <p className="mx-auto mt-2 max-w-2xl text-sm text-gray-400">{subtitle}</p>
+    </div>
+  );
+}
+
+function IndividualSection({ data }: { data: PublicPricing }) {
+  return (
+    <section aria-labelledby="pricing-for-cv-makers">
+      <SectionHeading
+        id="pricing-for-cv-makers"
+        icon={UserRound}
+        badge="For CV Maker Users"
+        title="CV builder plans for individuals"
+        subtitle="Create ATS-ready CVs and cover letters, unlock every template and keep every document you build."
+      />
+
+      <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {data.individual.map((plan) => (
           <article
             key={plan.key}
@@ -295,68 +276,56 @@ function IndividualPanel({ data }: { data: PublicPricing }) {
             : 'Create a free account and upgrade whenever you are ready.'}
         </p>
       </div>
-    </div>
+    </section>
   );
 }
 
-function CompanyPanel({ plans }: { plans: PublicCompanyPlan[] }) {
+function CompanySection({ plans }: { plans: PublicCompanyPlan[] }) {
   return (
-    <div
-      role="tabpanel"
-      id="pricing-panel-companies"
-      aria-labelledby="pricing-tab-companies"
-      className="mt-10"
-    >
+    <section aria-labelledby="pricing-for-companies">
+      <SectionHeading
+        id="pricing-for-companies"
+        icon={Users}
+        badge="For Company Prices"
+        title="Recruiter plans for hiring teams"
+        subtitle="Job posting, company chat and employee CV accounts for your whole team — no per-seat charges."
+      />
+
       {plans.length === 0 ? (
-        <p className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center text-sm text-gray-400">
+        <p className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center text-sm text-gray-400">
           Recruiter plans are being updated. Please contact us for the current company pricing.
         </p>
       ) : (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {plans.map((plan) => {
-            const Icon = tierIcon(plan.code);
             const isFree = plan.priceUsd <= 0;
             return (
               <article
                 key={plan.code}
                 className={`relative flex flex-col rounded-3xl border p-6 transition ${
                   plan.popular
-                    ? 'border-purple-400/60 bg-gradient-to-b from-purple-500/15 to-white/[0.04] shadow-[0_0_40px_rgba(147,51,234,0.18)]'
+                    ? 'border-blue-400/60 bg-gradient-to-b from-blue-500/15 to-white/[0.04] shadow-[0_0_40px_rgba(59,130,246,0.18)]'
                     : 'border-white/10 bg-white/[0.04] hover:border-white/20'
                 }`}
               >
                 {plan.popular && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
-                    Best value
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
+                    Most popular
                   </span>
                 )}
-
-                <div className="flex items-center justify-between">
-                  <span
-                    className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${
-                      plan.popular ? 'bg-purple-500/20 text-purple-200' : 'bg-white/10 text-gray-200'
-                    }`}
-                  >
-                    <Icon size={18} />
-                  </span>
-                  <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-gray-300">
-                    {plan.durationLabel || plan.name}
-                  </span>
-                </div>
-
-                <h3 className="mt-4 text-lg font-extrabold">{plan.isTrial ? plan.name : plan.tier}</h3>
+                <p className="text-sm font-bold text-blue-200">{plan.name}</p>
                 <p className="mt-1 text-xs text-gray-400">{plan.tagline}</p>
 
                 <div className="mt-4 flex items-end gap-1.5">
                   <span className="text-3xl font-extrabold tracking-tight">
                     {isFree ? 'Free' : compactMoney(plan.priceUsd)}
                   </span>
-                  <span className="pb-1 text-[11px] text-gray-400">
-                    / {plan.durationLabel || plan.name}
-                  </span>
+                  <span className="pb-1 text-[11px] text-gray-400">{plan.durationLabel || plan.name}</span>
                 </div>
                 <p className="mt-1 text-[11px] text-gray-400">
-                  {isFree ? 'No card required to start' : `${compactMoney(plan.monthlyUsd)} per month`}
+                  {isFree
+                    ? 'No payment needed to start'
+                    : `${compactMoney(plan.monthlyUsd)} / month · ${plan.durationDays} days`}
                 </p>
 
                 <ul className="mt-5 flex-1 space-y-2 text-xs text-gray-300">
@@ -372,7 +341,7 @@ function CompanyPanel({ plans }: { plans: PublicCompanyPlan[] }) {
                   href="/company"
                   className={`mt-6 flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition ${
                     plan.popular
-                      ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:from-purple-400 hover:to-blue-400'
+                      ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-400 hover:to-purple-500'
                       : 'border border-white/15 bg-white/5 text-white hover:bg-white/10'
                   }`}
                 >
@@ -388,23 +357,29 @@ function CompanyPanel({ plans }: { plans: PublicCompanyPlan[] }) {
         <p>
           <strong className="text-white">How company plans work:</strong> every recruiter plan unlocks job posting,
           company chat and employee CV accounts for your whole team — prices above cover the full term, there are no
-          per-seat charges. Need an invoice or a custom term?{' '}
+          per-seat charges. Pick a plan in the company portal, pay through one of the published accounts and upload
+          your slip; the plan activates as soon as our team verifies the payment. Need an invoice or a custom term?{' '}
           <Link href="/contact" className="font-semibold text-blue-300 underline">
             Talk to us
           </Link>
           .
         </p>
       </div>
-    </div>
+    </section>
   );
 }
 
 function PricingSkeleton() {
   return (
-    <div className="mt-10" aria-busy="true" aria-live="polite">
+    <div className="mt-14" aria-busy="true" aria-live="polite">
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {[0, 1, 2, 3].map((index) => (
           <div key={index} className="h-80 animate-pulse rounded-3xl border border-white/10 bg-white/[0.04]" />
+        ))}
+      </div>
+      <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {[0, 1, 2].map((index) => (
+          <div key={index} className="h-64 animate-pulse rounded-3xl border border-white/10 bg-white/[0.03]" />
         ))}
       </div>
       <p className="mt-6 flex items-center justify-center gap-2 text-xs text-gray-500">

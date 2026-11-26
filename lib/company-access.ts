@@ -212,6 +212,40 @@ export async function loadCompanyAccess(
   return computeCompanyAccess(company, resolved);
 }
 
+/**
+ * Phase 5 - expiry window a plan purchase grants.
+ *
+ * Renewing the plan the company is already on while it is still active extends
+ * the current expiry (paid days are never lost); buying a different plan, or
+ * any plan after expiry, starts today. Used by the instant purchase route and
+ * by the admin approval route so both write identical dates.
+ */
+export function planWindowFrom(
+  access: Pick<CompanyAccess, 'status' | 'packageType' | 'packageExpiry'>,
+  plan: Pick<CompanyPackage, 'code' | 'durationDays'>,
+  graceHours: number,
+  now: Date = new Date(),
+): { packageExpiry: string; graceExpiry: string; renewed: boolean; startMs: number } {
+  const currentExpiryMs =
+    access.status === 'active' && access.packageType === plan.code && access.packageExpiry
+      ? Date.parse(access.packageExpiry)
+      : Number.NaN;
+  const startMs =
+    Number.isFinite(currentExpiryMs) && currentExpiryMs > now.getTime()
+      ? currentExpiryMs
+      : now.getTime();
+
+  const expiry = new Date(startMs + Math.max(1, plan.durationDays) * DAY_MS);
+  const grace = new Date(expiry.getTime() + Math.max(0, graceHours) * HOUR_MS);
+
+  return {
+    packageExpiry: expiry.toISOString(),
+    graceExpiry: grace.toISOString(),
+    renewed: startMs > now.getTime(),
+    startMs,
+  };
+}
+
 /** Trial window applied when a company row is created. */
 export function buildTrialWindow(settings: CompanyAccessSettings, from: Date = new Date()) {
   const expiry = new Date(from.getTime() + settings.trialDays * DAY_MS);

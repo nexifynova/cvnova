@@ -8,10 +8,11 @@ export const metadata: Metadata = {
 };
 
 /**
- * Phase 4 - public pricing page.
+ * Public pricing page.
  *
- * Server wrapper for metadata/SEO; the interactive tabs and the price list live
- * in <PricingView />, which loads both catalogues from /api/pricing.
+ * Server wrapper for metadata/SEO; the stacked price sections ("For CV Maker
+ * Users" then "For Company Prices") live in <PricingView />, which loads both
+ * catalogues from /api/pricing.
  */
 export default function PricingPage() {
   return <PricingView />;

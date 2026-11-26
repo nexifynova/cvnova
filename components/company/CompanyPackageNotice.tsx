@@ -224,8 +224,9 @@ export function PackagePlansModal({
           )}
 
           <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
-            Prices are managed by the CVNova team. Contact us to activate or renew a plan — access is
-            restored as soon as the payment is confirmed.
+            Paid plans are bought from billing: choose a plan, pay through one of the published accounts and upload
+            your slip. The plan is activated as soon as the CVNova team approves the payment. The free trial starts
+            instantly.
           </div>
         </div>
 
@@ -238,10 +239,10 @@ export function PackagePlansModal({
             Close
           </button>
           <Link
-            href="/contact"
+            href="/company/billing"
             className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700"
           >
-            Contact us
+            <BadgeDollarSign size={16} /> Buy a plan
           </Link>
         </div>
       </div>

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Settings, CreditCard, MessageSquare, ArrowLeft, Image as ImageIcon, Link as LinkIcon, IndianRupee, Phone, LogOut, Key, X, Loader2, Eye, EyeOff, Headphones, TrendingUp, Briefcase, BadgeDollarSign } from 'lucide-react';
+import { LayoutDashboard, Settings, CreditCard, MessageSquare, ArrowLeft, Image as ImageIcon, Link as LinkIcon, IndianRupee, Phone, LogOut, Key, X, Loader2, Eye, EyeOff, Headphones, TrendingUp, Briefcase, BadgeDollarSign, Building2, Wallet } from 'lucide-react';
 import { Suspense, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
@@ -35,6 +35,8 @@ function SidebarNavigation() {
     { name: 'Revenue Received', href: '/admin/revenue', icon: TrendingUp },
     { name: 'Support / Messages', href: '/admin/messages', icon: Headphones, badge: unreadSupport },
     { name: 'Company Pricing', href: '/admin/company-pricing', icon: BadgeDollarSign },
+    { name: 'Company Payments', href: '/admin/company-payments', icon: Wallet },
+    { name: 'Companies', href: '/admin/companies', icon: Building2 },
     { name: 'Settings', href: '/admin/settings', icon: Settings },
   ];
 

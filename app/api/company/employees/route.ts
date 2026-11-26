@@ -395,3 +395,110 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error?.message || 'employee_create_failed' }, { status: 500 });
   }
 }
+
+/**
+ * Phase 5 - edit a roster row.
+ *
+ * Only the company-owned fields change (name, contact, applied field, joining
+ * date). The employee's CVNova account, email and employee user id stay put, so
+ * their CVs, chats and subscription are never touched from here.
+ */
+export async function PATCH(req: Request) {
+  const ctx = await resolveCompany(req);
+  if (!ctx.ok) return NextResponse.json({ error: ctx.error }, { status: ctx.status });
+
+  try {
+    const body = await req.json().catch(() => ({} as any));
+    const id = String(body?.id || '').trim();
+    if (!UUID_RE.test(id)) {
+      return NextResponse.json({ error: 'employee_id_required' }, { status: 400 });
+    }
+
+    const patch: Record<string, unknown> = {};
+
+    if (body?.fullName !== undefined) {
+      const fullName = String(body.fullName || '').trim().slice(0, 120);
+      if (fullName.length < 2) {
+        return NextResponse.json({ error: 'employee_name_required' }, { status: 400 });
+      }
+      patch.full_name = fullName;
+    }
+
+    if (body?.contact !== undefined) {
+      patch.contact = String(body.contact || '').trim().slice(0, 60) || null;
+    }
+
+    if (body?.appliedField !== undefined) {
+      patch.applied_field = String(body.appliedField || '').trim().slice(0, 80) || null;
+    }
+
+    if (body?.joinedOn !== undefined) {
+      const joinedOn = String(body.joinedOn || '').trim();
+      if (joinedOn && (!DATE_RE.test(joinedOn) || Number.isNaN(Date.parse(joinedOn)))) {
+        return NextResponse.json({ error: 'invalid_joining_date' }, { status: 400 });
+      }
+      if (joinedOn) patch.joined_on = joinedOn;
+    }
+
+    if (!Object.keys(patch).length) {
+      return NextResponse.json({ error: 'no_changes' }, { status: 400 });
+    }
+
+    const { data: updated, error } = await ctx.admin
+      .from('company_employees')
+      .update(patch)
+      .eq('id', id)
+      .eq('company_id', ctx.user.id)
+      .select('*')
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!updated) return NextResponse.json({ error: 'employee_not_found' }, { status: 404 });
+
+    return NextResponse.json({ success: true, employee: mapCompanyEmployee(updated) });
+  } catch (error: any) {
+    return NextResponse.json({ error: error?.message || 'employee_update_failed' }, { status: 500 });
+  }
+}
+
+/**
+ * Phase 5 - remove an employee from the company roster.
+ *
+ * The roster row is deleted; the person's own CVNova account is intentionally
+ * kept, because those CVs belong to the candidate, not to the company.
+ */
+export async function DELETE(req: Request) {
+  const ctx = await resolveCompany(req);
+  if (!ctx.ok) return NextResponse.json({ error: ctx.error }, { status: ctx.status });
+
+  try {
+    const url = new URL(req.url);
+    const body = await req.json().catch(() => ({} as any));
+    const id = String(url.searchParams.get('id') || body?.id || '').trim();
+    if (!UUID_RE.test(id)) {
+      return NextResponse.json({ error: 'employee_id_required' }, { status: 400 });
+    }
+
+    const { data: deleted, error } = await ctx.admin
+      .from('company_employees')
+      .delete()
+      .eq('id', id)
+      .eq('company_id', ctx.user.id)
+      .select('id, emp_id, full_name, employee_user_id')
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!deleted) return NextResponse.json({ error: 'employee_not_found' }, { status: 404 });
+
+    return NextResponse.json({
+      success: true,
+      id: String((deleted as any).id),
+      employeeUserId: (deleted as any).employee_user_id
+        ? String((deleted as any).employee_user_id)
+        : null,
+      message: `${(deleted as any).full_name || 'Employee'} was removed from your roster. Their CVNova account stays active.`,
+    });
+  } catch (error: any) {
+    return NextResponse.json({ error: error?.message || 'employee_delete_failed' }, { status: 500 });
+  }
+}

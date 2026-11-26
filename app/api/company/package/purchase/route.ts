@@ -4,6 +4,7 @@ import {
   computeCompanyAccess,
   loadCompanyPackages,
   loadCompanySettings,
+  planWindowFrom,
 } from '@/lib/company-access';
 
 /**
@@ -15,10 +16,10 @@ import {
  * current expiry; buying a different plan (or any plan after expiry) starts
  * today. The package columns stay writable by the service role only, which is
  * what the Phase 2 guard trigger enforces.
+ *
+ * Phase 5 - paid plans now go through /company/checkout + admin approval; this
+ * route stays as the instant path for the free trial only.
  */
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-const HOUR_MS = 60 * 60 * 1000;
 
 export async function POST(req: Request) {
   const ctx = await resolveCompany(req);
@@ -54,25 +55,14 @@ export async function POST(req: Request) {
     }
 
     const now = new Date();
-    const currentExpiryMs =
-      access.status === 'active' && access.packageType === plan.code && access.packageExpiry
-        ? Date.parse(access.packageExpiry)
-        : Number.NaN;
-    // Same plan while still active = renewal, so paid days are never lost.
-    const startMs = Number.isFinite(currentExpiryMs) && currentExpiryMs > now.getTime()
-      ? currentExpiryMs
-      : now.getTime();
-    const renewed = startMs > now.getTime();
-
-    const packageExpiry = new Date(startMs + plan.durationDays * DAY_MS);
-    const graceExpiry = new Date(packageExpiry.getTime() + settings.graceHours * HOUR_MS);
+    const window = planWindowFrom(access, plan, settings.graceHours, now);
 
     const { data: updated, error } = await ctx.admin
       .from('companies')
       .update({
         package_type: plan.code,
-        package_expiry: packageExpiry.toISOString(),
-        grace_expiry: graceExpiry.toISOString(),
+        package_expiry: window.packageExpiry,
+        grace_expiry: window.graceExpiry,
       })
       .eq('id', ctx.user.id)
       .select('*')
@@ -84,7 +74,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       package: plan,
-      renewed,
+      renewed: window.renewed,
       access: computeCompanyAccess(updated, settings),
       activatedAt: now.toISOString(),
     });

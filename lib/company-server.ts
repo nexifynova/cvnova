@@ -15,6 +15,9 @@ export async function resolveCompany(req: Request): Promise<CompanyContext> {
   const { data: company } = await admin.from('companies').select('*').eq('id', user.id).maybeSingle();
   if (!company) return { ok: false, status: 404, error: 'company_profile_missing' };
   if (company.is_approved === false) return { ok: false, status: 403, error: 'company_not_approved' };
+  // Phase 5 - the admin can disable a company from /admin/companies without
+  // deleting its data; every portal API closes at once.
+  if (company.is_disabled === true) return { ok: false, status: 403, error: 'company_account_disabled' };
 
   return { ok: true, user, company, admin };
 }

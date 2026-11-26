@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase, authedFetch } from '@/lib/supabase';
-import { Building2, Loader2, LogOut, Search, Filter, X, Mail, MessageSquare, Send, ShieldCheck, Lock, Eye, Briefcase, Plus, Trash2, MapPin, FileText, RefreshCw, CheckCircle2, Paperclip, Clock, UserCheck, Users, UserPlus } from 'lucide-react';
+import { Building2, Loader2, LogOut, Search, Filter, X, Mail, MessageSquare, Send, ShieldCheck, Lock, Eye, Briefcase, Plus, Trash2, MapPin, FileText, RefreshCw, CheckCircle2, Paperclip, Clock, UserCheck, Users, UserPlus, Crown } from 'lucide-react';
 import AtsBadge from '@/components/AtsBadge';
 import JobFieldsDropdown from '@/components/JobFieldsDropdown';
 import CVTemplateRenderer from '@/components/cv/CVTemplateRenderer';
@@ -502,6 +502,12 @@ export default function CompanyDashboard() {
             <Link href="/company/employees" className="hidden text-xs font-bold text-gray-600 hover:text-blue-600 sm:block">Our employees</Link>
             <Link href="/company/billing" className="hidden text-xs font-bold text-gray-600 hover:text-blue-600 sm:block">Billing</Link>
             <Link href="/" className="hidden text-xs font-bold text-gray-600 hover:text-blue-600 sm:block">Candidate site</Link>
+            <Link
+              href="/company/billing"
+              className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:from-blue-700 hover:to-purple-700"
+            >
+              <Crown size={14} /> Buy Packages / Upgrade
+            </Link>
             <button onClick={logout} className="flex items-center gap-1.5 text-sm font-semibold text-red-600 hover:text-red-700"><LogOut size={16} /> Sign out</button>
           </div>
         </div>

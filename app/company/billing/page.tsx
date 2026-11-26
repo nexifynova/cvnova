@@ -170,6 +170,21 @@ export default function CompanyBillingPage() {
     router.replace('/company');
   };
 
+  /**
+   * Phase 5 - paid plans need a payment slip that the admin approves, so they
+   * are bought from /company/checkout. The free trial has no price and is still
+   * activated instantly through /api/company/package/purchase.
+   */
+  const choosePlan = (plan: CompanyPackage) => {
+    setResult(null);
+    setError('');
+    if (plan.priceUsd > 0) {
+      router.push(`/company/checkout?plan=${encodeURIComponent(plan.code)}`);
+      return;
+    }
+    setConfirming(plan);
+  };
+
   const visiblePlans = useMemo(
     () => packages.filter((plan) => plan.isActive).sort((a, b) => a.sortOrder - b.sortOrder),
     [packages],
@@ -221,6 +236,9 @@ export default function CompanyBillingPage() {
             <Link href="/company/employees" className="hidden text-xs font-bold text-gray-600 hover:text-blue-600 sm:block">
               Our employees
             </Link>
+            <Link href="/company/checkout" className="hidden text-xs font-bold text-gray-600 hover:text-blue-600 sm:block">
+              Checkout
+            </Link>
             <button
               onClick={logout}
               className="flex items-center gap-1.5 text-sm font-semibold text-red-600 hover:text-red-700"
@@ -236,7 +254,8 @@ export default function CompanyBillingPage() {
           <div>
             <h1 className="text-2xl font-extrabold text-gray-900 sm:text-3xl">Company billing &amp; plans</h1>
             <p className="mt-1 text-sm text-gray-500">
-              Choose a plan to unlock company chat, job posting and employee CV accounts.
+              Choose a plan to unlock company chat, job posting and employee CV accounts. Paid plans are activated
+              after the CVNova team verifies your payment slip.
             </p>
           </div>
           <Link href="/company/dashboard" className="text-xs font-bold text-blue-600 hover:underline">
@@ -371,17 +390,18 @@ export default function CompanyBillingPage() {
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setResult(null);
-                      setError('');
-                      setConfirming(plan);
-                    }}
+                    onClick={() => choosePlan(plan)}
                     disabled={trialBlocked || busy || loading}
                     className={`mt-4 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold text-white transition disabled:cursor-not-allowed disabled:bg-gray-300 ${accent.button}`}
                   >
                     {busy ? <Loader2 size={14} className="animate-spin" /> : null}
                     {label}
                   </button>
+                  {plan.priceUsd > 0 ? (
+                    <p className="mt-2 text-center text-[10px] font-semibold text-gray-400">
+                      Opens checkout - pay, upload the slip, admin approves.
+                    </p>
+                  ) : null}
                 </div>
               );
             })}
@@ -410,8 +430,8 @@ export default function CompanyBillingPage() {
         </div>
 
         <p className="mt-4 text-[11px] leading-relaxed text-gray-400">
-          Prices cover the full term shown on each card. Activating a plan updates your company package immediately;
-          renewing the plan you already have adds the new days to your current expiry date.
+          Prices cover the full term shown on each card. Paid plans activate as soon as the CVNova team approves your
+          payment slip; renewing the plan you already have adds the new days after your current expiry.
         </p>
       </div>
 
@@ -423,18 +443,16 @@ export default function CompanyBillingPage() {
                 <Crown size={20} />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-gray-900">Confirm {confirmInfo.tier} plan</h2>
+                <h2 className="text-lg font-bold text-gray-900">Start the {confirmInfo.tier} plan</h2>
                 <p className="mt-1 text-sm text-gray-600">
-                  {durationLabel(confirming.durationDays)} of recruiter access for{' '}
-                  {confirming.priceUsd > 0 ? usd(confirming.priceUsd) : 'free'}.
+                  {durationLabel(confirming.durationDays)} of recruiter access, no payment needed.
                 </p>
               </div>
             </div>
 
             <p className="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600">
-              {confirming.isTrial
-                ? `The free trial starts a fresh ${confirming.durationDays}-day window from today.`
-                : `This ${confirmInfo.tier} plan is added to your account straight away. If you are renewing the same plan, the new days are added after your current expiry.`}
+              The free trial starts a fresh {confirming.durationDays}-day window from today. Paid plans are bought
+              separately from the checkout with a payment slip.
             </p>
 
             {error ? (
@@ -462,7 +480,7 @@ export default function CompanyBillingPage() {
                 className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700 disabled:opacity-60"
               >
                 {busyCode === confirming.code ? <Loader2 size={16} className="animate-spin" /> : null}
-                Confirm purchase
+                Start free trial
               </button>
             </div>
           </div>

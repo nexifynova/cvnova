@@ -13,15 +13,18 @@ import {
   Loader2,
   LogOut,
   Mail,
+  Pencil,
   Phone,
   Plus,
   Receipt,
   Search,
+  Trash2,
   Users,
 } from 'lucide-react';
 import { authedFetch, supabase } from '@/lib/supabase';
 import type { CompanyAccess } from '@/lib/company-access';
 import EmployeeCreateModal from '@/components/company/EmployeeCreateModal';
+import EmployeeEditModal from '@/components/company/EmployeeEditModal';
 import {
   EMPLOYEE_CREATE_LOCKED_MESSAGE,
   employeeFieldCounts,
@@ -61,6 +64,8 @@ export default function CompanyEmployeesPage() {
   const [fieldFilter, setFieldFilter] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [flash, setFlash] = useState('');
+  const [editing, setEditing] = useState<CompanyEmployee | null>(null);
+  const [deletingId, setDeletingId] = useState('');
 
   const load = async (field = fieldFilter) => {
     setLoading(true);
@@ -107,6 +112,42 @@ export default function CompanyEmployeesPage() {
   const changeField = async (next: string) => {
     setFieldFilter(next);
     await load(next);
+  };
+
+  /**
+   * Phase 5 - remove a roster row. The confirm text makes it explicit that the
+   * employee's own CVNova account survives, because the CVs belong to them.
+   */
+  const removeEmployee = async (employee: CompanyEmployee) => {
+    const confirmed = window.confirm(
+      `Remove ${employee.fullName} (${employee.empId || 'no Emp ID'}) from your roster?\n\n` +
+        'Their CVNova account and CVs stay active - only this company roster row is deleted.',
+    );
+    if (!confirmed) return;
+
+    setDeletingId(employee.id);
+    setError('');
+    setFlash('');
+    try {
+      const res = await authedFetch(`/api/company/employees?id=${encodeURIComponent(employee.id)}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.error === 'employee_not_found') throw new Error('This employee is no longer on your roster.');
+        if (data.error === 'company_account_disabled') {
+          throw new Error('This company account has been disabled by the CVNova team.');
+        }
+        throw new Error(data.error || 'Could not remove the employee');
+      }
+      setEmployees((current) => current.filter((item) => item.id !== employee.id));
+      setFlash(data.message || `${employee.fullName} was removed from your roster.`);
+      await load();
+    } catch (err: any) {
+      setError(err.message || 'Could not remove the employee');
+    } finally {
+      setDeletingId('');
+    }
   };
 
   const visible = useMemo(() => {
@@ -298,18 +339,19 @@ export default function CompanyEmployeesPage() {
                   <th className="px-4 py-3 font-bold">Name</th>
                   <th className="px-4 py-3 font-bold">Contact</th>
                   <th className="px-4 py-3 font-bold">Applied field</th>
+                  <th className="px-4 py-3 text-right font-bold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {loading && visible.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-10 text-center">
+                    <td colSpan={6} className="p-10 text-center">
                       <Loader2 className="mx-auto animate-spin text-blue-500" size={24} />
                     </td>
                   </tr>
                 ) : visible.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-10 text-center">
+                    <td colSpan={6} className="p-10 text-center">
                       <FileText className="mx-auto mb-2 text-gray-300" size={26} />
                       <p className="text-sm font-bold text-gray-700">
                         {employees.length === 0 ? 'No employees yet' : 'No employees match this filter'}
@@ -355,6 +397,35 @@ export default function CompanyEmployeesPage() {
                           </p>
                         ) : null}
                       </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFlash('');
+                              setError('');
+                              setEditing(employee);
+                            }}
+                            title={`Edit ${employee.fullName}`}
+                            className="rounded-lg border border-gray-200 bg-white p-1.5 text-gray-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                          >
+                            <Pencil size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void removeEmployee(employee)}
+                            disabled={deletingId === employee.id}
+                            title={`Remove ${employee.fullName} from the roster`}
+                            className="rounded-lg border border-red-100 bg-red-50 p-1.5 text-red-600 transition hover:bg-red-100 disabled:opacity-50"
+                          >
+                            {deletingId === employee.id ? (
+                              <Loader2 size={13} className="animate-spin" />
+                            ) : (
+                              <Trash2 size={13} />
+                            )}
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -375,6 +446,17 @@ export default function CompanyEmployeesPage() {
         onClose={() => setModalOpen(false)}
         onCreated={(employee) => {
           setFlash(`${employee.fullName} (${employee.empId}) was added to your employees.`);
+          void load();
+        }}
+      />
+
+      <EmployeeEditModal
+        employee={editing}
+        onClose={() => setEditing(null)}
+        onSaved={(employee) => {
+          setEditing(null);
+          setEmployees((current) => current.map((item) => (item.id === employee.id ? employee : item)));
+          setFlash(`${employee.fullName} (${employee.empId}) was updated.`);
           void load();
         }}
       />
