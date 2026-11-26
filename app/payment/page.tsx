@@ -152,7 +152,7 @@ function PaymentContent() {
   return (
     <div className="min-h-screen bg-[#0B1120] text-white p-6 font-sans">
       <div className="max-w-2xl mx-auto">
-        <Link href="/#pricing" className="flex items-center gap-2 text-gray-400 hover:text-white mb-6">
+        <Link href="/pricing" className="flex items-center gap-2 text-gray-400 hover:text-white mb-6">
           <ArrowLeft size={20} /> Back to Pricing
         </Link>
         

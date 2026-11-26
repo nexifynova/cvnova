@@ -425,7 +425,7 @@ export default function Dashboard() {
             <p className="flex items-center gap-2 text-amber-800">
               <Clock size={16} /> <strong>Trial ends in {account.plan.daysLeft} day{account.plan.daysLeft === 1 ? '' : 's'}.</strong> Compare plans before creation locks.
             </p>
-            <Link href="/#pricing" className="font-bold text-amber-800 underline">View plans</Link>
+            <Link href="/pricing" className="font-bold text-amber-800 underline">View plans</Link>
           </div>
         )}
 

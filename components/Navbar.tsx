@@ -58,16 +58,29 @@ export default function Navbar() {
     { label: 'Track Payment', href: '/track-payment', visible: true },
     { label: 'For Companies', href: '/company', visible: true },
     { label: 'Contact Us', href: '/contact', visible: true },
-    { label: 'Pricing', href: '/#pricing', visible: true },
+    { label: 'Pricing', href: '/pricing', visible: true },
   ];
 
   // Admin switch: hide every recruiter / company portal entry point at once.
   const showCompanyPortal = settings?.show_company_portal !== false;
 
-  const activeMenu = (settings?.nav_menu && settings.nav_menu.length > 0 
-    ? settings.nav_menu.filter((m: any) => m.visible) 
+  // Phase 4 moved pricing to its own route. Menu rows saved in app_settings
+  // before that still point at the homepage anchor, so normalise them and make
+  // sure a Pricing entry always exists even if the admin saved a custom menu.
+  const pricingHref = '/pricing';
+  const normaliseHref = (href: string) =>
+    href === '/#pricing' || href === '#pricing' ? pricingHref : href;
+
+  const savedMenu = (settings?.nav_menu && settings.nav_menu.length > 0
+    ? settings.nav_menu.filter((m: any) => m.visible)
     : defaultMenu
   ).filter((m: any) => showCompanyPortal || m.href !== '/company');
+
+  const normalisedMenu = savedMenu.map((m: any) => ({ ...m, href: normaliseHref(m.href) }));
+  const activeMenu = normalisedMenu.some((m: any) => m.href === pricingHref)
+    ? normalisedMenu
+    : [...normalisedMenu, { id: 'pricing', label: 'Pricing', href: pricingHref, visible: true }];
+
 
   // Dedicated "Track Document" button — always rendered as a highlighted pill
   // right before the "Payment" link so it stands out in the top navbar.

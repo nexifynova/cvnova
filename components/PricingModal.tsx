@@ -86,7 +86,7 @@ export default function PricingModal({
             {copy.cta} <ArrowRight size={16} />
           </Link>
           <Link
-            href="/#pricing"
+            href="/pricing"
             onClick={onClose}
             className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 px-5 py-3 text-sm font-bold text-gray-700 hover:bg-gray-50"
           >
