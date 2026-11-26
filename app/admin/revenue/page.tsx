@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { ArrowLeft, Banknote, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Download, Loader2, Receipt, Search, Users, X } from 'lucide-react';
+import { ArrowLeft, Banknote, Building2, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Download, Loader2, Receipt, Search, Users, X } from 'lucide-react';
 import Link from 'next/link';
+
+type PaymentSource = 'client' | 'company';
 
 type Payment = {
   id: string;
@@ -16,15 +18,26 @@ type Payment = {
   approved_at?: string | null;
   transaction_id?: string | null;
   payment_method?: string | null;
+  // Phase 5 - approved company slips arrive from /api/admin/revenue and are
+  // tagged here so one revenue stream can show both audiences.
+  source?: PaymentSource;
+  company_name?: string | null;
 };
 
 type ClientRow = {
+  key: string;
   email: string;
+  companyName?: string;
   total: number;
   count: number;
   lastDate: string;
   packages: string[];
 };
+
+/** Client rows are keyed by email, company rows by company id. */
+const accountLabel = (p: Payment) =>
+  p.source === 'company' ? p.company_name || p.user_email || 'Company' : p.user_email || 'Unknown';
+
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const dayKey = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -37,15 +50,17 @@ const money = (n: number) =>
   `$${n.toLocaleString('en-US', { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 })}`;
 
 export default function AdminRevenue() {
-  const [payments, setPayments] = useState<Payment[]>([]);
+  const [clientPayments, setClientPayments] = useState<Payment[]>([]);
+  const [companyPayments, setCompanyPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<'calendar' | 'client'>('calendar');
+  const [view, setView] = useState<'calendar' | 'client' | 'company'>('calendar');
   const [cursor, setCursor] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
+  const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
@@ -54,20 +69,47 @@ export default function AdminRevenue() {
 
   const fetchRevenue = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('payments')
-      .select('*')
-      .eq('status', 'approved')
-      .order('created_at', { ascending: false });
+    const [clientResult, companyResult] = await Promise.all([
+      supabase
+        .from('payments')
+        .select('*')
+        .eq('status', 'approved')
+        .order('created_at', { ascending: false }),
+      fetch('/api/admin/revenue', { cache: 'no-store' })
+        .then((res) => res.json())
+        .catch((error: any) => ({ error: error?.message || 'company_revenue_load_failed' })),
+    ]);
 
+    const { data, error } = clientResult;
     if (error) {
       console.error('Error fetching revenue:', error);
       alert('Database Error: ' + error.message);
     } else if (data) {
-      setPayments(data as Payment[]);
+      setClientPayments(data as Payment[]);
     }
+
+    // Approved company slips live in company_payments, which the browser cannot
+    // read directly, so they come from the service-role route. A failure there
+    // must never hide the individual revenue.
+    if (companyResult?.error) {
+      console.error('Error fetching company revenue:', companyResult.error);
+      setCompanyPayments([]);
+    } else {
+      setCompanyPayments((companyResult?.payments || []) as Payment[]);
+    }
+
     setLoading(false);
   };
+
+  // One revenue stream: individual clients + approved company plan slips.
+  const payments = useMemo<Payment[]>(() => {
+    const clients = clientPayments.map((p) => ({ ...p, source: 'client' as const }));
+    const companies = companyPayments.map((p) => ({ ...p, source: 'company' as const }));
+    return [...clients, ...companies].sort(
+      (a, b) => revenueDate(b).getTime() - revenueDate(a).getTime()
+    );
+  }, [clientPayments, companyPayments]);
+
 
   // ---------- Day wise totals (calendar ke liye) ----------
   const byDay = useMemo(() => {
@@ -100,12 +142,13 @@ export default function AdminRevenue() {
       }));
   }, [payments]);
 
-  // ---------- Client wise totals ----------
+  // ---------- Client wise totals (individual buyers only) ----------
   const byClient = useMemo<ClientRow[]>(() => {
     const map = new Map<string, ClientRow>();
     payments.forEach((p) => {
+      if (p.source === 'company') return; // company slips get their own table
       const email = p.user_email || 'Unknown';
-      const row = map.get(email) || { email, total: 0, count: 0, lastDate: '', packages: [] };
+      const row = map.get(email) || { key: email, email, total: 0, count: 0, lastDate: '', packages: [] };
       row.total += Number(p.amount || 0);
       row.count += 1;
       const date = revenueDate(p).toISOString();
@@ -116,35 +159,76 @@ export default function AdminRevenue() {
     return Array.from(map.values()).sort((a, b) => b.total - a.total);
   }, [payments]);
 
+  // ---------- Company wise totals (approved plan slips) ----------
+  const byCompany = useMemo<ClientRow[]>(() => {
+    const map = new Map<string, ClientRow>();
+    payments.forEach((p) => {
+      if (p.source !== 'company') return;
+      const key = p.user_id || p.user_email || 'Unknown';
+      const row =
+        map.get(key) || {
+          key,
+          email: p.user_email || '',
+          companyName: p.company_name || p.user_email || 'Company',
+          total: 0,
+          count: 0,
+          lastDate: '',
+          packages: [],
+        };
+      row.total += Number(p.amount || 0);
+      row.count += 1;
+      const date = revenueDate(p).toISOString();
+      if (!row.lastDate || new Date(date) > new Date(row.lastDate)) row.lastDate = date;
+      if (!row.packages.includes(p.package_type)) row.packages.push(p.package_type);
+      map.set(key, row);
+    });
+    return Array.from(map.values()).sort((a, b) => b.total - a.total);
+  }, [payments]);
+
   const totals = useMemo(() => {
     const now = new Date();
     const shownMonthKey = monthKey(cursor);
     let total = 0;
     let thisMonth = 0;
     let shownMonth = 0;
+    let clientTotal = 0;
+    let companyTotal = 0;
     payments.forEach((p) => {
       const amount = Number(p.amount || 0);
       const key = monthKey(revenueDate(p));
       total += amount;
+      if (p.source === 'company') companyTotal += amount;
+      else clientTotal += amount;
       if (key === monthKey(now)) thisMonth += amount;
       if (key === shownMonthKey) shownMonth += amount;
     });
-    return { total, thisMonth, shownMonth, count: payments.length, clients: byClient.length };
-  }, [payments, byClient, cursor]);
+    return {
+      total,
+      thisMonth,
+      shownMonth,
+      clientTotal,
+      companyTotal,
+      count: payments.length,
+      clients: byClient.length,
+      companies: byCompany.length,
+    };
+  }, [payments, byClient, byCompany, cursor]);
 
   // ---------- Filtered list (table + CSV export) ----------
   const filtered = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
     return payments.filter((p) => {
       if (selectedDay && dayKey(revenueDate(p)) !== selectedDay) return false;
-      if (selectedClient && p.user_email !== selectedClient) return false;
+      if (selectedClient && (p.source === 'company' || p.user_email !== selectedClient)) return false;
+      if (selectedCompany && (p.source !== 'company' || p.user_id !== selectedCompany)) return false;
       if (q) {
-        const haystack = `${p.user_email} ${p.package_type} ${p.transaction_id || ''}`.toLowerCase();
+        const haystack = `${p.user_email} ${p.company_name || ''} ${p.package_type} ${p.transaction_id || ''}`.toLowerCase();
         if (!haystack.includes(q)) return false;
       }
       return true;
     });
-  }, [payments, selectedDay, selectedClient, searchTerm]);
+  }, [payments, selectedDay, selectedClient, selectedCompany, searchTerm]);
+
 
   const filteredTotal = useMemo(
     () => filtered.reduce((sum, p) => sum + Number(p.amount || 0), 0),
@@ -178,14 +262,17 @@ export default function AdminRevenue() {
   const clearFilters = () => {
     setSelectedDay(null);
     setSelectedClient(null);
+    setSelectedCompany(null);
     setSearchTerm('');
   };
 
   const exportCSV = () => {
-    const header = ['Payment Date', 'Approved At', 'Client Email', 'Package', 'Amount', 'Transaction ID', 'Method'];
+    const header = ['Payment Date', 'Approved At', 'Type', 'Client / Company', 'Email', 'Package', 'Amount', 'Transaction ID', 'Method'];
     const rows = filtered.map((p) => [
       dayKey(revenueDate(p)),
       p.approved_at || '',
+      p.source === 'company' ? 'Company' : 'Client',
+      accountLabel(p),
       p.user_email,
       p.package_type,
       String(Number(p.amount || 0)),
@@ -224,7 +311,7 @@ export default function AdminRevenue() {
             <Link href="/admin" className="p-2 bg-white rounded-lg shadow-sm hover:bg-gray-100 transition"><ArrowLeft size={20} /></Link>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Revenue Received</h1>
-              <p className="text-sm text-gray-500 mt-1">Company income from <strong>approved</strong> payments only — a calendar and per-client record</p>
+              <p className="text-sm text-gray-500 mt-1">Income from <strong>approved</strong> payments only — client plans and approved company slips in one record</p>
             </div>
           </div>
           <button onClick={exportCSV} className="flex items-center justify-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-emerald-700 transition shadow-sm">
@@ -237,7 +324,7 @@ export default function AdminRevenue() {
           <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
             <div className="flex items-center justify-between"><p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Total Revenue</p><Banknote size={18} className="text-emerald-600" /></div>
             <p className="text-2xl font-bold text-gray-900 mt-2">{money(totals.total)}</p>
-            <p className="text-xs text-gray-500 mt-1">All time received</p>
+            <p className="text-xs text-gray-500 mt-1">Clients {money(totals.clientTotal)} · Companies {money(totals.companyTotal)}</p>
           </div>
           <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
             <div className="flex items-center justify-between"><p className="text-xs font-bold text-gray-500 uppercase tracking-wide">This Month</p><CalendarDays size={18} className="text-blue-600" /></div>
@@ -250,9 +337,9 @@ export default function AdminRevenue() {
             <p className="text-xs text-gray-500 mt-1">Approved transactions</p>
           </div>
           <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-            <div className="flex items-center justify-between"><p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Paying Clients</p><Users size={18} className="text-orange-600" /></div>
-            <p className="text-2xl font-bold text-gray-900 mt-2">{totals.clients}</p>
-            <p className="text-xs text-gray-500 mt-1">Unique customers</p>
+            <div className="flex items-center justify-between"><p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Paying Accounts</p><Users size={18} className="text-orange-600" /></div>
+            <p className="text-2xl font-bold text-gray-900 mt-2">{totals.clients + totals.companies}</p>
+            <p className="text-xs text-gray-500 mt-1">{totals.clients} client{totals.clients === 1 ? '' : 's'} · {totals.companies} compan{totals.companies === 1 ? 'y' : 'ies'}</p>
           </div>
         </div>
 
@@ -264,7 +351,10 @@ export default function AdminRevenue() {
           <button onClick={() => setView('client')} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition ${view === 'client' ? 'bg-gray-900 text-white shadow-sm' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'}`}>
             <Users size={16} /> Client Wise
           </button>
-          {(selectedDay || selectedClient || searchTerm) && (
+          <button onClick={() => setView('company')} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition ${view === 'company' ? 'bg-gray-900 text-white shadow-sm' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'}`}>
+            <Building2 size={16} /> Company Wise
+          </button>
+          {(selectedDay || selectedClient || selectedCompany || searchTerm) && (
             <button onClick={clearFilters} className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 transition">
               <X size={14} /> Clear filters
             </button>
@@ -276,6 +366,11 @@ export default function AdminRevenue() {
           )}
           {selectedClient && (
             <span className="text-xs font-bold text-gray-600 bg-white border border-gray-200 px-3 py-2 rounded-xl">Client: {selectedClient}</span>
+          )}
+          {selectedCompany && (
+            <span className="text-xs font-bold text-gray-600 bg-white border border-gray-200 px-3 py-2 rounded-xl">
+              Company: {byCompany.find((row) => row.key === selectedCompany)?.companyName || selectedCompany}
+            </span>
           )}
         </div>
 
@@ -360,7 +455,7 @@ export default function AdminRevenue() {
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <div>
                 <h2 className="font-bold text-gray-900">Client Wise Revenue</h2>
-                <p className="text-xs text-gray-500">Total received income per client (highest first)</p>
+                <p className="text-xs text-gray-500">Individual client plans only, highest first</p>
               </div>
               <Users size={18} className="text-gray-400" />
             </div>
@@ -378,8 +473,8 @@ export default function AdminRevenue() {
                 <tbody className="divide-y divide-gray-100">
                   {byClient.map((client) => (
                     <tr
-                      key={client.email}
-                      onClick={() => { setSelectedClient(client.email); setSearchTerm(''); }}
+                      key={client.key}
+                      onClick={() => { setSelectedClient(client.email); setSelectedCompany(null); setSearchTerm(''); }}
                       className={`cursor-pointer transition ${selectedClient === client.email ? 'bg-emerald-50' : 'hover:bg-gray-50'}`}
                     >
                       <td className="px-6 py-3 font-medium text-gray-900">{client.email}</td>
@@ -391,6 +486,52 @@ export default function AdminRevenue() {
                   ))}
                   {byClient.length === 0 && (
                     <tr><td colSpan={5} className="px-6 py-10 text-center text-gray-500">No approved payments yet.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* COMPANY WISE */}
+        {view === 'company' && (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-8">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h2 className="font-bold text-gray-900">Company Wise Revenue</h2>
+                <p className="text-xs text-gray-500">Approved company plan slips per company (highest first)</p>
+              </div>
+              <Building2 size={18} className="text-gray-400" />
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-gray-50 text-gray-600">
+                  <tr>
+                    <th className="px-6 py-3 font-medium">Company</th>
+                    <th className="px-6 py-3 font-medium">Email</th>
+                    <th className="px-6 py-3 font-medium">Plans</th>
+                    <th className="px-6 py-3 font-medium">Payments</th>
+                    <th className="px-6 py-3 font-medium">Last Received</th>
+                    <th className="px-6 py-3 font-medium text-right">Total Revenue</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {byCompany.map((company) => (
+                    <tr
+                      key={company.key}
+                      onClick={() => { setSelectedCompany(company.key); setSelectedClient(null); setSearchTerm(''); }}
+                      className={`cursor-pointer transition ${selectedCompany === company.key ? 'bg-emerald-50' : 'hover:bg-gray-50'}`}
+                    >
+                      <td className="px-6 py-3 font-medium text-gray-900">{company.companyName || company.email}</td>
+                      <td className="px-6 py-3 text-gray-500">{company.email || '—'}</td>
+                      <td className="px-6 py-3 text-xs text-blue-600 font-semibold">{company.packages.join(', ')}</td>
+                      <td className="px-6 py-3 text-gray-600">{company.count}</td>
+                      <td className="px-6 py-3 text-gray-500 whitespace-nowrap">{new Date(company.lastDate).toLocaleDateString()}</td>
+                      <td className="px-6 py-3 font-bold text-emerald-700 text-right whitespace-nowrap">{money(company.total)}</td>
+                    </tr>
+                  ))}
+                  {byCompany.length === 0 && (
+                    <tr><td colSpan={6} className="px-6 py-10 text-center text-gray-500">No approved company slips yet.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -411,7 +552,7 @@ export default function AdminRevenue() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
               <input
                 type="text"
-                placeholder="Search email, package or transaction ID..."
+                placeholder="Search email, company, package or transaction ID..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full sm:w-80 pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-emerald-500 bg-white text-sm"
@@ -423,7 +564,8 @@ export default function AdminRevenue() {
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
                   <th className="px-6 py-3 font-medium">Received Date</th>
-                  <th className="px-6 py-3 font-medium">Client</th>
+                  <th className="px-6 py-3 font-medium">Client / Company</th>
+                  <th className="px-6 py-3 font-medium">Type</th>
                   <th className="px-6 py-3 font-medium">Package</th>
                   <th className="px-6 py-3 font-medium">Method</th>
                   <th className="px-6 py-3 font-medium">Transaction ID</th>
@@ -434,7 +576,18 @@ export default function AdminRevenue() {
                 {filtered.map((p) => (
                   <tr key={p.id} className="hover:bg-gray-50">
                     <td className="px-6 py-3 text-gray-500 whitespace-nowrap">{revenueDate(p).toLocaleDateString()}</td>
-                    <td className="px-6 py-3 font-medium text-gray-900">{p.user_email}</td>
+                    <td className="px-6 py-3">
+                      <p className="font-medium text-gray-900">{accountLabel(p)}</p>
+                      {p.source === 'company' && p.user_email && (
+                        <p className="text-[11px] text-gray-500">{p.user_email}</p>
+                      )}
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap">
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${p.source === 'company' ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                        {p.source === 'company' ? <Building2 size={11} /> : <Users size={11} />}
+                        {p.source === 'company' ? 'Company' : 'Client'}
+                      </span>
+                    </td>
                     <td className="px-6 py-3 text-blue-600 font-semibold whitespace-nowrap">{p.package_type}</td>
                     <td className="px-6 py-3 text-gray-600 whitespace-nowrap">{p.payment_method || '—'}</td>
                     <td className="px-6 py-3 text-xs text-gray-500 font-mono">{p.transaction_id || '—'}</td>
@@ -443,7 +596,7 @@ export default function AdminRevenue() {
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-10 text-center text-gray-500">
+                    <td colSpan={7} className="px-6 py-10 text-center text-gray-500">
                       <CheckCircle2 size={28} className="mx-auto mb-2 text-gray-300" />
                       No payment matches this filter.
                     </td>
@@ -455,8 +608,9 @@ export default function AdminRevenue() {
         </div>
 
         <p className="text-xs text-gray-400 mt-4">
-          Note: Revenue only counts payments with the <strong>Approved</strong> status. If a payment is
-          moved to Disapproved or In Checking it is removed from revenue automatically.
+          Note: Revenue only counts payments with the <strong>Approved</strong> status — client plans from
+          Payments plus company slips approved on Company Payments. If a payment is moved to Disapproved or
+          In Checking it is removed from revenue automatically.
         </p>
       </div>
     </div>
