@@ -472,7 +472,7 @@ export default function Dashboard() {
               <p className="text-sm font-bold text-indigo-900">{settings?.job_fields_heading || 'Search Professionals by Field'}</p>
               <p className="text-xs text-indigo-700">Choose your field to see and connect with other professionals in the same area.</p>
             </div>
-            <JobFieldsDropdown variant="light" label="Your profession" />
+            <JobFieldsDropdown variant="light" label={settings?.profession_heading || 'Your profession'} />
           </div>
         )}
 

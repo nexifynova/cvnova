@@ -75,10 +75,11 @@ export default function Home() {
 
           <div className="flex-1 relative w-full max-w-lg lg:max-w-none">
             
-            {/* Golden Offer Circle — rises up over the bottom border like a sun.
+            {/* Golden Offer Circle — rises from below the banner, settles ON TOP
+                of the image (overlapping it), holds for a few seconds, then sinks.
                 Admin can disable it entirely from Settings → Branding. */}
             {settings?.golden_circle_enabled !== false && (
-              <div className="pointer-events-none absolute inset-x-0 -bottom-12 z-20 flex justify-center sm:-bottom-16 lg:-bottom-18">
+              <div className="pointer-events-none absolute inset-x-0 bottom-6 z-30 flex justify-center sm:bottom-8 lg:bottom-10">
                 <Link
                   href="/payment"
                   aria-label="Special offer — buy CV packages"

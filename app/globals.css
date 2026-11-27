@@ -12,29 +12,36 @@ body {
 }
 
 /* --- GOLDEN OFFER CIRCLE (landing hero "rising sun") ------------------- */
-/* The "Special Offer" badge rises up over the bottom border of the hero,
-   parks halfway across it for a few seconds, then sinks back down and loops.
-   Position (bottom offset) comes from the component; only the vertical
-   translate + fade is animated here. */
+/* The "Special Offer" badge rises from below the hero banner and comes to
+   rest ON TOP of the banner image (overlapping it), pauses there for a few
+   seconds with a subtle "wink" pulse, then sinks back down out of view.
+   The resting position (bottom offset) comes from the component; only the
+   vertical translate + fade + pulse is animated here. */
 @keyframes golden-sun-rise {
   0% {
-    transform: translateY(85%);
+    transform: translateY(150%) scale(0.9);
     opacity: 0;
   }
-  15% {
-    transform: translateY(0%);
+  12% {
+    transform: translateY(0%) scale(1.04);
     opacity: 1;
   }
+  16% {
+    transform: translateY(0%) scale(0.98);
+  }
+  20% {
+    transform: translateY(0%) scale(1);
+  }
   60% {
-    transform: translateY(0%);
+    transform: translateY(0%) scale(1);
     opacity: 1;
   }
   85% {
-    transform: translateY(85%);
+    transform: translateY(150%) scale(0.9);
     opacity: 0;
   }
   100% {
-    transform: translateY(85%);
+    transform: translateY(150%) scale(0.9);
     opacity: 0;
   }
 }

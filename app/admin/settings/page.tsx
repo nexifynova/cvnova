@@ -37,6 +37,7 @@ function SettingsContent() {
     show_listed_companies: true,
     show_company_inbox: true, golden_circle_enabled: true,
     job_fields_heading: 'Search Professionals by Field',
+    profession_heading: 'Your profession',
   });
 
   useEffect(() => {
@@ -435,6 +436,18 @@ function SettingsContent() {
               />
               <p className="mt-1 text-xs text-gray-500">This heading appears above the field dropdown on the candidate dashboard.</p>
             </div>
+            <div className="mb-5">
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Profession Dropdown Label</label>
+              <input
+                type="text"
+                name="profession_heading"
+                value={settings.profession_heading || ''}
+                onChange={handleChange}
+                placeholder="Your profession"
+                className="w-full max-w-lg px-4 py-2 rounded-lg border"
+              />
+              <p className="mt-1 text-xs text-gray-500">The small label shown directly above the &quot;Select your profession&quot; dropdown on the candidate dashboard. It is displayed in uppercase.</p>
+            </div>
             <div className="space-y-3">
               {[
                 { key: 'show_job_fields_landing', title: 'Landing Page Dropdown', desc: 'Show the job-field dropdown in the home page hero.' },
@@ -442,6 +455,7 @@ function SettingsContent() {
                 { key: 'show_jobs_on_dashboard', title: 'Jobs on Dashboard', desc: 'Show the latest open roles published by companies on the candidate dashboard.' },
                 { key: 'show_listed_companies', title: 'Show Listed Companies', desc: 'Show the "Listed Companies" box (company names + chat IDs) beside the latest jobs on the candidate dashboard.' },
                 { key: 'show_company_inbox', title: 'Company Inbox', desc: 'Show the "Company Inbox" (recruiter messages) section on the candidate dashboard.' },
+                { key: 'golden_circle_enabled', title: 'Golden Circle Animation', desc: 'Enable/disable the rising golden "Special Offer" circle over the landing page hero banner.' },
                 { key: 'enable_company_chat', title: 'Company Chat', desc: 'Let companies message matching candidates from their portal and show their company chat ID.' },
                 { key: 'show_company_portal', title: 'Recruiter / Company Portal Button', desc: 'Show the "Recruiter? Company portal" button and the "For Companies" link in the site navigation.' },
               ].map((item) => (

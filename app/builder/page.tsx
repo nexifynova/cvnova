@@ -531,27 +531,6 @@ export default function Builder() {
             ))}
           </div>
 
-          <h1 className="text-xl font-bold mb-4 border-b pb-2">Professional Summary</h1>
-          <div className="mb-8">
-            <textarea name="summary" value={formData.summary} onChange={handleChange} rows={3} className="w-full px-3 py-2 rounded-lg border text-sm resize-none"></textarea>
-            <button type="button" onClick={handleGenerateAI} disabled={isGenerating} className="mt-2 flex items-center gap-1.5 text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-blue-600 px-3 py-1.5 rounded-full disabled:opacity-50">
-              {isGenerating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} {isGenerating ? 'Generating...' : 'Generate with AI'}
-            </button>
-          </div>
-
-          <div className="flex justify-between items-center mb-4 border-b pb-2">
-            <h1 className="text-xl font-bold">Skills</h1>
-            <button onClick={() => addArrayItem('skills', '')} className="text-blue-600 text-sm font-bold flex items-center gap-1"><Plus size={16} /> Add</button>
-          </div>
-          <div className="space-y-2 mb-8">
-            {formData.skills.map((skill, index) => (
-              <div key={index} className="flex gap-2">
-                <input type="text" value={skill} onChange={(e) => handleArrayChange('skills', index, null, e.target.value)} className="flex-1 px-3 py-2 rounded-lg border text-sm" />
-                <button onClick={() => removeArrayItem('skills', index)} className="text-red-500 p-2"><Trash2 size={18} /></button>
-              </div>
-            ))}
-          </div>
-
           <div className="flex justify-between items-center mb-4 border-b pb-2">
             <h1 className="text-xl font-bold">Experience</h1>
             <button onClick={() => addArrayItem('experience', { role: '', company: '', duration: '', desc: '' })} className="text-blue-600 text-sm font-bold flex items-center gap-1"><Plus size={16} /> Add</button>
@@ -651,6 +630,32 @@ export default function Builder() {
                   <input type="text" placeholder="Role / Company" value={ref.role} onChange={(e) => handleArrayChange('references', index, 'role', e.target.value)} className="px-2 py-1.5 border rounded text-sm w-full" />
                   <input type="text" placeholder="Contact (Email/Phone)" value={ref.contact} onChange={(e) => handleArrayChange('references', index, 'contact', e.target.value)} className="px-2 py-1.5 border rounded text-sm w-full" />
                 </div>
+              </div>
+            ))}
+          </div>
+          {/* Professional Summary & Skills deliberately sit at the BOTTOM of the
+              form so users fill Education / Experience / Interests first.
+              The CV preview template order is untouched. */}
+          <h1 className="text-xl font-bold mb-4 border-b pb-2 mt-8">Professional Summary</h1>
+          <div className="mb-8">
+            <textarea name="summary" value={formData.summary} onChange={handleChange} rows={3} className="w-full px-3 py-2 rounded-lg border text-sm resize-none"></textarea>
+            <p className="mt-2 text-[11px] leading-relaxed text-gray-500">
+              You may write your Professional Summary and Skills by yourself, <span className="font-semibold text-gray-700">OR</span> click &quot;Generate with AI&quot; to let the AI generate them for you based on the other details you have filled in.
+            </p>
+            <button type="button" onClick={handleGenerateAI} disabled={isGenerating} className="mt-2 flex items-center gap-1.5 text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-blue-600 px-3 py-1.5 rounded-full disabled:opacity-50">
+              {isGenerating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} {isGenerating ? 'Generating...' : 'Generate with AI'}
+            </button>
+          </div>
+
+          <div className="flex justify-between items-center mb-4 border-b pb-2">
+            <h1 className="text-xl font-bold">Skills</h1>
+            <button onClick={() => addArrayItem('skills', '')} className="text-blue-600 text-sm font-bold flex items-center gap-1"><Plus size={16} /> Add</button>
+          </div>
+          <div className="space-y-2 mb-8">
+            {formData.skills.map((skill, index) => (
+              <div key={index} className="flex gap-2">
+                <input type="text" value={skill} onChange={(e) => handleArrayChange('skills', index, null, e.target.value)} className="flex-1 px-3 py-2 rounded-lg border text-sm" />
+                <button onClick={() => removeArrayItem('skills', index)} className="text-red-500 p-2"><Trash2 size={18} /></button>
               </div>
             ))}
           </div>
