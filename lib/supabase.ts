@@ -199,32 +199,10 @@ export const checkUserLimit = async (_userEmail?: string) => {
   return { allowed: true, isPro: false, reason: 'free' as const };
 };
 
-// Increment Count - Fixed Version
-export const incrementUserCount = async (_userEmail?: string) => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
-
-  // Directly increment using RPC (Better approach if you have a function)
-  // For now, let's fetch and update
-  const { data: profile, error: fetchError } = await supabase
-    .from('user_profiles')
-    .select('free_cv_count')
-    .eq('id', user.id)
-    .single();
-
-  if (fetchError || !profile) {
-    console.error("Fetch Profile Error:", fetchError);
-    return;
-  }
-
-  const currentCount = profile.free_cv_count || 0;
-  const { error } = await supabase
-    .from('user_profiles')
-    .update({ free_cv_count: currentCount + 1 })
-    .eq('id', user.id);
-
-  if (error) console.error("Increment Error:", error);
-};
+// NOTE: CV/document usage is incremented server-side by the
+// `increment_free_cv_count()` trigger on `generated_documents`. The old
+// app-side `incrementUserCount()` has been removed — calling it here as well
+// counted every CV twice (trigger + app). Keep a single source of truth.
 
 // Phase 2 — Job/Fields: CV builder ka "Job Title" job_fields table mein upsert
 // karta hai (case-insensitive dedup DB par hota hai) aur current user ki

@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { Sparkles, ArrowLeft, Download, Printer, Plus, Trash2, Loader2, Camera, Upload, RefreshCw, Save, Lock, Crown } from 'lucide-react';
 import Link from 'next/link';
-import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount, authedFetch, fetchDocumentRecord, updateDocumentRecord, ownsDocument, saveUserJobField } from '@/lib/supabase';
+import { supabase, saveDocumentRecord, checkUserLimit, authedFetch, fetchDocumentRecord, updateDocumentRecord, ownsDocument, saveUserJobField } from '@/lib/supabase';
 import { downloadAsWord, downloadAsPDF } from '@/lib/download-utils';
 import CVTemplateRenderer from '@/components/cv/CVTemplateRenderer';
 import { toText } from '@/components/cv/shared';
@@ -381,7 +381,6 @@ export default function Builder() {
           templateTier: getTemplate(template).tier,
         });
 
-        await incrementUserCount(user.email);
         setLastSavedSnapshot(snapshot);
       }
 

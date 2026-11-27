@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Printer, Download, Loader2, RefreshCw, Info, Sparkles, Save } from 'lucide-react';
 import Link from 'next/link';
-import { supabase, saveDocumentRecord, checkUserLimit, incrementUserCount, fetchDocumentRecord, updateDocumentRecord, ownsDocument } from '@/lib/supabase';
+import { supabase, saveDocumentRecord, checkUserLimit, fetchDocumentRecord, updateDocumentRecord, ownsDocument } from '@/lib/supabase';
 import { downloadAsWord, downloadAsPDF } from '@/lib/download-utils';
 import { toText } from '@/components/cv/shared';
 
@@ -147,11 +147,9 @@ export default function CoverLetter() {
   const handleAction = async (actionType: 'print' | 'save') => {
     const { data: { user } } = await supabase.auth.getUser();
     let userEmail = formData.email;
-    let isLoggedIn = false;
 
     if (user && user.email) {
       userEmail = user.email;
-      isLoggedIn = true;
 
       // Edit mode updates the existing document — no limit check needed.
       if (!editingId) {
@@ -200,7 +198,6 @@ export default function CoverLetter() {
           fullData: formData,
         });
 
-        if (isLoggedIn) await incrementUserCount(userEmail);
         setLastSavedSnapshot(snapshot);
       }
 

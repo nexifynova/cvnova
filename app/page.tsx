@@ -75,18 +75,26 @@ export default function Home() {
 
           <div className="flex-1 relative w-full max-w-lg lg:max-w-none">
             
-            {/* Heart Shape Offer Badge */}
-            <Link href="/payment" className="absolute -top-12 -right-8 z-30 group w-40 h-40 flex items-center justify-center cursor-pointer">
-              <div className="absolute inset-0 bg-gradient-to-br from-yellow-400 to-orange-500 rotate-45 rounded-tl-full rounded-tr-full rounded-br-full rounded-bl-full transform group-hover:scale-110 transition-transform shadow-[0_0_40px_rgba(250,204,21,0.9)]"></div>
-              
-              <div className="relative z-10 -mt-4 flex flex-col items-center justify-center text-black text-center">
-                <span className="text-[12px] uppercase font-black tracking-widest leading-none">Special</span>
-                <span className="text-xl font-black leading-none mb-1">Offer</span>
-                <span className="text-xs font-bold leading-none">Get {settings?.cvs_per_price || 5} CVs</span>
-                <span className="text-[10px] font-bold leading-none mt-1">in ${settings?.additional_cv_price || 1.11}</span>
-                <span className="text-[10px] bg-black text-white px-2 py-0.5 rounded mt-1.5">Buy Now</span>
+            {/* Golden Offer Circle — rises up over the bottom border like a sun.
+                Admin can disable it entirely from Settings → Branding. */}
+            {settings?.golden_circle_enabled !== false && (
+              <div className="pointer-events-none absolute inset-x-0 -bottom-12 z-20 flex justify-center sm:-bottom-16 lg:-bottom-18">
+                <Link
+                  href="/payment"
+                  aria-label="Special offer — buy CV packages"
+                  className="golden-sun pointer-events-auto group relative flex h-24 w-24 items-center justify-center rounded-full cursor-pointer sm:h-32 sm:w-32 lg:h-36 lg:w-36"
+                >
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 shadow-[0_0_40px_rgba(250,204,21,0.9)] transform group-hover:scale-105 transition-transform" />
+                  <div className="relative z-10 flex flex-col items-center justify-center px-2 text-center text-black">
+                    <span className="text-[9px] uppercase font-black tracking-widest leading-none sm:text-[11px]">Special</span>
+                    <span className="text-lg font-black leading-none mb-0.5 sm:text-xl">Offer</span>
+                    <span className="text-[9px] font-bold leading-none sm:text-xs">Get {settings?.cvs_per_price || 5} CVs</span>
+                    <span className="text-[8px] font-bold leading-none mt-0.5 sm:text-[10px]">in ${settings?.additional_cv_price || 1.11}</span>
+                    <span className="text-[8px] bg-black text-white px-2 py-0.5 rounded mt-1 sm:text-[10px]">Buy Now</span>
+                  </div>
+                </Link>
               </div>
-            </Link>
+            )}
 
             <div className="relative rounded-3xl overflow-hidden border border-white/10 bg-white/5 backdrop-blur-xl shadow-2xl p-2 transform rotate-2 hover:rotate-0 transition-transform duration-500">
               {heroImages.length > 0 ? (

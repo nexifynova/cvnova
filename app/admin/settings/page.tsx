@@ -35,6 +35,8 @@ function SettingsContent() {
     show_job_fields_landing: true, show_job_fields_dashboard: true,
     show_jobs_on_dashboard: true, enable_company_chat: true, show_company_portal: true,
     show_listed_companies: true,
+    show_company_inbox: true, golden_circle_enabled: true,
+    job_fields_heading: 'Search Professionals by Field',
   });
 
   useEffect(() => {
@@ -212,6 +214,21 @@ function SettingsContent() {
                   <span className="text-xs font-semibold text-gray-500 mt-2">Add Image</span>
                   <input type="file" accept="image/*" className="hidden" onChange={handleHeroUpload} />
                 </label>
+              </div>
+              <div className="mt-5 flex items-center justify-between gap-4 rounded-xl border border-gray-100 bg-gray-50 p-4">
+                <div>
+                  <p className="text-sm font-bold text-gray-900">Golden Offer Circle Animation</p>
+                  <p className="text-xs text-gray-500">Show the rising/sinking golden &quot;Special Offer&quot; circle over the hero slider. Turn off to hide it completely.</p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={!!settings.golden_circle_enabled}
+                  onClick={() => setSettings({ ...settings, golden_circle_enabled: !settings.golden_circle_enabled })}
+                  className={`relative inline-flex h-7 w-12 flex-shrink-0 items-center rounded-full transition ${settings.golden_circle_enabled ? 'bg-blue-600' : 'bg-gray-300'}`}
+                >
+                  <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${settings.golden_circle_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
               </div>
             </div>
           </div>
@@ -406,12 +423,25 @@ function SettingsContent() {
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <h2 className="text-lg font-bold mb-1 border-b pb-2 flex items-center gap-2"><Briefcase size={20} className="text-indigo-600"/> Job Fields &amp; Jobs Visibility</h2>
             <p className="text-xs text-gray-500 mb-5 mt-2">Control where the &quot;Select your field&quot; dropdown appears and which Phase 2 job features are live. The chat room field filter is always available.</p>
+            <div className="mb-5">
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Search Professionals Heading</label>
+              <input
+                type="text"
+                name="job_fields_heading"
+                value={settings.job_fields_heading || ''}
+                onChange={handleChange}
+                placeholder="Search Professionals by Field"
+                className="w-full max-w-lg px-4 py-2 rounded-lg border"
+              />
+              <p className="mt-1 text-xs text-gray-500">This heading appears above the field dropdown on the candidate dashboard.</p>
+            </div>
             <div className="space-y-3">
               {[
                 { key: 'show_job_fields_landing', title: 'Landing Page Dropdown', desc: 'Show the job-field dropdown in the home page hero.' },
                 { key: 'show_job_fields_dashboard', title: 'Dashboard Dropdown', desc: 'Show the job-field dropdown on the user dashboard.' },
                 { key: 'show_jobs_on_dashboard', title: 'Jobs on Dashboard', desc: 'Show the latest open roles published by companies on the candidate dashboard.' },
                 { key: 'show_listed_companies', title: 'Show Listed Companies', desc: 'Show the "Listed Companies" box (company names + chat IDs) beside the latest jobs on the candidate dashboard.' },
+                { key: 'show_company_inbox', title: 'Company Inbox', desc: 'Show the "Company Inbox" (recruiter messages) section on the candidate dashboard.' },
                 { key: 'enable_company_chat', title: 'Company Chat', desc: 'Let companies message matching candidates from their portal and show their company chat ID.' },
                 { key: 'show_company_portal', title: 'Recruiter / Company Portal Button', desc: 'Show the "Recruiter? Company portal" button and the "For Companies" link in the site navigation.' },
               ].map((item) => (

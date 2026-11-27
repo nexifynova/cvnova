@@ -107,6 +107,24 @@ export default function Dashboard() {
     const { data: docs } = await supabase.from('generated_documents').select('*').eq('email', user.email).order('created_at', { ascending: false });
     if (docs) setDocuments(docs);
 
+    // 🚨 SELF-HEAL the usage counter: "used" must equal the documents the user
+    // actually owns plus the documents they have deleted. This repairs any
+    // historical double-counting so "X / limit" always matches "My Documents".
+    if (profileData && docs) {
+      const deletedCount = Number(profileData.deleted_documents_count) || 0;
+      const expectedUsed = docs.length + deletedCount;
+      if ((Number(profileData.free_cv_count) || 0) !== expectedUsed) {
+        const { error: countHealError } = await supabase
+          .from('user_profiles')
+          .update({ free_cv_count: expectedUsed })
+          .eq('id', user.id);
+        if (!countHealError) {
+          profileData.free_cv_count = expectedUsed;
+          setProfile({ ...profileData });
+        }
+      }
+    }
+
     const { data: pays } = await supabase.from('payments').select('*').eq('user_id', user.id).eq('status', 'approved').order('created_at', { ascending: false });
     if (pays) setPayments(pays);
 
@@ -120,16 +138,18 @@ export default function Dashboard() {
     router.push('/');
   };
 
-  const handleDeleteDocument = async (docId: string, currentUsed: number) => {
-    if (!confirm("Are you sure you want to delete this document? Your usage limit will be restored.")) return;
+  const handleDeleteDocument = async (docId: string) => {
+    if (!confirm("Are you sure you want to delete this document? It will be removed from your list, but it still counts toward your used limit.")) return;
     try {
       const { error } = await supabase.from('generated_documents').delete().eq('id', docId);
       if (error) throw error;
-      const newCount = Math.max(0, currentUsed - 1);
-      await supabase.from('user_profiles').update({ free_cv_count: newCount }).eq('id', user.id);
+      // The used count is intentionally NOT reduced. We only remember how many
+      // documents were deleted so the dashboard can show a red badge.
+      const newDeleted = (Number(profile?.deleted_documents_count) || 0) + 1;
+      await supabase.from('user_profiles').update({ deleted_documents_count: newDeleted }).eq('id', user.id);
       setDocuments(documents.filter(d => d.id !== docId));
-      setProfile({ ...profile, free_cv_count: newCount });
-      alert("Document deleted and usage restored.");
+      setProfile({ ...profile, deleted_documents_count: newDeleted });
+      alert("Document deleted. It still counts toward your used limit.");
     } catch (error: any) { alert("Error deleting document: " + error.message); }
   };
 
@@ -449,10 +469,10 @@ export default function Dashboard() {
         {settings?.show_job_fields_dashboard !== false && (
           <div className="mb-8 flex flex-col gap-3 rounded-2xl border border-indigo-100 bg-indigo-50 p-4 sm:flex-row sm:items-end sm:justify-between sm:p-5">
             <div>
-              <p className="text-sm font-bold text-indigo-900">Find people in your field</p>
-              <p className="text-xs text-indigo-700">Pick a field to open the chat room with matching professionals.</p>
+              <p className="text-sm font-bold text-indigo-900">{settings?.job_fields_heading || 'Search Professionals by Field'}</p>
+              <p className="text-xs text-indigo-700">Choose your field to see and connect with other professionals in the same area.</p>
             </div>
-            <JobFieldsDropdown variant="light" label="Your field" />
+            <JobFieldsDropdown variant="light" label="Your profession" />
           </div>
         )}
 
@@ -603,6 +623,11 @@ export default function Dashboard() {
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <p className="text-sm text-gray-500 mb-1 flex items-center gap-2"><FileText size={16}/> CVs Used</p>
             <p className="text-3xl font-bold text-gray-900">{profile?.free_cv_count || 0} / {currentLimit}</p>
+            {(Number(profile?.deleted_documents_count) || 0) > 0 && (
+              <p className="mt-2 inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-600">
+                <Trash2 size={11} /> {profile.deleted_documents_count} document{Number(profile.deleted_documents_count) === 1 ? '' : 's'} deleted
+              </p>
+            )}
             {account?.ats && (
               <p className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${account.ats.unlimited ? 'bg-emerald-100 text-emerald-700' : account.ats.exhausted ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
                 <ShieldCheck size={11} /> Blue ATS {account.ats.unlimited ? 'unlimited' : `${account.ats.used}/${account.ats.limit}`}
@@ -659,6 +684,7 @@ export default function Dashboard() {
           </p>
         </div>
 
+        {settings?.show_company_inbox !== false && (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
             <div className="flex items-center gap-2"><MessageSquare className="text-purple-600" size={20} /><h2 className="text-lg font-bold text-gray-900">Company Inbox</h2></div>
@@ -707,6 +733,7 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+        )}
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-10">
           <div className="p-6 border-b border-gray-100 flex items-center justify-between"><div className="flex items-center gap-2"><CreditCard className="text-blue-600" size={20} /><h2 className="text-lg font-bold text-gray-900">My Payment History</h2></div><Link href="/payment" className="text-sm font-bold text-blue-600 hover:underline">Upgrade Now</Link></div>
@@ -773,7 +800,7 @@ export default function Dashboard() {
                       <Link href={`/view/${doc.id}`} target="_blank" className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium bg-blue-50 px-3 py-1.5 rounded-lg transition"><ExternalLink size={14} /> View</Link>
                       <button onClick={() => openShareModal(doc)} className={`inline-flex items-center gap-1 font-medium px-3 py-1.5 rounded-lg transition ${doc.is_shareable && doc.share_code ? 'text-green-600 bg-green-50 hover:bg-green-100' : 'text-gray-600 bg-gray-100 hover:bg-gray-200'}`} title="Share Document"><Share2 size={14} /> Share</button>
                       <button onClick={() => { setEmailingDoc(doc); setEmailTo(''); }} className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-800 font-medium bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg transition" title="Email Document"><Mail size={14} /> Email</button>
-                      <button onClick={() => handleDeleteDocument(doc.id, profile?.free_cv_count || 0)} className="inline-flex items-center gap-1 text-red-600 hover:text-red-800 font-medium bg-red-50 px-3 py-1.5 rounded-lg transition" title="Delete Document"><Trash2 size={14} /> Delete</button>
+                      <button onClick={() => handleDeleteDocument(doc.id)} className="inline-flex items-center gap-1 text-red-600 hover:text-red-800 font-medium bg-red-50 px-3 py-1.5 rounded-lg transition" title="Delete Document"><Trash2 size={14} /> Delete</button>
                     </td>
                   </tr>
                 ))}

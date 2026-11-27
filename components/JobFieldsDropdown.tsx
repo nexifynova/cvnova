@@ -118,7 +118,7 @@ export default function JobFieldsDropdown({
                 ? 'Loading fields…'
                 : fields.length === 0
                   ? 'No fields yet — save a CV to create one'
-                  : 'Choose a field'}
+                  : 'Select your profession'}
             </option>
           )}
           {fields.map((field) => (

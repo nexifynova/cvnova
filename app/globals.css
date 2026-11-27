@@ -11,6 +11,45 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* --- GOLDEN OFFER CIRCLE (landing hero "rising sun") ------------------- */
+/* The "Special Offer" badge rises up over the bottom border of the hero,
+   parks halfway across it for a few seconds, then sinks back down and loops.
+   Position (bottom offset) comes from the component; only the vertical
+   translate + fade is animated here. */
+@keyframes golden-sun-rise {
+  0% {
+    transform: translateY(85%);
+    opacity: 0;
+  }
+  15% {
+    transform: translateY(0%);
+    opacity: 1;
+  }
+  60% {
+    transform: translateY(0%);
+    opacity: 1;
+  }
+  85% {
+    transform: translateY(85%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(85%);
+    opacity: 0;
+  }
+}
+
+.golden-sun {
+  animation: golden-sun-rise 9s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .golden-sun {
+    animation: none;
+  }
+}
+
 /* --- PROFESSIONAL PRINT OPTIMIZATIONS FOR A4 --- */
 @media print {
   @page {
