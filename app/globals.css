@@ -11,48 +11,173 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* --- GOLDEN OFFER CIRCLE (landing hero "rising sun") ------------------- */
-/* The "Special Offer" badge rises from below the hero banner and comes to
-   rest ON TOP of the banner image (overlapping it), pauses there for a few
-   seconds with a subtle "wink" pulse, then sinks back down out of view.
-   The resting position (bottom offset) comes from the component; only the
-   vertical translate + fade + pulse is animated here. */
-@keyframes golden-sun-rise {
+/* --- GOLDEN OFFER CIRCLE (landing hero "sweeping badge") ---------------- */
+/* The "Special Offer" badge launches from just under the navbar profile
+   dropdown (top RIGHT of the page), sweeps DOWN and to the LEFT along a
+   curved / sine-like arc, rests ON TOP of the banner image for a few
+   seconds with a subtle "wink" pulse, then retraces the very same arc back
+   up to the top right. The resting position (bottom offset + horizontal
+   centering) comes from the component, so the badge always lands exactly on
+   the banner at every breakpoint; only the offset travel is animated here. */
+
+.golden-sun-path {
+  /* Launch point relative to the resting spot:
+     --sun-dx = how far right of the resting spot the badge starts,
+     --sun-dy = how far ABOVE the resting spot the badge starts.
+     Both scale down on small screens so the arc stays inside the viewport. */
+  --sun-dx: clamp(70px, 19vw, 330px);
+  --sun-dy: clamp(220px, 52vh, 560px);
+  animation: golden-sun-sweep 9s linear infinite;
+  will-change: transform, opacity;
+}
+
+/* Travel path sampled from a quadratic curve: the badge drops steeply first,
+   then glides sideways to the left before levelling out on the banner. The
+   return leg is the exact mirror of the descent. */
+@keyframes golden-sun-sweep {
   0% {
-    transform: translateY(150%) scale(0.9);
+    transform: translate(var(--sun-dx), calc(var(--sun-dy) * -1));
     opacity: 0;
   }
-  12% {
-    transform: translateY(0%) scale(1.04);
+  6.5% {
+    transform: translate(calc(var(--sun-dx) * 0.98), calc(var(--sun-dy) * -0.76));
     opacity: 1;
   }
-  16% {
-    transform: translateY(0%) scale(0.98);
+  13% {
+    transform: translate(calc(var(--sun-dx) * 0.91), calc(var(--sun-dy) * -0.55));
+    opacity: 1;
   }
   20% {
-    transform: translateY(0%) scale(1);
-  }
-  60% {
-    transform: translateY(0%) scale(1);
+    transform: translate(calc(var(--sun-dx) * 0.8), calc(var(--sun-dy) * -0.38));
     opacity: 1;
   }
-  85% {
-    transform: translateY(150%) scale(0.9);
-    opacity: 0;
+  26.5% {
+    transform: translate(calc(var(--sun-dx) * 0.64), calc(var(--sun-dy) * -0.23));
+    opacity: 1;
+  }
+  33% {
+    transform: translate(calc(var(--sun-dx) * 0.44), calc(var(--sun-dy) * -0.12));
+    opacity: 1;
+  }
+  39.5% {
+    transform: translate(calc(var(--sun-dx) * 0.19), calc(var(--sun-dy) * -0.04));
+    opacity: 1;
+  }
+  46% {
+    transform: translate(0, 0);
+    opacity: 1;
+  }
+  70% {
+    transform: translate(0, 0);
+    opacity: 1;
+  }
+  74.3% {
+    transform: translate(calc(var(--sun-dx) * 0.19), calc(var(--sun-dy) * -0.04));
+    opacity: 1;
+  }
+  78.6% {
+    transform: translate(calc(var(--sun-dx) * 0.44), calc(var(--sun-dy) * -0.12));
+    opacity: 1;
+  }
+  82.9% {
+    transform: translate(calc(var(--sun-dx) * 0.64), calc(var(--sun-dy) * -0.23));
+    opacity: 1;
+  }
+  87.1% {
+    transform: translate(calc(var(--sun-dx) * 0.8), calc(var(--sun-dy) * -0.38));
+    opacity: 1;
+  }
+  91.4% {
+    transform: translate(calc(var(--sun-dx) * 0.91), calc(var(--sun-dy) * -0.55));
+    opacity: 1;
+  }
+  95.7% {
+    transform: translate(calc(var(--sun-dx) * 0.98), calc(var(--sun-dy) * -0.76));
+    opacity: 1;
   }
   100% {
-    transform: translateY(150%) scale(0.9);
+    transform: translate(var(--sun-dx), calc(var(--sun-dy) * -1));
     opacity: 0;
+  }
+}
+
+/* "Wink": the badge grows as it approaches, pops a touch bigger the instant
+   it lands (46%), settles into a calm hold, then shrinks again as it flies
+   back up to the dropdown. */
+@keyframes golden-sun-wink {
+  0% {
+    transform: scale(0.86);
+  }
+  20% {
+    transform: scale(0.9);
+  }
+  36% {
+    transform: scale(0.96);
+  }
+  46% {
+    transform: scale(1.08);
+  }
+  50% {
+    transform: scale(0.99);
+  }
+  54% {
+    transform: scale(1.04);
+  }
+  58%,
+  80% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(0.86);
   }
 }
 
 .golden-sun {
-  animation: golden-sun-rise 9s ease-in-out infinite;
-  will-change: transform, opacity;
+  animation: golden-sun-wink 9s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .golden-sun-path,
   .golden-sun {
+    animation: none;
+  }
+}
+
+/* --- "GENERATE WITH AI" CALLOUT (CV builder) --------------------------- */
+/* Yellow + blue pulsing halo around the AI helper block and a soft blink on
+   the instruction copy, so users clearly notice they can write the summary /
+   skills themselves OR let the AI draft them. */
+@keyframes ai-callout-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5), 0 0 8px 2px rgba(250, 204, 21, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 7px rgba(59, 130, 246, 0), 0 0 20px 6px rgba(250, 204, 21, 0.8);
+  }
+}
+
+@keyframes ai-callout-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.ai-glow {
+  animation: ai-callout-glow 1.8s ease-in-out infinite;
+}
+
+.ai-glow-text {
+  animation: ai-callout-blink 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-glow,
+  .ai-glow-text {
     animation: none;
   }
 }

@@ -633,18 +633,26 @@ export default function Builder() {
               </div>
             ))}
           </div>
+          {/* AI helper — sits directly under References and ABOVE the
+              Professional Summary heading so it is seen before the user
+              starts typing. The block glows and the copy blinks so it is
+              obvious they can either write the Summary/Skills themselves or
+              let the AI draft them. */}
+          <div className="ai-glow mt-8 mb-6 rounded-xl border border-amber-300 bg-amber-50/80 p-3">
+            <p className="ai-glow-text text-[11px] leading-relaxed text-gray-700">
+              You may write your Professional Summary and Skills by yourself, <span className="font-semibold text-gray-900">OR</span> click &quot;Generate with AI&quot; to let the AI generate them for you based on the other details you have filled in.
+            </p>
+            <button type="button" onClick={handleGenerateAI} disabled={isGenerating} className="ai-glow mt-2 flex items-center gap-1.5 text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-blue-600 px-3 py-1.5 rounded-full disabled:opacity-50">
+              {isGenerating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} {isGenerating ? 'Generating...' : 'Generate with AI'}
+            </button>
+          </div>
+
           {/* Professional Summary & Skills deliberately sit at the BOTTOM of the
               form so users fill Education / Experience / Interests first.
               The CV preview template order is untouched. */}
-          <h1 className="text-xl font-bold mb-4 border-b pb-2 mt-8">Professional Summary</h1>
+          <h1 className="text-xl font-bold mb-4 border-b pb-2">Professional Summary</h1>
           <div className="mb-8">
             <textarea name="summary" value={formData.summary} onChange={handleChange} rows={3} className="w-full px-3 py-2 rounded-lg border text-sm resize-none"></textarea>
-            <p className="mt-2 text-[11px] leading-relaxed text-gray-500">
-              You may write your Professional Summary and Skills by yourself, <span className="font-semibold text-gray-700">OR</span> click &quot;Generate with AI&quot; to let the AI generate them for you based on the other details you have filled in.
-            </p>
-            <button type="button" onClick={handleGenerateAI} disabled={isGenerating} className="mt-2 flex items-center gap-1.5 text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-blue-600 px-3 py-1.5 rounded-full disabled:opacity-50">
-              {isGenerating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} {isGenerating ? 'Generating...' : 'Generate with AI'}
-            </button>
           </div>
 
           <div className="flex justify-between items-center mb-4 border-b pb-2">

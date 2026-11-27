@@ -75,25 +75,30 @@ export default function Home() {
 
           <div className="flex-1 relative w-full max-w-lg lg:max-w-none">
             
-            {/* Golden Offer Circle — rises from below the banner, settles ON TOP
-                of the image (overlapping it), holds for a few seconds, then sinks.
-                Admin can disable it entirely from Settings → Branding. */}
+            {/* Golden Offer Circle — launches from just under the navbar's
+                profile dropdown (top right), sweeps down/left along an arc,
+                settles ON TOP of the banner image (overlapping it, above the
+                image but below the sticky navbar), holds for a few seconds
+                with a "wink", then retraces the arc back up. Admin can
+                disable it entirely from Settings → Branding. */}
             {settings?.golden_circle_enabled !== false && (
               <div className="pointer-events-none absolute inset-x-0 bottom-6 z-30 flex justify-center sm:bottom-8 lg:bottom-10">
-                <Link
-                  href="/payment"
-                  aria-label="Special offer — buy CV packages"
-                  className="golden-sun pointer-events-auto group relative flex h-24 w-24 items-center justify-center rounded-full cursor-pointer sm:h-32 sm:w-32 lg:h-36 lg:w-36"
-                >
-                  <div className="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 shadow-[0_0_40px_rgba(250,204,21,0.9)] transform group-hover:scale-105 transition-transform" />
-                  <div className="relative z-10 flex flex-col items-center justify-center px-2 text-center text-black">
-                    <span className="text-[9px] uppercase font-black tracking-widest leading-none sm:text-[11px]">Special</span>
-                    <span className="text-lg font-black leading-none mb-0.5 sm:text-xl">Offer</span>
-                    <span className="text-[9px] font-bold leading-none sm:text-xs">Get {settings?.cvs_per_price || 5} CVs</span>
-                    <span className="text-[8px] font-bold leading-none mt-0.5 sm:text-[10px]">in ${settings?.additional_cv_price || 1.11}</span>
-                    <span className="text-[8px] bg-black text-white px-2 py-0.5 rounded mt-1 sm:text-[10px]">Buy Now</span>
-                  </div>
-                </Link>
+                <div className="golden-sun-path">
+                  <Link
+                    href="/payment"
+                    aria-label="Special offer — buy CV packages"
+                    className="golden-sun pointer-events-auto group relative flex h-24 w-24 items-center justify-center rounded-full cursor-pointer sm:h-32 sm:w-32 lg:h-36 lg:w-36"
+                  >
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 shadow-[0_0_40px_rgba(250,204,21,0.9)] transform group-hover:scale-105 transition-transform" />
+                    <div className="relative z-10 flex flex-col items-center justify-center px-2 text-center text-black">
+                      <span className="text-[9px] uppercase font-black tracking-widest leading-none sm:text-[11px]">Special</span>
+                      <span className="text-lg font-black leading-none mb-0.5 sm:text-xl">Offer</span>
+                      <span className="text-[9px] font-bold leading-none sm:text-xs">Get {settings?.cvs_per_price || 5} CVs</span>
+                      <span className="text-[8px] font-bold leading-none mt-0.5 sm:text-[10px]">in ${settings?.additional_cv_price || 1.11}</span>
+                      <span className="text-[8px] bg-black text-white px-2 py-0.5 rounded mt-1 sm:text-[10px]">Buy Now</span>
+                    </div>
+                  </Link>
+                </div>
               </div>
             )}
 
