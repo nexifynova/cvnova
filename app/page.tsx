@@ -37,6 +37,37 @@ export default function Home() {
 
   const heroImages = settings.hero_images && settings.hero_images.length > 0 ? settings.hero_images : [];
 
+  /* Golden Circle admin controls (Settings → Branding):
+       golden_circle_enabled  – off = the badge is not rendered at all
+       golden_circle_movement – 0-100% of the curved sweep (0 = parked, no wink)
+       golden_circle_effect   – none | glow | star | pulse sparkle animation */
+  const goldenCircleOn = settings?.golden_circle_enabled !== false;
+  const goldenMoveRaw = Number(settings?.golden_circle_movement);
+  const goldenMove = Number.isFinite(goldenMoveRaw)
+    ? Math.min(100, Math.max(0, goldenMoveRaw))
+    : 100;
+  const goldenMoveFactor = goldenMove / 100;
+  // Short sweeps must not blink the badge out of existence, so the opacity at
+  // the launch point climbs as the travel distance shrinks (a full sweep still
+  // fades in from nothing at the far end of the arc).
+  const goldenLaunchOpacity = Math.max(0, 1 - goldenMove / 35);
+  const goldenEffect = ['none', 'glow', 'star', 'pulse'].includes(settings?.golden_circle_effect)
+    ? settings.golden_circle_effect
+    : 'glow';
+  const goldenEffectClass =
+    goldenEffect === 'star'
+      ? 'golden-effect-star'
+      : goldenEffect === 'pulse'
+        ? 'golden-effect-pulse'
+        : goldenEffect === 'none'
+          ? 'golden-effect-none'
+          : 'golden-effect-glow';
+  // "None" also drops the big yellow halo, leaving a plain circle.
+  const goldenHaloClass =
+    goldenEffect === 'none'
+      ? 'shadow-[0_6px_16px_rgba(0,0,0,0.35)]'
+      : 'shadow-[0_0_40px_rgba(250,204,21,0.9)]';
+
   return (
     <div className="min-h-screen bg-[#0B1120] text-white flex flex-col font-sans selection:bg-blue-500 selection:text-white">
       
@@ -79,17 +110,30 @@ export default function Home() {
                 profile dropdown (top right), sweeps down/left along an arc,
                 settles ON TOP of the banner image (overlapping it, above the
                 image but below the sticky navbar), holds for a few seconds
-                with a "wink", then retraces the arc back up. Admin can
-                disable it entirely from Settings → Branding. */}
-            {settings?.golden_circle_enabled !== false && (
+                with a "wink", then retraces the arc back up. Admin controls
+                the on/off switch, the sweep distance (0-100%) and the sparkle
+                effect from Settings → Branding. */}
+            {goldenCircleOn && (
               <div className="pointer-events-none absolute inset-x-0 bottom-6 z-30 flex justify-center sm:bottom-8 lg:bottom-10">
-                <div className="golden-sun-path">
+                <div
+                  className={`golden-sun-path${goldenMove <= 0 ? ' golden-sun-static' : ''}`}
+                  style={
+                    {
+                      '--sun-move': goldenMoveFactor,
+                      '--sun-launch-opacity': goldenLaunchOpacity,
+                    } as any
+                  }
+                >
                   <Link
                     href="/payment"
                     aria-label="Special offer — buy CV packages"
                     className="golden-sun pointer-events-auto group relative flex h-24 w-24 items-center justify-center rounded-full cursor-pointer sm:h-32 sm:w-32 lg:h-36 lg:w-36"
                   >
-                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 shadow-[0_0_40px_rgba(250,204,21,0.9)] transform group-hover:scale-105 transition-transform" />
+                    {/* Sparkle layer: sits between the travel/wink transforms and
+                        the artwork so the chosen effect never cancels them. */}
+                    <div className={`absolute inset-0 rounded-full ${goldenEffectClass}`}>
+                      <div className={`absolute inset-0 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 ${goldenHaloClass} transform group-hover:scale-105 transition-transform`} />
+                    </div>
                     <div className="relative z-10 flex flex-col items-center justify-center px-2 text-center text-black">
                       <span className="text-[9px] uppercase font-black tracking-widest leading-none sm:text-[11px]">Special</span>
                       <span className="text-lg font-black leading-none mb-0.5 sm:text-xl">Offer</span>

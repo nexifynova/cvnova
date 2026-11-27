@@ -36,6 +36,7 @@ function SettingsContent() {
     show_jobs_on_dashboard: true, enable_company_chat: true, show_company_portal: true,
     show_listed_companies: true,
     show_company_inbox: true, golden_circle_enabled: true,
+    golden_circle_movement: 100, golden_circle_effect: 'glow',
     job_fields_heading: 'Search Professionals by Field',
     profession_heading: 'Your profession',
   });
@@ -61,6 +62,16 @@ function SettingsContent() {
       delete payload.created_at;
       delete payload.updated_at;
 
+      // Keep the golden circle controls inside the ranges the DB constraints
+      // (and the landing page) expect, so a typo can never fail the whole save.
+      const movement = Number(payload.golden_circle_movement);
+      payload.golden_circle_movement = Number.isFinite(movement)
+        ? Math.min(100, Math.max(0, Math.round(movement)))
+        : 100;
+      if (!['none', 'glow', 'star', 'pulse'].includes(payload.golden_circle_effect)) {
+        payload.golden_circle_effect = 'glow';
+      }
+
       const { error } = await supabase.from('app_settings').update(payload).eq('id', 1);
       if (error) throw error;
       alert('Settings Saved Successfully!');
@@ -78,6 +89,19 @@ function SettingsContent() {
   const handleChange = (e: any) => {
     const { name, value, type, checked } = e.target;
     setSettings({ ...settings, [name]: type === 'checkbox' ? checked : (type === 'number' ? parseFloat(value) || 0 : value) });
+  };
+
+  // Golden circle movement: the number input and the range slider share the
+  // same 0-100 clamp (an empty field is allowed while typing and saved as 100).
+  const handleGoldenMovementChange = (e: any) => {
+    const raw = e.target.value;
+    if (raw === '') {
+      setSettings({ ...settings, golden_circle_movement: '' });
+      return;
+    }
+    const parsed = Number(raw);
+    const clamped = Number.isFinite(parsed) ? Math.min(100, Math.max(0, Math.round(parsed))) : 0;
+    setSettings({ ...settings, golden_circle_movement: clamped });
   };
 
   const uploadFile = async (file: File, type: 'logo' | 'favicon' | 'hero') => {
@@ -216,20 +240,75 @@ function SettingsContent() {
                   <input type="file" accept="image/*" className="hidden" onChange={handleHeroUpload} />
                 </label>
               </div>
-              <div className="mt-5 flex items-center justify-between gap-4 rounded-xl border border-gray-100 bg-gray-50 p-4">
-                <div>
-                  <p className="text-sm font-bold text-gray-900">Golden Offer Circle Animation</p>
-                  <p className="text-xs text-gray-500">Show the rising/sinking golden &quot;Special Offer&quot; circle over the hero slider. Turn off to hide it completely.</p>
+              <div className="mt-5 rounded-xl border border-gray-100 bg-gray-50 p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-bold text-gray-900">Golden Offer Circle Animation</p>
+                    <p className="text-xs text-gray-500">Show the golden &quot;Special Offer&quot; circle over the hero slider. Turn off to hide the circle completely.</p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={!!settings.golden_circle_enabled}
+                    onClick={() => setSettings({ ...settings, golden_circle_enabled: !settings.golden_circle_enabled })}
+                    className={`relative inline-flex h-7 w-12 flex-shrink-0 items-center rounded-full transition ${settings.golden_circle_enabled ? 'bg-blue-600' : 'bg-gray-300'}`}
+                  >
+                    <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${settings.golden_circle_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={!!settings.golden_circle_enabled}
-                  onClick={() => setSettings({ ...settings, golden_circle_enabled: !settings.golden_circle_enabled })}
-                  className={`relative inline-flex h-7 w-12 flex-shrink-0 items-center rounded-full transition ${settings.golden_circle_enabled ? 'bg-blue-600' : 'bg-gray-300'}`}
-                >
-                  <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${settings.golden_circle_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                </button>
+
+                <div className={`mt-4 grid grid-cols-1 gap-4 border-t border-gray-200 pt-4 sm:grid-cols-2 ${settings.golden_circle_enabled ? '' : 'opacity-60'}`}>
+                  {/* Movement distance */}
+                  <div>
+                    <label htmlFor="golden_circle_movement" className="block text-xs font-semibold text-gray-600 mb-1">Golden Circle Movement Percentage</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="golden_circle_movement"
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={1}
+                        name="golden_circle_movement"
+                        value={settings.golden_circle_movement ?? 100}
+                        onChange={handleGoldenMovementChange}
+                        disabled={!settings.golden_circle_enabled}
+                        className="w-24 px-3 py-2 rounded-lg border bg-white disabled:bg-gray-100 disabled:text-gray-400"
+                      />
+                      <span className="text-sm font-bold text-gray-500">%</span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        step={1}
+                        aria-label="Golden Circle Movement Percentage slider"
+                        value={Number(settings.golden_circle_movement) || 0}
+                        onChange={handleGoldenMovementChange}
+                        disabled={!settings.golden_circle_enabled}
+                        className="flex-1 accent-blue-600 disabled:opacity-50"
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">0% = the circle stays still on the banner (no sweep, no wink). 100% = the full curved sweep from the top-right corner and back.</p>
+                  </div>
+
+                  {/* Sparkle effect */}
+                  <div>
+                    <label htmlFor="golden_circle_effect" className="block text-xs font-semibold text-gray-600 mb-1">Golden Circle Sparkle Effect</label>
+                    <select
+                      id="golden_circle_effect"
+                      name="golden_circle_effect"
+                      value={settings.golden_circle_effect || 'glow'}
+                      onChange={handleChange}
+                      disabled={!settings.golden_circle_enabled}
+                      className="w-full px-3 py-2 rounded-lg border bg-white disabled:bg-gray-100 disabled:text-gray-400"
+                    >
+                      <option value="none">None (Disabled)</option>
+                      <option value="glow">Glow (Current)</option>
+                      <option value="star">Star Shine</option>
+                      <option value="pulse">Pulse</option>
+                    </select>
+                    <p className="mt-1 text-xs text-gray-500">None removes every glow/shine animation. Glow keeps today&apos;s soft yellow halo.</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -455,7 +534,7 @@ function SettingsContent() {
                 { key: 'show_jobs_on_dashboard', title: 'Jobs on Dashboard', desc: 'Show the latest open roles published by companies on the candidate dashboard.' },
                 { key: 'show_listed_companies', title: 'Show Listed Companies', desc: 'Show the "Listed Companies" box (company names + chat IDs) beside the latest jobs on the candidate dashboard.' },
                 { key: 'show_company_inbox', title: 'Company Inbox', desc: 'Show the "Company Inbox" (recruiter messages) section on the candidate dashboard.' },
-                { key: 'golden_circle_enabled', title: 'Golden Circle Animation', desc: 'Enable/disable the rising golden "Special Offer" circle over the landing page hero banner.' },
+                { key: 'golden_circle_enabled', title: 'Golden Circle Animation', desc: 'Show the golden "Special Offer" circle over the landing page hero banner. Distance (0-100%) and sparkle effect are set on the Branding tab.' },
                 { key: 'enable_company_chat', title: 'Company Chat', desc: 'Let companies message matching candidates from their portal and show their company chat ID.' },
                 { key: 'show_company_portal', title: 'Recruiter / Company Portal Button', desc: 'Show the "Recruiter? Company portal" button and the "For Companies" link in the site navigation.' },
               ].map((item) => (
